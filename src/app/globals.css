@@ -1,0 +1,368 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ── Brand: American Diner Palette ───────────────────────── */
+  --brand-primary:  #9a0002;   /* Cherry Cola */
+  --brand-dark:     #6b0001;   /* Deep Cherry */
+  --brand-light:    #c62828;   /* Cherry Mid (glow/rings) */
+  --brand-cream:    #faf6f1;   /* Cream Vanilla – light, barely warm white */
+  --brand-cream-mid: #ede4d9;  /* Cream Mid (borders/dividers) */
+
+  /* ── Shadcn design tokens (light) ────────────────────────── */
+  --background: #faf6f1;
+  --foreground: oklch(0.145 0 0);
+  --card: #faf6f1;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: #faf6f1;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #ede4d9;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #ede4d9;
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #ede4d9;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #ddd4c8;
+  --input: #ddd4c8;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #e0d3c8;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #d6c8ba;
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: #d6c8ba;
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-light: var(--brand-light);
+  --color-brand-cream: var(--brand-cream);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+body {
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Exact Drop Shadow from Penpot (4px 4px 4px 0px #00000033) */
+.penpot-shadow {
+  box-shadow: 4px 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .penpot-shadow {
+    box-shadow: 4px 4px 8px 0px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Glassmorphism Classes */
+.glass {
+  background: rgba(239, 230, 221, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(239, 230, 221, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background: rgba(28, 25, 23, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(61, 55, 50, 0.6);
+  }
+}
+
+/* ── Material Symbols FILL axis ─────────────────────────────── */
+@property --ms-fill {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: true;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variation-settings: 'FILL' var(--ms-fill, 0), 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  transition: --ms-fill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #9a0002 transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb {
+  background: #9a0002;
+  border-radius: 8px;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: #c62828;
+}
+
+/* Semicircle category carousel: height is set inline from shared arc sagitta. */
+.semicircle-stage {
+  overscroll-behavior-x: contain;
+}
+
+.semicircle-track {
+  align-items: flex-start;
+}
+
+.semicircle-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide Scrollbar Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Micro-animations */
+@keyframes active-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.95;
+  }
+}
+
+.animate-active-pulse {
+  animation: active-pulse 2.5s infinite ease-in-out;
+}
+
+.dark {
+  --background: #1c1917;
+  --foreground: #ece8e2;
+  --card: #231f1c;
+  --card-foreground: #ece8e2;
+  --popover: #231f1c;
+  --popover-foreground: #ece8e2;
+  --primary: #ece8e2;
+  --primary-foreground: #1c1917;
+  --secondary: #2a2623;
+  --secondary-foreground: #ece8e2;
+  --muted: #302c28;
+  --muted-foreground: #8a837a;
+  --accent: #3a3530;
+  --accent-foreground: #ece8e2;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #3d3732;
+  --input: #3d3732;
+  --ring: #6b635c;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #231f1c;
+  --sidebar-foreground: #ece8e2;
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: #1c1917;
+  --sidebar-accent: #2a2623;
+  --sidebar-accent-foreground: #ece8e2;
+  --sidebar-border: #3d3732;
+  --sidebar-ring: #6b635c;
+}
+
+.dark .shimmer-bg {
+  background: linear-gradient(90deg, #2a2623 25%, #3a3530 50%, #2a2623 75%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shimmer-bg {
+    background: linear-gradient(90deg, #2a2623 25%, #3a3530 50%, #2a2623 75%);
+    background-size: 200% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Custom Search Glow Animation & Input Effects – Cherry Cola */
+@keyframes typing-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px 3px rgba(154, 0, 2, 0.25);
+    border-color: rgba(154, 0, 2, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 25px 6px rgba(154, 0, 2, 0.45);
+    border-color: rgba(154, 0, 2, 1);
+  }
+}
+
+.animate-typing-glow {
+  animation: typing-glow 1.5s infinite ease-in-out;
+}
+
+/* Custom Scrollbar Styles – Cherry Cola */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #9a0002;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #c62828;
+}
+
+
+/* Shimmer Animation – Warm Cream tones */
+@keyframes shimmer-ani {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    #ede4d9 25%,
+    #faf6f1 50%,
+    #ede4d9 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-ani 1.5s infinite linear;
+}
+
+/* Scroll Fade Mask States to hide/blur sharp cuts dynamically based on overflow scroll position */
+.scroll-fade-start {
+  mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+}
+
+.scroll-fade-end {
+  mask-image: linear-gradient(to left, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, black 90%, transparent 100%);
+}
+
+.scroll-fade-middle {
+  mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+}
+
+.scroll-fade-none {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* Vertical Scroll Fade Mask States */
+.scroll-fade-y-start {
+  mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+}
+
+.scroll-fade-y-end {
+  mask-image: linear-gradient(to top, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 85%, transparent 100%);
+}
+
+.scroll-fade-y-middle {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.scroll-fade-y-none {
+  mask-image: none;
+  -webkit-mask-image: none;
+}

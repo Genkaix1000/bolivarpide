@@ -1,0 +1,17 @@
+{
+  "name": "DeliveryLocal",
+  "short_name": "Delivery",
+  "description": "Plataforma de delivery local premium y catálogo digital rápido.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf6f1",
+  "theme_color": "#9a0002",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
