@@ -12,13 +12,13 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "SaaS Delivery Local — PWA Client MVP",
+  title: "BolivarPide",
   description: "Plataforma de delivery local premium y catálogo digital rápido.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DeliveryLocal",
+    title: "BolivarPide",
   },
 };
 

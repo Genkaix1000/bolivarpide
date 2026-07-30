@@ -163,7 +163,7 @@ export default function Navbar({
       {/* ── Mobile Bottom Navbar pill ─────────────────────────────────────── */}
 
       <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <nav className="w-[328px] h-[64px] bg-[#faf6f1]/92 dark:bg-[#1c1917]/92 border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow backdrop-blur-md flex items-center justify-between px-4">
+        <nav className="w-[min(328px,calc(100vw-24px))] h-[64px] bg-[#faf6f1] dark:bg-[#1c1917] border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow flex items-center justify-between px-4">
           {navItems.map(({ id, label, icon }) => {
             const isActive = currentTab === id;
             return (
@@ -197,12 +197,12 @@ export default function Navbar({
 
       {/* ── Desktop Top Header ────────────────────────────────────────────── */}
       <div className="hidden md:block w-full px-6 pt-4 sticky top-0 z-50">
-        <header className="max-w-[1040px] h-[64px] mx-auto bg-[#faf6f1]/92 dark:bg-[#1c1917]/92 border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow backdrop-blur-md flex items-center justify-between px-6 relative">
+        <header className="max-w-[1040px] h-[64px] mx-auto bg-[#faf6f1] dark:bg-[#1c1917] border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow flex items-center justify-between px-6 relative">
 
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-base shadow-sm">D</div>
-            <span className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-100">DeliveryLocal</span>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-base shadow-sm">B</div>
+            <span className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-100">BolivarPide</span>
           </div>
 
 

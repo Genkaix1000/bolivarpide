@@ -29,6 +29,9 @@ export default function HomePage() {
     setLocationBackdropTop(bottomY);
   }, []);
 
+  // Mocked business ownership flag (hardcoded per spec — no auth yet)
+  const [isBusinessOwner] = useState(true);
+
   // Saved Addresses Mock Data
   const [selectedAddressId, setSelectedAddressId] = useState("addr-1");
   const savedAddresses = [
@@ -72,15 +75,6 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, []);
 
-
-  // Popular Chains Auto-sliding Center Spotlight Carousel (moves rightwards)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setIsPopularTransitionEnabled(true);
-      setActivePopularIndex((prev) => prev + 1);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Boundary Checks for Popular Chains Spotlight Loop
   useEffect(() => {
@@ -294,9 +288,15 @@ export default function HomePage() {
               <div className="space-y-2">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Accesos Rápidos</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <Link href="/negocio/registro" className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer block text-center">
-                    🏪 Abrir mi negocio
-                  </Link>
+                  {isBusinessOwner ? (
+                    <Link href="/negocio/dashboard" className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer block text-center">
+                      🏪 Ir a mi negocio
+                    </Link>
+                  ) : (
+                    <Link href="/negocio/registro" className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer block text-center">
+                      🏪 Abrir mi negocio
+                    </Link>
+                  )}
                   <button className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer">
                     🛵 Ser repartidor
                   </button>
@@ -312,9 +312,9 @@ export default function HomePage() {
             {isLoading ? (
               <HomeSkeleton />
             ) : (
-              <div className="animate-fade-in space-y-8">
+              <div className="animate-fade-in flex flex-col gap-8">
                 {/* 1. Featured Chains */}
-                <div className="space-y-4">
+                <div className="order-2 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Cadenas destacadas</h3>
                     <div className="flex gap-1">
@@ -360,7 +360,7 @@ export default function HomePage() {
                 </div>
 
                 {/* 3. Menús del Momento */}
-                <div className="space-y-4">
+                <div className="order-1 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Menús del momento</h3>
                   </div>
@@ -404,7 +404,7 @@ export default function HomePage() {
                 </div>
 
                 {/* 4. Cadenas más populares */}
-                <div className="space-y-4">
+                <div className="order-3 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Cadenas más populares</h3>
                   </div>

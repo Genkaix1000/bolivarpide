@@ -1,6 +1,6 @@
 {
-  "name": "DeliveryLocal",
-  "short_name": "Delivery",
+  "name": "BolivarPide",
+  "short_name": "BolivarPide",
   "description": "Plataforma de delivery local premium y catálogo digital rápido.",
   "start_url": "/",
   "display": "standalone",

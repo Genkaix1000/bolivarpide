@@ -259,14 +259,18 @@ function CategoryButton({
       type="button"
       onClick={() => onSelect(item.id)}
       className={cn(
-        "pointer-events-auto flex flex-col items-center gap-1 transition-transform active:scale-95",
+        // No transition on the button itself: its `transform` (translateY) tracks
+        // the arc curve every scroll frame, and any CSS transition here would fight
+        // that update, making icons visibly lag behind and "fall" into place instead
+        // of following the curvature 1:1. Press feedback lives on the inner circle instead.
+        "pointer-events-auto flex flex-col items-center gap-1",
         className,
       )}
       style={style}
     >
       <span
         className={cn(
-          "flex items-center justify-center rounded-full transition-all duration-300",
+          "flex items-center justify-center rounded-full transition-all duration-300 active:scale-90",
           isActive
             ? "scale-105 shadow-lg ring-[2.5px] ring-[#9a0002]/45"
             : "shadow-md",
@@ -357,78 +361,69 @@ function DragArcCarousel({
   geo: ArcGeometry;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
-  const [offsets, setOffsets] = useState<number[]>(() =>
-    items.map(() => 0),
-  );
   const [scrollLeft, setScrollLeft] = useState(0);
   const [scrollDim, setScrollDim] = useState({
     scrollWidth: 0,
     clientWidth: 0,
   });
 
-  const syncOffsets = useCallback(() => {
+  const sidePad = Math.max((geo.width - ITEM_BOX) / 2, SIDE_PAD);
+  const pitch = ITEM_BOX + ITEM_GAP;
+
+  // Reads scroll position only — item Y-offsets are derived (below) purely from
+  // scrollLeft + layout math, never from getBoundingClientRect. That keeps the
+  // curve perfectly in sync with scroll on every render, with no measurement lag
+  // and no "flat until measured" flash on mount.
+  const readScroll = useCallback(() => {
     const el = scrollRef.current;
-    const stage = stageRef.current;
-    if (!el || !stage || geo.width <= 0) return;
-
-    const stageRect = stage.getBoundingClientRect();
-    const children = el.children;
-    const next: number[] = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const child = children[i] as HTMLElement | undefined;
-      if (!child) {
-        next.push(0);
-        continue;
-      }
-      const rect = child.getBoundingClientRect();
-      const itemCenterX = rect.left + rect.width / 2 - stageRect.left;
-      next.push(arcY(itemCenterX, geo) - ICON_CENTER);
-    }
-
-    setOffsets(next);
+    if (!el) return;
     setScrollLeft(el.scrollLeft);
     setScrollDim({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth });
-  }, [geo, items.length]);
+  }, []);
 
-  const scheduleSync = useCallback(() => {
+  const scheduleRead = useCallback(() => {
     if (rafRef.current !== null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      syncOffsets();
+      readScroll();
     });
-  }, [syncOffsets]);
+  }, [readScroll]);
 
+  // Synchronous on mount/resize so the very first paint is already curved and centered.
   useLayoutEffect(() => {
-    syncOffsets();
-  }, [syncOffsets, items, geo]);
+    readScroll();
+  }, [readScroll, items.length, geo.width]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.addEventListener("scroll", scheduleSync, { passive: true });
-    const ro = new ResizeObserver(scheduleSync);
+    el.addEventListener("scroll", scheduleRead, { passive: true });
+    const ro = new ResizeObserver(scheduleRead);
     ro.observe(el);
-    if (stageRef.current) ro.observe(stageRef.current);
     return () => {
-      el.removeEventListener("scroll", scheduleSync);
+      el.removeEventListener("scroll", scheduleRead);
       ro.disconnect();
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [scheduleSync]);
+  }, [scheduleRead]);
+
+  const offsets = useMemo(
+    () =>
+      items.map((_, i) => {
+        const itemCenterX = sidePad + i * pitch + ITEM_BOX / 2 - scrollLeft;
+        return arcY(itemCenterX, geo) - ICON_CENTER;
+      }),
+    [items, sidePad, pitch, scrollLeft, geo],
+  );
 
   const scrollTo = useCallback((targetScroll: number) => {
     scrollRef.current?.scrollTo({ left: targetScroll, behavior: "smooth" });
   }, []);
 
-  const sidePad = Math.max((geo.width - ITEM_BOX) / 2, SIDE_PAD);
-
   return (
     <div className="pointer-events-none flex w-full flex-col items-center">
       <div
-        ref={stageRef}
         className="semicircle-stage pointer-events-none relative w-full"
         style={{
           height: geo.sagitta + ITEM_BOX - ICON_CENTER,

@@ -2,10 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { SmoothInput } from "@/components/SmoothInput";
 import { cn } from "@/lib/utils";
+import { RESTAURANT_SPECIALTIES } from "@/lib/mockData";
 
 // ─── Animated Section wrapper (scroll reveal) ────────────────────────────
 function AnimatedSection({
@@ -30,35 +31,6 @@ function AnimatedSection({
   );
 }
 
-// ─── Restaurant Specialty Categories with Emojis ───────────────────────────
-const RESTAURANT_CATEGORIES = [
-  { id: "empanadas", label: "Empanadas", emoji: "🥟" },
-  { id: "hamburguesas", label: "Hamburguesas", emoji: "🍔" },
-  { id: "pizza", label: "Pizza", emoji: "🍕" },
-  { id: "sushi", label: "Sushi", emoji: "🍣" },
-  { id: "helados", label: "Helados", emoji: "🍦" },
-  { id: "asado", label: "Asado", emoji: "🍖" },
-  { id: "italiana", label: "Italiana", emoji: "🍝" },
-  { id: "cafe", label: "Café", emoji: "☕" },
-  { id: "panaderia", label: "Panadería", emoji: "🥐" },
-  { id: "saludable", label: "Saludable", emoji: "🥑" },
-  { id: "sandwiches", label: "Sándwiches", emoji: "🥪" },
-  { id: "vegetariana", label: "Vegetariana", emoji: "🥗" },
-  { id: "desayunos_meriendas", label: "Desayunos y Meriendas", emoji: "🥞" },
-  { id: "jugos", label: "Jugos", emoji: "🥤" },
-  { id: "mexicana", label: "Mexicana", emoji: "🌮" },
-  { id: "milanesas", label: "Milanesas", emoji: "🥩" },
-  { id: "asiatica", label: "Asiática", emoji: "🍛" },
-  { id: "pollo", label: "Pollo", emoji: "🍗" },
-  { id: "postres", label: "Postres", emoji: "🍰" },
-  { id: "internacional", label: "Internacional", emoji: "🗺️" },
-  { id: "peruana", label: "Peruana", emoji: "🇵🇪" },
-  { id: "pescados", label: "Pescados", emoji: "🐟" },
-  { id: "arabe", label: "Árabe", emoji: "🕌" },
-  { id: "hot_dogs", label: "Hot Dogs", emoji: "🌭" },
-  { id: "argentina", label: "Argentina", emoji: "🇦🇷" },
-];
-
 const COUNTRIES = [
   { code: "+54", flag: "🇦🇷", name: "Argentina" },
   { code: "+55", flag: "🇧🇷", name: "Brasil" },
@@ -71,12 +43,12 @@ const COUNTRIES = [
 ];
 
 const BUSINESS_TYPES = [
-  { id: "restaurante", label: "Restaurante", emoji: "🍔" },
-  { id: "farmacia", label: "Farmacia", emoji: "💊" },
-  { id: "kiosko", label: "Kiosko", emoji: "🍬" },
-  { id: "cafe", label: "Café", emoji: "☕" },
-  { id: "almacen", label: "Almacén", emoji: "🛒" },
-  { id: "otro", label: "Otro", emoji: "📦" },
+  { id: "restaurante", label: "Restaurante", icon: "restaurant_menu" },
+  { id: "farmacia", label: "Farmacia", icon: "medication" },
+  { id: "kiosko", label: "Kiosko", icon: "storefront" },
+  { id: "cafe", label: "Café", icon: "local_cafe" },
+  { id: "almacen", label: "Almacén", icon: "grocery" },
+  { id: "otro", label: "Otro", icon: "inventory_2" },
 ];
 
 const FIXED_LOCATION = {
@@ -361,10 +333,10 @@ export default function BusinessRegisterPage() {
         </Link>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-base shadow-sm">
-            D
+            B
           </div>
           <span className="hidden sm:inline font-extrabold text-sm tracking-tight text-gray-800 dark:text-gray-100">
-            DeliveryLocal Socios
+            BolivarPide Socios
           </span>
         </div>
       </header>
@@ -374,13 +346,13 @@ export default function BusinessRegisterPage() {
       ════════════════════════════════════════════════════════════ */}
       <section className="relative z-10 w-full max-w-[1200px] mx-auto px-6 md:px-10 pt-6 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
         {/* ── Left Column ──────────────────────────────────────── */}
-        <div className="flex flex-col gap-8 lg:sticky lg:top-8">
+        <div className="order-2 flex flex-col gap-8 lg:sticky lg:top-8 lg:order-1">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <TiltCard>
+            <div className="w-full rounded-[28px] border border-[#ddd4c8] bg-[#faf6f1] p-8 shadow-sm dark:border-[#3d3732] dark:bg-[#1c1917]">
               {/* Eyebrow */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#9a0002]/20 bg-[#9a0002]/6 text-[#9a0002] text-xs font-bold mb-6">
                 <MaterialSymbol icon="auto_awesome" size={11} />
@@ -391,7 +363,7 @@ export default function BusinessRegisterPage() {
               <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white leading-[1.1] tracking-tight mb-4">
                 Sumá tu negocio
                 <br />
-                <span className="text-[#9a0002]">a DeliveryLocal</span>
+                <span className="text-[#9a0002]">a BolivarPide</span>
                 <br />
                 en San Carlos de Bolívar.
               </h1>
@@ -401,18 +373,18 @@ export default function BusinessRegisterPage() {
                 Completá el formulario de contacto. Revisamos tu negocio manualmente y te contactamos por WhatsApp para activar tu cuenta.
               </p>
 
-              {/* WhatsApp CTA */}
+              {/* Secondary support channel */}
               <a
-                href="https://wa.me/5491100000000?text=Hola%2C%20quiero%20registrar%20mi%20negocio%20en%20DeliveryLocal"
+                href="https://wa.me/5491100000000?text=Hola%2C%20quiero%20registrar%20mi%20negocio%20en%20BolivarPide"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-full border-[1.5px] border-[#25d366]/50 bg-[#25d366]/10 text-[#1a9e4c] dark:text-[#25d366] font-bold text-sm hover:bg-[#25d366]/18 hover:border-[#25d366]/70 hover:scale-[1.02] active:scale-95 transition-all duration-250 select-none"
+                className="group inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 transition-colors hover:text-[#1a9e4c] dark:text-gray-400 dark:hover:text-[#25d366]"
               >
                 <MaterialSymbol icon="chat" size={16} className="text-[#25d366] group-hover:scale-110 transition-transform" />
-                Contactar por WhatsApp
+                ¿Preferís hablar? Escribinos por WhatsApp
                 <MaterialSymbol icon="arrow_forward" size={13} className="group-hover:translate-x-0.5 transition-transform" />
               </a>
-            </TiltCard>
+            </div>
           </motion.div>
 
           {/* Divider */}
@@ -423,7 +395,7 @@ export default function BusinessRegisterPage() {
             {[
               { icon: "verified", title: "Revisión manual garantizada", desc: "Cada solicitud la revisamos personalmente para asegurar calidad en la plataforma.", delay: 0.42 },
               { icon: "trending_up", title: "Más visibilidad local", desc: "Tu negocio aparece frente a clientes que buscan delivery en San Carlos de Bolívar.", delay: 0.52 },
-              { icon: "bolt", title: "Sin costos de activación", desc: "No pagás nada por registrarte. Solo una comisión cuando vendés.", delay: 0.62 },
+              { icon: "bolt", title: "Sin costos de activación", desc: "No pagás nada por registrarte. Te detallamos la comisión antes de activar tu cuenta.", delay: 0.62 },
             ].map(({ icon, title, desc, delay }) => (
               <motion.div
                 key={title}
@@ -445,12 +417,12 @@ export default function BusinessRegisterPage() {
         </div>
 
         {/* ── Right Column: Form card ───────────────────────────── */}
-        <div className="w-full">
+        <div className="order-1 w-full lg:order-2">
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732] rounded-[32px] shadow-2xl p-6 md:p-8 flex flex-col justify-between min-h-[500px] relative overflow-hidden backdrop-blur-md"
+            className="w-full bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732] rounded-[28px] shadow-sm p-6 md:p-8 flex flex-col justify-between min-h-[500px] relative overflow-hidden"
           >
             <AnimatePresence mode="wait">
               {!isSubmitted ? (
@@ -556,8 +528,6 @@ export default function BusinessRegisterPage() {
                                     }
                                     setErrors((prev) => ({ ...prev, businessType: "" }));
                                   }}
-                                  whileHover={{ scale: 1.03 }}
-                                  whileTap={{ scale: 0.97 }}
                                   className={cn(
                                     "py-3 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer",
                                     isSelected
@@ -565,7 +535,7 @@ export default function BusinessRegisterPage() {
                                       : "border-gray-200 dark:border-[#3d3732] bg-gray-50 dark:bg-[#1c1917] text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-[#3d3732]"
                                   )}
                                 >
-                                  <span className="text-lg select-none">{type.emoji}</span>
+                                  <MaterialSymbol icon={type.icon} size={18} />
                                   <span className="text-[10px] font-bold tracking-tight">{type.label}</span>
                                 </motion.button>
                               );
@@ -611,7 +581,7 @@ export default function BusinessRegisterPage() {
                                   onScroll={checkSpecScroll}
                                   className="max-h-[160px] overflow-y-auto pr-1 flex flex-wrap gap-1.5 custom-scrollbar pb-2 pt-0.5"
                                 >
-                                  {RESTAURANT_CATEGORIES.map((cat) => {
+                                  {RESTAURANT_SPECIALTIES.map((cat) => {
                                     const isSelected = restaurantCategory === cat.id;
                                     return (
                                       <motion.button
@@ -621,8 +591,6 @@ export default function BusinessRegisterPage() {
                                           setRestaurantCategory(cat.id);
                                           setErrors((prev) => ({ ...prev, restaurantCategory: "" }));
                                         }}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
                                         className={cn(
                                           "py-1.5 px-3 rounded-full text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-all",
                                           isSelected
@@ -630,7 +598,7 @@ export default function BusinessRegisterPage() {
                                             : "bg-white dark:bg-[#1c1917] text-gray-600 dark:text-gray-400 border-[#d6cdc0] dark:border-[#3d3732] hover:bg-gray-50 dark:hover:bg-[#2a2623]"
                                         )}
                                       >
-                                        <span>{cat.emoji}</span>
+                                        <MaterialSymbol icon={cat.icon} size={13} />
                                         <span>{cat.label}</span>
                                       </motion.button>
                                     );
@@ -924,7 +892,7 @@ export default function BusinessRegisterPage() {
                               />
                             </div>
                             <label htmlFor="consent" className="text-[11px] font-medium leading-relaxed text-gray-600 dark:text-gray-400 select-none cursor-pointer">
-                              Autorizo a <span className="font-bold text-gray-800 dark:text-[#d4cfc9]">DeliveryLocal</span> a contactarme vía WhatsApp y email para coordinar la activación de mi negocio, conforme a la{" "}
+                              Autorizo a <span className="font-bold text-gray-800 dark:text-[#d4cfc9]">BolivarPide</span> a contactarme vía WhatsApp y email para coordinar la activación de mi negocio, conforme a la{" "}
                               <span className="text-[#9a0002] hover:underline cursor-pointer">Política de Privacidad</span>.
                             </label>
                           </div>
@@ -967,7 +935,7 @@ export default function BusinessRegisterPage() {
                                 <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide block leading-none mb-1">Rubro</span>
                                 <span className="text-xs font-extrabold text-gray-800 dark:text-[#d4cfc9] truncate block leading-tight capitalize">
                                   {BUSINESS_TYPES.find((b) => b.id === businessType)?.label}
-                                  {businessType === "restaurante" && restaurantCategory && ` (${RESTAURANT_CATEGORIES.find((c) => c.id === restaurantCategory)?.label})`}
+                                  {businessType === "restaurante" && restaurantCategory && ` (${RESTAURANT_SPECIALTIES.find((c) => c.id === restaurantCategory)?.label})`}
                                 </span>
                               </div>
                             </div>
@@ -1208,56 +1176,9 @@ export default function BusinessRegisterPage() {
       {/* Footer */}
       <footer className="relative z-10 py-8 px-6 text-center border-t border-[#ddd4c8]/50 dark:border-[#3d3732]/50">
         <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
-          © {new Date().getFullYear()} DeliveryLocal Inc. · Todos los derechos reservados
+          © {new Date().getFullYear()} BolivarPide Inc. · Todos los derechos reservados
         </p>
       </footer>
-    </div>
-  );
-}
-
-// ─── TiltCard: glassmorphism card with subtle mouse-tracked tilt ──────────
-function TiltCard({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
-
-  const springConfig = { stiffness: 220, damping: 28, mass: 0.6 };
-  const rotateY = useSpring(rawX, springConfig);
-  const rotateX = useSpring(rawY, springConfig);
-
-  const highlightX = useSpring(rawX, { stiffness: 160, damping: 24 });
-  const highlightY = useSpring(rawY, { stiffness: 160, damping: 24 });
-
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const nx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-    const ny = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    rawX.set(nx * 5);
-    rawY.set(-ny * 3.5);
-  };
-
-  const onLeave = () => {
-    rawX.set(0);
-    rawY.set(0);
-  };
-
-  return (
-    <div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} style={{ perspective: "800px" }} className="w-full">
-      <motion.div
-        style={{ rotateY, rotateX, transformStyle: "preserve-3d" }}
-        className="relative w-full rounded-[28px] border border-[#ddd4c8]/60 dark:border-[#3d3732]/60 bg-white/55 dark:bg-[#231f1c]/55 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.07)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.35)] p-8 overflow-hidden"
-      >
-        <motion.div
-          style={{ x: highlightX, y: highlightY }}
-          className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-white/20 dark:bg-white/5 blur-[60px] pointer-events-none"
-        />
-        <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full bg-[#9a0002]/5 blur-[50px] pointer-events-none" />
-        <div className="absolute inset-0 rounded-[28px] ring-1 ring-inset ring-white/30 dark:ring-white/5 pointer-events-none" />
-        <div style={{ transform: "translateZ(8px)" }}>{children}</div>
-      </motion.div>
     </div>
   );
 }
@@ -1265,15 +1186,12 @@ function TiltCard({ children }: { children: React.ReactNode }) {
 // ─── FAQ Accordion ────────────────────────────────────────────────────────
 const FAQ_ITEMS = [
   { q: "¿En cuánto tiempo me contactan?", a: "Revisamos cada solicitud manualmente. Te escribimos por WhatsApp dentro de las 24-48 horas hábiles siguientes al envío." },
-  { q: "¿Cuánto cobra DeliveryLocal a los negocios?", a: "Nuestra comisión es transparente y se aplica únicamente sobre los pedidos completados. No hay costos fijos mensuales ni de activación." },
-  { q: "¿Cuánto cuesta registrar mi negocio?", a: "El registro es completamente gratuito. Solo pagás una comisión cuando recibís un pedido exitoso." },
-  { q: "¿En qué zonas operan?", a: "Por el momento solo operamos en San Carlos de Bolívar, Buenos Aires (CP 6550). Estamos enfocados en ofrecer la mejor experiencia local." },
-  { q: "¿Necesito tener 15 productos o documentos para registrarme?", a: "No. Solo necesitás completar el formulario de contacto. La carga de productos y documentos se hace durante la activación personalizada, con nuestra ayuda." },
-  { q: "¿Quién hace el delivery de los pedidos?", a: "Contamos con una red de repartidores locales y también podés usar tu propio equipo de delivery si lo preferís." },
-  { q: "¿Quién paga el envío?", a: "El costo de envío lo abona el cliente final. Como negocio socio, vos solo pagás la comisión de la plataforma sobre el valor del pedido." },
+  { q: "¿Cuánto cobra BolivarPide a los negocios?", a: "Es un costo inicial ínfimo para levantar el local en el sistema y después un 7% por compra realizada." },
+  { q: "¿En qué zonas operan?", a: "Por el momento operamos en San Carlos de Bolívar. Estamos buscando expandirnos constantemente: si te interesa la propuesta y tenés un local en otra ciudad o zona, ponete en contacto con nosotros para coordinar." },
+  { q: "¿Quién hace el delivery de los pedidos?", a: "Estamos ampliando una red de repartidores locales a los cuales podés sumar tus propios contactos o repartidores de confianza para tu local." },
+  { q: "¿Quién paga el envío?", a: "El costo de envío lo abona el cliente final. Como negocio socio, vos solo abonás la comisión correspondiente sobre la venta." },
   { q: "¿Puedo cambiar el perfil de mi negocio después?", a: "Sí, desde el panel de control podés actualizar fotos, horarios, menú, precios y datos de contacto en cualquier momento." },
-  { q: "¿Cuánto tiempo lleva completar el formulario?", a: "El proceso está dividido en 3 pasos simples y generalmente se completa en menos de 3 minutos." },
-  { q: "¿Qué pasa si tengo varias sucursales?", a: "Podés registrar cada sucursal por separado y gestionarlas todas desde el mismo panel administrativo." },
+  { q: "¿Qué pasa si tengo varias sucursales?", a: "Podés registrar todas las sucursales que quieras sin costo adicional. Simplemente tenés 1 solo costo inicial para levantar tu negocio en sí." },
 ];
 
 function FaqAccordion() {

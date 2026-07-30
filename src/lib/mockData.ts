@@ -55,6 +55,69 @@ export interface PopularChain {
   color: string;
 }
 
+/** Panel de Negocio — mock types */
+export interface PanelProduct {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  available: boolean;
+}
+
+export interface BusinessStats {
+  ordersToday: number;
+  ordersYesterday: number;
+  revenueToday: number;
+  revenueYesterday: number;
+  activeOrders: number;
+  avgTicket: number;
+}
+
+export interface ActiveDriver {
+  id: string;
+  name: string;
+  role: string;
+  status: "available" | "delivering" | "offline";
+  currentOrder?: number;
+}
+
+export interface DetailedOrder {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  itemsCount: number;
+  items: { name: string; qty: number; price: number }[];
+  total: number;
+  paymentMethod: "Mercado Pago" | "Efectivo" | "Transferencia";
+  status: "pending" | "preparing" | "delivering" | "delivered" | "cancelled";
+  time: string;
+  estimatedTime?: number; // minutes
+  driverName?: string;
+  notes?: string;
+}
+
+export interface RecentOrder {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  itemsCount: number;
+  total: number;
+  status: "pending" | "accepted" | "preparing" | "delivering" | "delivered" | "cancelled";
+  time: string;
+}
+
+export interface BusinessInfo {
+  name: string;
+  initials: string;
+  logoBg: string;
+  rating: number;
+  reviewsCount: number;
+  isOpen: boolean;
+  prepTimeMinutes: number;
+}
+
 export const CATEGORIES: Category[] = [
   {
     id: "kiosks",
@@ -288,3 +351,120 @@ export const POPULAR_CHAINS: PopularChain[] = [
   { id: "sw", initials: "SW", color: "bg-emerald-400 text-black font-bold" },
   { id: "kf", initials: "KF", color: "bg-red-600 text-white font-bold" }
 ];
+
+/** Panel de Negocio — mock data */
+export const MOCK_BUSINESS: BusinessInfo = {
+  name: "Pizzería & Café Don Luis",
+  initials: "DL",
+  logoBg: "bg-gradient-to-br from-[#9a0002] to-[#6b0001]",
+  rating: 4.9,
+  reviewsCount: 128,
+  isOpen: true,
+  prepTimeMinutes: 25,
+};
+
+export const MOCK_BUSINESS_STATS: BusinessStats = {
+  ordersToday: 24,
+  ordersYesterday: 18,
+  revenueToday: 187500,
+  revenueYesterday: 142045,
+  activeOrders: 5,
+  avgTicket: 7812,
+};
+
+export const MOCK_DRIVERS: ActiveDriver[] = [
+  { id: "drv-1", name: "Franco Benítez", role: "Repartidor Local", status: "delivering", currentOrder: 1041 },
+  { id: "drv-2", name: "Matías Rossi", role: "Repartidor Local", status: "available" },
+  { id: "drv-3", name: "Gonzalo López", role: "Cadete Propio", status: "delivering", currentOrder: 1040 },
+];
+
+export const MOCK_RECENT_ORDERS: RecentOrder[] = [
+  { id: "ord-1", orderNumber: 1043, customerName: "Valentina Paz", itemsCount: 3, total: 9800, status: "pending", time: "18:52" },
+  { id: "ord-2", orderNumber: 1042, customerName: "Juan Pérez", itemsCount: 2, total: 6400, status: "preparing", time: "18:40" },
+  { id: "ord-3", orderNumber: 1041, customerName: "María Gómez", itemsCount: 4, total: 11200, status: "delivering", time: "18:32" },
+  { id: "ord-4", orderNumber: 1040, customerName: "Lucas Fernández", itemsCount: 5, total: 14500, status: "delivered", time: "18:15" },
+  { id: "ord-5", orderNumber: 1039, customerName: "Sofía Álvarez", itemsCount: 1, total: 3200, status: "cancelled", time: "17:50" },
+];
+
+export const MOCK_DETAILED_ORDERS: DetailedOrder[] = [
+  {
+    id: "ord-1",
+    orderNumber: 1043,
+    customerName: "Valentina Paz",
+    customerPhone: "2314-558291",
+    deliveryAddress: "Av. San Martín 452, Piso 2A",
+    itemsCount: 3,
+    items: [
+      { name: "Pizza Muzzarella Gigante", qty: 1, price: 6800 },
+      { name: "Empanadas de Carne Cortada a Cuchillo", qty: 2, price: 1500 },
+    ],
+    total: 9800,
+    paymentMethod: "Mercado Pago",
+    status: "pending",
+    time: "18:52",
+    notes: "Por favor enviar servilletas y aderezos.",
+  },
+  {
+    id: "ord-2",
+    orderNumber: 1042,
+    customerName: "Juan Pérez",
+    customerPhone: "2314-412093",
+    deliveryAddress: "General Paz 890",
+    itemsCount: 2,
+    items: [
+      { name: "Hamburguesa Doble Cheddar con Papas", qty: 1, price: 5200 },
+      { name: "Gaseosa 500ml", qty: 1, price: 1200 },
+    ],
+    total: 6400,
+    paymentMethod: "Efectivo",
+    status: "preparing",
+    estimatedTime: 20,
+    time: "18:40",
+  },
+  {
+    id: "ord-3",
+    orderNumber: 1041,
+    customerName: "María Gómez",
+    customerPhone: "2314-993182",
+    deliveryAddress: "Alvear 1240",
+    itemsCount: 4,
+    items: [
+      { name: "Pizza Especial Don Luis", qty: 1, price: 8200 },
+      { name: "Bastones de Muzzarella", qty: 1, price: 3000 },
+    ],
+    total: 11200,
+    paymentMethod: "Transferencia",
+    status: "delivering",
+    driverName: "Franco Benítez",
+    time: "18:32",
+  },
+  {
+    id: "ord-4",
+    orderNumber: 1040,
+    customerName: "Lucas Fernández",
+    customerPhone: "2314-118492",
+    deliveryAddress: "Belgrano 312",
+    itemsCount: 5,
+    items: [
+      { name: "Lomito Completo", qty: 2, price: 11000 },
+      { name: "Papas Rústicas", qty: 1, price: 3500 },
+    ],
+    total: 14500,
+    paymentMethod: "Mercado Pago",
+    status: "delivered",
+    driverName: "Gonzalo López",
+    time: "18:15",
+  },
+];
+
+export const MOCK_PRODUCTS: PanelProduct[] = [
+  { id: "prod-1", name: "Pizza Muzzarella Gigante", category: "Pizzas", price: 6800, available: true },
+  { id: "prod-2", name: "Empanada Carne Cuchillo", category: "Empanadas", price: 1500, available: true },
+  { id: "prod-3", name: "Hamburguesa Doble Cheddar", category: "Hamburguesas", price: 5200, available: true },
+  { id: "prod-4", name: "Lomito Completo", category: "Sándwiches", price: 5500, available: false },
+  { id: "prod-5", name: "Torta Oreo", category: "Postres", price: 3800, available: true },
+  { id: "prod-6", name: "Papas Rústicas", category: "Guarniciones", price: 3500, available: true },
+];
+
+export const MOCK_DAYS: string[] = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+export const MOCK_WEEKLY_SALES: number[] = [12, 19, 15, 22, 28, 35, 24];
