@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { StatCard } from "@/components/business/StatCard";
 import { cn } from "@/lib/utils";
 import { MOCK_DETAILED_ORDERS, MOCK_DRIVERS, DetailedOrder } from "@/lib/mockData";
 
@@ -66,7 +67,7 @@ export default function PedidosPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
               <MaterialSymbol icon="receipt_long" size={26} className="text-[#9a0002]" />
-              Comandera en Vivo
+              Comandera & Pedidos
             </h1>
             {pendingCount > 0 && (
               <span className="px-3 py-1 rounded-full bg-[#9a0002] text-white text-xs font-black animate-pulse flex items-center gap-1 shadow-sm">
@@ -108,6 +109,38 @@ export default function PedidosPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* ── Top Row: 4 KPI Cards Contextual to Orders ─────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon="shopping_cart"
+          iconBg="bg-red-50 dark:bg-red-950/30"
+          iconColor="text-[#9a0002]"
+          value={String(orders.length)}
+          label="Total Pedidos (Hoy)"
+        />
+        <StatCard
+          icon="pending_actions"
+          iconBg="bg-amber-50 dark:bg-amber-950/30"
+          iconColor="text-amber-500"
+          value={String(orders.filter(o => o.status === "pending" || o.status === "preparing" || o.status === "delivering").length)}
+          label="Pedidos Abiertos"
+        />
+        <StatCard
+          icon="timer"
+          iconBg="bg-[#9a0002]/10"
+          iconColor="text-[#9a0002]"
+          value="3.2 min"
+          label="T. Respuesta Prom."
+        />
+        <StatCard
+          icon="payments"
+          iconBg="bg-emerald-50 dark:bg-emerald-950/30"
+          iconColor="text-emerald-500"
+          value={formatCurrency(orders.reduce((acc, o) => acc + o.total, 0))}
+          label="Facturado (Hoy)"
+        />
       </div>
 
       {/* Tabs */}
