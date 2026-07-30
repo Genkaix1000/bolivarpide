@@ -1,6 +1,7 @@
 # Panel de Negocio — Spec
 
-> Referencia visual: `docs/panel-negocio-ref.png`
+> Referencia visual Dashboard: `docs/panel-negocio-ref.png`
+> Referencia visual CRUD & Tablas: `Cafe Burito CRUD Reference (docs/especificacion_dashboard_negocios.md)`
 
 ![Referencia de dashboard](panel-negocio-ref.png)
 
