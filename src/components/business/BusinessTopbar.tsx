@@ -85,10 +85,10 @@ export function BusinessTopbar({ onMenuClick }: BusinessTopbarProps) {
           <MaterialSymbol icon="menu" size={20} />
         </button>
 
-        {/* Desktop searchbar — wide pill, minimal fill (reference style) */}
-        <div className="hidden md:flex items-center gap-2.5 bg-white dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] focus-within:border-[#9a0002]/40 rounded-full h-11 px-4.5 w-full max-w-[340px] shadow-sm transition-colors">
+        {/* Desktop searchbar — wide pill, full width */}
+        <div className="hidden md:flex items-center gap-2.5 bg-white dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] focus-within:border-[#9a0002]/40 rounded-full h-11 px-4.5 w-full shadow-sm transition-colors">
           <MaterialSymbol icon="search" size={17} className="text-gray-400 flex-shrink-0" />
-          <SmoothInput placeholder="Buscar en el panel..." className="text-xs font-semibold text-gray-700 dark:text-gray-300" />
+          <SmoothInput placeholder="Buscar en el panel..." className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-full" />
         </div>
       </div>
 
