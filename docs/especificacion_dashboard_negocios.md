@@ -137,3 +137,23 @@ Tarjetas métricas alineadas horizontalmente cubriendo exactamente el largo del 
 │ 5. EN CAMINO / ENTREGADO│ (Asignado a Delivery Asociado o retirado)
 └─────────┬───────────────┘
 ```
+
+---
+
+## 6. Estructura de Vistas CRUD y Modales Desplegables
+
+### 6.1. Layout de Tablas de Gestión (Carta, Pedidos, Equipo)
+* **KPIs Específicos por Sección (Top Row):** Cada vista de gestión (ej. `/negocio/carta` o `/negocio/pedidos`) mantiene 4 tarjetas de métricas en la parte superior contextuales a dicha sección.
+* **Barra de Acciones y Filtros (Table Bar):**
+  * Pestañas de estado/categoría (ej. *Todos*, *Disponibles*, *Pausados*).
+  * Buscador específico por columna o campo.
+  * Selector de ordenamiento / ID.
+  * Botón primario de creación (ej. `+ NUEVO PRODUCTO`, `+ ASOCIAR REPARTIDOR`).
+* **Tabla de Datos Avanzada:**
+  * Filas con badges de estado coloreados (*In-Progress*, *Pending*, *Completed*).
+  * Acciones rápidas por fila (*Editar*, *Pausar/Stock*, *Eliminar*).
+
+### 6.2. Panel Desplegable de Creación/Edición (Drawer desde la Izquierda/Sidebar)
+* Al presionar el botón de creación (ej. `+ NUEVO PRODUCTO`), se despliega un panel lateral tipo **Drawer** desde la izquierda que cubre suavemente el Dashboard o la tabla actual.
+* **Comportamiento UX:** Funciona como una extensión fluida del dashboard (overlay con backdrop blur), evitando cambiar de página por completo y manteniendo al usuario en contexto.
+
