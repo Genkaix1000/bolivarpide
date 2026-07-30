@@ -69,8 +69,19 @@ export interface BusinessStats {
   ordersYesterday: number;
   revenueToday: number;
   revenueYesterday: number;
+  revenueMonth: number;
+  revenueMonthLast: number;
+  completedOrdersMonth: number;
   activeOrders: number;
   avgTicket: number;
+  avgResponseTimeMin: number;
+  avgPrepTimeMin: number;
+}
+
+export interface TutorialTask {
+  id: string;
+  label: string;
+  completed: boolean;
 }
 
 export interface ActiveDriver {
@@ -368,9 +379,22 @@ export const MOCK_BUSINESS_STATS: BusinessStats = {
   ordersYesterday: 18,
   revenueToday: 187500,
   revenueYesterday: 142045,
+  revenueMonth: 2845000,
+  revenueMonthLast: 2410000,
+  completedOrdersMonth: 342,
   activeOrders: 5,
-  avgTicket: 7812,
+  avgTicket: 8318,
+  avgResponseTimeMin: 3.2,
+  avgPrepTimeMin: 18.5,
 };
+
+export const MOCK_TUTORIAL_TASKS: TutorialTask[] = [
+  { id: "profile", label: "Logo y portada cargados en buena calidad", completed: true },
+  { id: "menu", label: "Menú o carta cargada (min 5 productos)", completed: true },
+  { id: "qr", label: "Menú QR generado e impreso", completed: true },
+  { id: "promos", label: "Primera promoción de bienvenida creada", completed: false },
+  { id: "logistics", label: "Al menos 1 repartidor/delivery asociado", completed: true },
+];
 
 export const MOCK_DRIVERS: ActiveDriver[] = [
   { id: "drv-1", name: "Franco Benítez", role: "Repartidor Local", status: "delivering", currentOrder: 1041 },

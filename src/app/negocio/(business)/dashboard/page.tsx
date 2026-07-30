@@ -14,8 +14,10 @@ import {
   MOCK_DAYS,
   MOCK_PRODUCTS,
   MOCK_DRIVERS,
+  MOCK_TUTORIAL_TASKS,
   RecentOrder,
   PanelProduct,
+  TutorialTask,
 } from "@/lib/mockData";
 
 const PERIODS = [
@@ -37,18 +39,24 @@ function formatCurrency(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
 }
 
-function pctDelta(today: number, yesterday: number) {
-  const pct = ((today - yesterday) / yesterday) * 100;
-  return { text: `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}% vs ayer`, direction: (pct >= 0 ? "up" : "down") as "up" | "down" };
-}
-
 export default function DashboardPage() {
   const [period, setPeriod] = useState("today");
   const [isOpen, setIsOpen] = useState(MOCK_BUSINESS.isOpen);
   const [products, setProducts] = useState<PanelProduct[]>(MOCK_PRODUCTS);
+  const [tasks, setTasks] = useState<TutorialTask[]>(MOCK_TUTORIAL_TASKS);
+
   const s = MOCK_BUSINESS_STATS;
-  const ordersDelta = pctDelta(s.ordersToday, s.ordersYesterday);
-  const revenueDelta = pctDelta(s.revenueToday, s.revenueYesterday);
+
+  // Calculo de progreso de onboarding
+  const completedCount = tasks.filter((t) => t.completed).length;
+  const progressPct = Math.round((completedCount / tasks.length) * 100);
+  const isTutorialComplete = progressPct === 100;
+
+  const toggleTask = (id: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+    );
+  };
 
   const toggleProductStock = (id: string) => {
     setProducts((prev) =>
@@ -56,8 +64,10 @@ export default function DashboardPage() {
     );
   };
 
+  const revenueDeltaPct = Math.round(((s.revenueMonth - s.revenueMonthLast) / s.revenueMonthLast) * 100);
+
   return (
-    <div className="space-y-6 text-gray-800 dark:text-gray-200 max-w-[1200px] mx-auto">
+    <div className="space-y-6 text-gray-800 dark:text-gray-200 max-w-[1280px] mx-auto">
       {/* ── Page Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -65,7 +75,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Resumen general del rendimiento de tu negocio
+            Resumen general del rendimiento e indicadores de tu negocio
           </p>
         </div>
 
@@ -88,184 +98,153 @@ export default function DashboardPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════════
-          TOP ROW — Reference layout: Hero (left 3/5) + Statistic card (right 2/5)
+          MAIN GRID — Left (3/5): Tutorial/Promo + KPIs | Right (2/5): Stats + Deliveries
       ══════════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-        {/* ── Hero Banner (left, 3 cols) ─────────────────────────────────────── */}
-        <div className="lg:col-span-3 relative overflow-hidden rounded-[28px] bg-gradient-to-r from-[#9a0002] via-[#800002] to-[#500001] text-white p-6 md:p-8 shadow-xl">
-          {/* Background decorative elements */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 rounded-full bg-white/5 blur-xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col justify-between h-full gap-5">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase text-amber-200">
-                <MaterialSymbol icon="auto_awesome" size={13} />
-                Estado del Local en Vivo
-              </div>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-2xl md:text-3xl font-black tracking-tight">{MOCK_BUSINESS.name}</h2>
-                <button
-                  onClick={() => setIsOpen(!isOpen)}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border",
-                    isOpen
-                      ? "bg-emerald-500 text-white border-emerald-400"
-                      : "bg-gray-800 text-gray-300 border-gray-700"
-                  )}
-                >
-                  <span className={cn("w-2 h-2 rounded-full", isOpen ? "bg-white animate-ping" : "bg-gray-500")} />
-                  {isOpen ? "ABIERTO" : "CERRADO"}
-                </button>
-              </div>
-
-              <p className="text-sm text-red-100/90 font-medium max-w-md">
-                ¡Llevás <strong>{s.ordersToday} pedidos completados</strong> hoy! 🔥 Tenés <strong>{s.activeOrders} pedidos activos</strong> en la cocina y despacho.
-              </p>
-            </div>
-
-            <Link
-              href="/negocio/pedidos"
-              className="group self-start inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-100 text-[#9a0002] font-black text-sm transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-            >
-              <MaterialSymbol icon="receipt_long" size={20} className="text-[#9a0002]" />
-              <span>Ver Comandera en Vivo</span>
-              <span className="w-6 h-6 rounded-full bg-[#9a0002]/10 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
-                <MaterialSymbol icon="arrow_forward" size={14} className="text-[#9a0002]" />
-              </span>
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Right Column: Business Profile + Chart (2 cols, like reference "Statistic") ── */}
-        <div className="lg:col-span-2 bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100">{MOCK_BUSINESS.name}</h3>
-            <button className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] hover:text-gray-600 transition-colors cursor-pointer">
-              <MaterialSymbol icon="more_vert" size={16} />
-            </button>
-          </div>
-
-          {/* Avatar + greeting (reference style) */}
-          <div className="flex flex-col items-center text-center mb-5">
-            <div className="relative mb-3">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-[#9a0002]/15">
-                {MOCK_BUSINESS.initials}
-              </div>
-              <span className="absolute -top-1 -right-2 px-2 py-0.5 rounded-full bg-[#9a0002] text-white text-[9px] font-black shadow-sm flex items-center gap-0.5">
-                ⭐ {MOCK_BUSINESS.rating}
-              </span>
-            </div>
-            <p className="font-extrabold text-sm text-gray-800 dark:text-gray-100">¡Buenas noches! 🔥</p>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-              {MOCK_BUSINESS.reviewsCount} reseñas positivas · Prep. ~{MOCK_BUSINESS.prepTimeMinutes} min
-            </p>
-          </div>
-
-          {/* Chart */}
-          <div className="mt-auto">
-            <SimpleBarChart data={MOCK_WEEKLY_SALES} labels={MOCK_DAYS} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Status Pills Row (reference: 3 icon pills below the hero) ────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          href="/negocio/pedidos"
-          className="flex items-center justify-between p-4 rounded-[20px] bg-[#faf6f1] dark:bg-[#1c1917] border border-amber-200/80 dark:border-amber-900/40 hover:border-amber-400 transition-all penpot-shadow group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <MaterialSymbol icon="notifications_active" size={20} className="group-hover:scale-110 transition-transform" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400">1 Pedido Nuevo</p>
-              <p className="text-sm font-black text-amber-700 dark:text-amber-400">Requiere Atención</p>
-            </div>
-          </div>
-          <MaterialSymbol icon="chevron_right" size={20} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
-        </Link>
-
-        <Link
-          href="/negocio/pedidos"
-          className="flex items-center justify-between p-4 rounded-[20px] bg-[#faf6f1] dark:bg-[#1c1917] border border-blue-200/80 dark:border-blue-900/40 hover:border-blue-400 transition-all penpot-shadow group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <MaterialSymbol icon="skillet" size={20} className="group-hover:scale-110 transition-transform" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400">1 En Cocina</p>
-              <p className="text-sm font-black text-blue-700 dark:text-blue-400">Demora ~20 min</p>
-            </div>
-          </div>
-          <MaterialSymbol icon="chevron_right" size={20} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
-        </Link>
-
-        <Link
-          href="/negocio/pedidos"
-          className="flex items-center justify-between p-4 rounded-[20px] bg-[#faf6f1] dark:bg-[#1c1917] border border-purple-200/80 dark:border-purple-900/40 hover:border-purple-400 transition-all penpot-shadow group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <MaterialSymbol icon="two_wheeler" size={20} className="group-hover:scale-110 transition-transform" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400">1 En Reparto</p>
-              <p className="text-sm font-black text-purple-700 dark:text-purple-400">Cadete: Franco B.</p>
-            </div>
-          </div>
-          <MaterialSymbol icon="chevron_right" size={20} className="text-gray-400 group-hover:translate-x-1 transition-transform" />
-        </Link>
-      </div>
-
-      {/* ── Quick Stats Cards (reference: course progress pills) ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon="shopping_cart"
-          iconBg="bg-red-50 dark:bg-red-950/30"
-          iconColor="text-[#9a0002]"
-          value={String(s.ordersToday)}
-          label="Pedidos hoy"
-          delta={ordersDelta}
-        />
-        <StatCard
-          icon="payments"
-          iconBg="bg-emerald-50 dark:bg-emerald-950/30"
-          iconColor="text-emerald-500"
-          value={formatCurrency(s.revenueToday)}
-          label="Facturado hoy"
-          delta={revenueDelta}
-        />
-        <StatCard
-          icon="pending_actions"
-          iconBg="bg-amber-50 dark:bg-amber-950/30"
-          iconColor="text-amber-500"
-          value={String(s.activeOrders)}
-          label="Pedidos activos"
-        />
-        <StatCard
-          icon="receipt"
-          iconBg="bg-blue-50 dark:bg-blue-950/30"
-          iconColor="text-blue-500"
-          value={formatCurrency(s.avgTicket)}
-          label="Ticket promedio"
-          delta={{ text: "+4% vs ayer", direction: "up" }}
-        />
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════════
-          BOTTOM ROW — Reference: "Continue Watching" + Table left, "Your mentor" right
-      ══════════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        {/* ── Left column (3/5): Activity table + Stock control ───────────── */}
+        {/* ── LEFT COLUMN (3 cols): Tutorial/Banner + KPI Cards + Activity ───── */}
         <div className="lg:col-span-3 space-y-6">
 
-          {/* Actividad Reciente */}
+          {/* ── Tutorial / Onboarding Banner (or Promo when 100%) ────────────── */}
+          {!isTutorialComplete ? (
+            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-[#9a0002] via-[#800002] to-[#500001] text-white p-6 shadow-xl">
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase text-amber-200">
+                    <MaterialSymbol icon="school" size={14} />
+                    Configuración del Local ({progressPct}%)
+                  </div>
+                  <span className="text-xs font-black text-white/90">
+                    {completedCount} de {tasks.length} pasos
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h2 className="text-xl md:text-2xl font-black tracking-tight">
+                    ¡Completá tu negocio para vender más!
+                  </h2>
+                  <p className="text-xs text-red-100/90 font-medium">
+                    Seguí el tutorial paso a paso para dejar tu local 100% visible para los clientes.
+                  </p>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-2.5 bg-black/30 rounded-full overflow-hidden p-0.5 border border-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-400 to-amber-200 rounded-full transition-all duration-500"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+
+                {/* Task Checklist */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {tasks.map((task) => (
+                    <button
+                      key={task.id}
+                      onClick={() => toggleTask(task.id)}
+                      className={cn(
+                        "flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-bold transition-all cursor-pointer border",
+                        task.completed
+                          ? "bg-white/15 border-white/20 text-white"
+                          : "bg-black/20 border-white/10 text-white/70 hover:bg-black/30"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors",
+                        task.completed ? "bg-emerald-400 text-gray-950" : "border border-white/40"
+                      )}>
+                        {task.completed && <MaterialSymbol icon="check" size={14} className="font-bold" />}
+                      </div>
+                      <span className={cn("truncate", task.completed && "line-through opacity-80")}>
+                        {task.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between flex-wrap gap-3 border-t border-white/10">
+                  <span className="text-[11px] text-white/80 font-medium">
+                    💡 Tocá en cada paso para marcarlo como listo
+                  </span>
+                  <button
+                    onClick={() => setTasks((prev) => prev.map((t) => ({ ...t, completed: true })))}
+                    className="text-xs font-black text-amber-200 hover:underline cursor-pointer"
+                  >
+                    Simular 100% completado
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Replaced Banner when 100% complete: Promos & Active Orders CTA */
+            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-[#9a0002] via-[#800002] to-[#500001] text-white p-6 shadow-xl">
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-[11px] font-bold tracking-wider uppercase text-emerald-300">
+                    <MaterialSymbol icon="verified" size={14} />
+                    Local 100% Verificado
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black tracking-tight">
+                    ¡Tu local está listo para recibir pedidos!
+                  </h2>
+                  <p className="text-xs text-red-100/90 max-w-md">
+                    Tu carta, código QR y fotos lucen geniales. Promocioná descuentos o gestioná las comandas en tiempo real.
+                  </p>
+                </div>
+
+                <Link
+                  href="/negocio/pedidos"
+                  className="group inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-100 text-[#9a0002] font-black text-sm transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                >
+                  <MaterialSymbol icon="receipt_long" size={20} className="text-[#9a0002]" />
+                  <span>Ir a Pedidos Activos</span>
+                  <MaterialSymbol icon="arrow_forward" size={16} className="text-[#9a0002] group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* ── KPI Cards Grid (Aligned horizontally to cover the banner width) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon="payments"
+              iconBg="bg-emerald-50 dark:bg-emerald-950/30"
+              iconColor="text-emerald-500"
+              value={formatCurrency(s.revenueMonth)}
+              label="Generado en el mes"
+              delta={{ text: `+${revenueDeltaPct}% vs mes ant.`, direction: "up" }}
+            />
+            <StatCard
+              icon="task_alt"
+              iconBg="bg-blue-50 dark:bg-blue-950/30"
+              iconColor="text-blue-500"
+              value={String(s.completedOrdersMonth)}
+              label="Pedidos completados"
+              delta={{ text: "Mes en curso", direction: "up" }}
+            />
+            <StatCard
+              icon="receipt"
+              iconBg="bg-amber-50 dark:bg-amber-950/30"
+              iconColor="text-amber-500"
+              value={formatCurrency(s.avgTicket)}
+              label="Ticket promedio"
+              delta={{ text: "+4% vs mes ant.", direction: "up" }}
+            />
+            <StatCard
+              icon="timer"
+              iconBg="bg-purple-50 dark:bg-purple-950/30"
+              iconColor="text-purple-500"
+              value={`${s.avgResponseTimeMin}m / ${s.avgPrepTimeMin}m`}
+              label="T. Respuesta / Prep."
+              delta={{ text: "T. Resp / T. Prep", direction: "up" }}
+            />
+          </div>
+
+          {/* ── Actividad Reciente ─────────────────────────────────────────────── */}
           <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
@@ -318,7 +297,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Control Rápido de Stock */}
+          {/* ── Control Rápido de Stock ────────────────────────────────────────── */}
           <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -358,18 +337,69 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+
         </div>
 
-        {/* ── Right column (2/5): Drivers (reference: "Your mentor") ──────── */}
-        <div className="lg:col-span-2">
+        {/* ── RIGHT COLUMN (2 cols): Business Stats + Drivers ────────────────── */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* ── Business Profile & Weekly Sales Chart ────────────────────────── */}
+          <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <MaterialSymbol icon="store" size={18} className="text-[#9a0002]" />
+                Estadísticas del Local
+              </h3>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border",
+                  isOpen
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    : "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-400"
+                )}
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", isOpen ? "bg-emerald-500 animate-ping" : "bg-gray-400")} />
+                {isOpen ? "ABIERTO" : "CERRADO"}
+              </button>
+            </div>
+
+            {/* Avatar, Icon & Ratings */}
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="relative mb-3">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-[#9a0002]/15">
+                  {MOCK_BUSINESS.initials}
+                </div>
+                <span className="absolute -top-1 -right-2 px-2 py-0.5 rounded-full bg-[#9a0002] text-white text-[9px] font-black shadow-sm flex items-center gap-0.5">
+                  ⭐ {MOCK_BUSINESS.rating}
+                </span>
+              </div>
+              <p className="font-extrabold text-base text-gray-900 dark:text-gray-100">{MOCK_BUSINESS.name}</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                {MOCK_BUSINESS.reviewsCount} opiniones · T. Respuesta ~{s.avgResponseTimeMin} min
+              </p>
+            </div>
+
+            {/* Weekly Sales Chart */}
+            <div className="pt-2">
+              <p className="text-[11px] font-extrabold uppercase text-gray-400 tracking-wider mb-2">Ventas Semanales</p>
+              <SimpleBarChart data={MOCK_WEEKLY_SALES} labels={MOCK_DAYS} />
+            </div>
+          </div>
+
+          {/* ── Deliveries Asociados (Located directly below the business stats) ── */}
           <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
                 <MaterialSymbol icon="two_wheeler" size={18} className="text-[#9a0002]" />
-                Cadetes & Repartidores Activos
+                Deliveries Asociados
               </h3>
-              <Link href="/negocio/equipo" className="w-6 h-6 rounded-full bg-[#9a0002]/10 text-[#9a0002] flex items-center justify-center hover:scale-105 transition-transform">
-                <MaterialSymbol icon="add" size={15} />
+              <Link
+                href="/negocio/equipo"
+                title="Asociar nuevo repartidor"
+                className="w-7 h-7 rounded-full bg-[#9a0002]/10 text-[#9a0002] flex items-center justify-center hover:scale-105 transition-transform"
+              >
+                <MaterialSymbol icon="person_add" size={16} />
               </Link>
             </div>
 
@@ -403,14 +433,15 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* "See All" link — same as reference */}
             <Link
               href="/negocio/equipo"
-              className="mt-4 w-full flex items-center justify-center gap-1 py-2.5 rounded-xl border border-[#9a0002]/20 text-[#9a0002] text-xs font-bold hover:bg-[#9a0002]/5 transition-colors cursor-pointer"
+              className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[#9a0002]/20 text-[#9a0002] text-xs font-bold hover:bg-[#9a0002]/5 transition-colors cursor-pointer"
             >
-              Ver Todo el Equipo
+              <MaterialSymbol icon="group" size={16} />
+              <span>Gestionar Equipo & Repartidores</span>
             </Link>
           </div>
+
         </div>
       </div>
     </div>
