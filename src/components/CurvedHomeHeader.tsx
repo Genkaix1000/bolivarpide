@@ -9,16 +9,10 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
-import {
-  NOTIFICATION_POPOVER_MOTION,
-  SkiperSunMoon,
-  startThemeTransitionFrom,
-} from "@/components/Navbar";
 import { cn } from "@/lib/utils";
 import {
   CATEGORIES,
@@ -38,8 +32,6 @@ interface CurvedHomeHeaderProps {
   onLocationClick: () => void;
   /** Reports the location button's bottom Y (viewport) while the dropdown is open. */
   onLocationAnchorChange?: (bottomY: number | null) => void;
-  onSearchFocus: () => void;
-  searchQuery: string;
   className?: string;
 }
 
@@ -76,12 +68,6 @@ const OVAL_OVERSCAN_RATIO = 0.07;
 const MIN_EDGE_HEIGHT = 30;
 /** Moves the location control down toward the oval edge. Adjust this manually. */
 const LOCATION_OFFSET_Y = 20;
-
-const NOTIFICATIONS = [
-  { emoji: "🛵", title: "Tu pedido de Burger Beef está en camino", time: "Hace 5 min" },
-  { emoji: "🎁", title: "¡Tienes un cupón de 15% de descuento!", time: "Hace 1 hora" },
-  { emoji: "🍕", title: "Tu pizza favorita de Pizza Hut tiene 20% OFF", time: "Hace 3 horas" },
-];
 
 /** Curve depth (center drop below the edge line), not including edge height. */
 function computeCurveDepth(width: number): number {
@@ -130,61 +116,6 @@ function ovalHeaderPath(
   const ry = Math.max(curveDepth, 1);
   // The ellipse endpoints sit outside the SVG viewport, so its corners are clipped.
   return `M ${left} 0 L ${right} 0 L ${right} ${edgeH} A ${rx} ${ry} 0 0 1 ${left} ${edgeH} Z`;
-}
-
-function HeaderCircleBtn({
-  onClick,
-  children,
-  className,
-  btnRef,
-  "aria-label": ariaLabel,
-}: {
-  onClick: () => void;
-  children: ReactNode;
-  className?: string;
-  btnRef?: React.RefObject<HTMLButtonElement | null>;
-  "aria-label"?: string;
-}) {
-  return (
-    <button
-      ref={btnRef}
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className={cn(
-        "relative flex h-[42px] w-[42px] flex-shrink-0 cursor-pointer items-center justify-center rounded-full bg-white text-gray-800 shadow-md transition-transform active:scale-95",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ThemeToggleHeaderBtn() {
-  const [isDark, setIsDark] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  const toggle = useCallback(() => {
-    const next = !isDark;
-    setIsDark(next);
-    startThemeTransitionFrom(btnRef.current, next);
-  }, [isDark]);
-
-  return (
-    <HeaderCircleBtn
-      onClick={toggle}
-      btnRef={btnRef}
-      aria-label={isDark ? "Modo claro" : "Modo oscuro"}
-      className="overflow-hidden"
-    >
-      <SkiperSunMoon isDark={isDark} color="#1f2937" clipId="header-skipper-clip" />
-    </HeaderCircleBtn>
-  );
 }
 
 function CircleProgress({
@@ -525,24 +456,15 @@ export default function CurvedHomeHeader({
   showLocationDropdown,
   onLocationClick,
   onLocationAnchorChange,
-  onSearchFocus,
-  searchQuery,
   className,
 }: CurvedHomeHeaderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const locationBtnRef = useRef<HTMLButtonElement>(null);
-  const notificationBtnRef = useRef<HTMLButtonElement>(null);
   const anchorCbRef = useRef(onLocationAnchorChange);
   const reactId = useId();
   const gradId = `header-cherry-${reactId.replace(/:/g, "")}`;
   const [headerWidth, setHeaderWidth] = useState(0);
   const [showSpecialties, setShowSpecialties] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationPos, setNotificationPos] = useState<{
-    top: number;
-    right: number;
-    backdropTop: number;
-  } | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
   anchorCbRef.current = onLocationAnchorChange;
@@ -590,31 +512,6 @@ export default function CurvedHomeHeader({
       window.removeEventListener("scroll", update, true);
     };
   }, [showLocationDropdown]);
-
-  const updateNotificationPosition = useCallback(() => {
-    const btn = notificationBtnRef.current;
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
-    setNotificationPos({
-      top: r.bottom + 6,
-      right: Math.max(window.innerWidth - r.right, 16),
-      backdropTop: r.bottom,
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!showNotifications) {
-      setNotificationPos(null);
-      return;
-    }
-    updateNotificationPosition();
-    window.addEventListener("resize", updateNotificationPosition);
-    window.addEventListener("scroll", updateNotificationPosition, true);
-    return () => {
-      window.removeEventListener("resize", updateNotificationPosition);
-      window.removeEventListener("scroll", updateNotificationPosition, true);
-    };
-  }, [showNotifications, updateNotificationPosition]);
 
   const headerCurveDepth = computeCurveDepth(headerWidth);
   const headerHeight = useMemo(
@@ -694,60 +591,7 @@ export default function CurvedHomeHeader({
             paddingBottom: "max(2rem, 22%)",
           }}
         >
-          {/* Top (~15%): Search + theme + notifications */}
-          <div className="flex shrink-0 items-center gap-2">
-            <motion.div
-              layout
-              transition={{ layout: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
-              className="min-w-0 flex-1"
-            >
-              <button
-                type="button"
-                onClick={onSearchFocus}
-                className="flex h-[42px] w-full cursor-pointer items-center gap-2 rounded-full bg-white px-3.5 text-left shadow-md transition-transform active:scale-[0.99]"
-              >
-                <MaterialSymbol
-                  icon="search"
-                  size={18}
-                  className="flex-shrink-0 text-gray-400"
-                />
-                <span className="truncate text-[13px] font-medium text-gray-400">
-                  {searchQuery || 'Buscar "comida", locales...'}
-                </span>
-              </button>
-            </motion.div>
-
-            <motion.div
-              layout
-              className="max-w-[42px] flex-none overflow-hidden opacity-100 transition-[max-width,opacity] duration-300 md:pointer-events-none md:max-w-0 md:opacity-0"
-            >
-              <ThemeToggleHeaderBtn />
-            </motion.div>
-
-            <motion.div
-              layout
-              className="relative max-w-[42px] flex-none opacity-100 transition-[max-width,opacity] duration-300 md:pointer-events-none md:max-w-0 md:opacity-0"
-            >
-              <HeaderCircleBtn
-                btnRef={notificationBtnRef}
-                onClick={() => {
-                  if (showLocationDropdown) onLocationClick();
-                  if (!showNotifications) updateNotificationPosition();
-                  setShowNotifications((v) => !v);
-                }}
-                aria-label="Notificaciones"
-              >
-                <MaterialSymbol
-                  icon="notifications"
-                  size={20}
-                  className="text-gray-800"
-                />
-                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#6b0001]" />
-              </HeaderCircleBtn>
-            </motion.div>
-          </div>
-
-          {/* Center (~50–55%): Location */}
+          {/* Center: location sits alone now that search lives in the navbar. */}
           <div
             className="relative flex flex-1 items-center justify-center"
             style={{ transform: `translateY(${LOCATION_OFFSET_Y}px)` }}
@@ -756,7 +600,6 @@ export default function CurvedHomeHeader({
               ref={locationBtnRef}
               type="button"
               onClick={() => {
-                setShowNotifications(false);
                 const btn = locationBtnRef.current;
                 if (btn) {
                   const r = btn.getBoundingClientRect();
@@ -801,52 +644,6 @@ export default function CurvedHomeHeader({
       {typeof document !== "undefined" &&
         createPortal(
           <>
-            <AnimatePresence>
-              {showNotifications && (
-                <>
-                  <motion.button
-                    type="button"
-                    aria-label="Cerrar notificaciones"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => setShowNotifications(false)}
-                    className="fixed inset-x-0 bottom-0 z-45 cursor-default bg-black/15 backdrop-blur-[2.5px] dark:bg-black/45"
-                    style={{ top: notificationPos?.backdropTop ?? 0 }}
-                  />
-                  <motion.div
-                    {...NOTIFICATION_POPOVER_MOTION}
-                    style={{
-                      position: "fixed",
-                      top: notificationPos?.top ?? 64,
-                      right: notificationPos?.right ?? 16,
-                    }}
-                    className="z-50 w-[min(270px,calc(100vw-2rem))] rounded-[18px] border border-white/40 bg-[#faf6f1]/96 p-3 text-gray-800 shadow-2xl backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/96"
-                  >
-                    <div className="max-h-[200px] space-y-1.5 overflow-y-auto">
-                      {NOTIFICATIONS.map((n, idx) => (
-                        <div
-                          key={idx}
-                          className="flex cursor-pointer gap-2 rounded-xl bg-[#ede4d9]/60 p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
-                        >
-                          <span className="select-none text-base">{n.emoji}</span>
-                          <div className="flex min-w-0 flex-col">
-                            <span className="text-[10px] font-bold leading-tight text-gray-800 dark:text-[#d4cfc9]">
-                              {n.title}
-                            </span>
-                            <span className="mt-0.5 text-[8px] font-medium text-gray-400 dark:text-gray-500">
-                              {n.time}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-
             {/* Location dropdown — fixed to button coordinates */}
             <AnimatePresence>
               {showLocationDropdown && (

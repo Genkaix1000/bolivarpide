@@ -14,22 +14,22 @@ interface StatCardProps {
 
 export function StatCard({ icon, iconBg, iconColor, value, label, delta }: StatCardProps) {
   return (
-    <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5 flex flex-col gap-3">
-      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", iconBg)}>
-        <MaterialSymbol icon={icon} size={18} className={iconColor} />
+    <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[20px] p-4 flex items-center gap-3.5">
+      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs", iconBg)}>
+        <MaterialSymbol icon={icon} size={20} className={iconColor} />
       </div>
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</p>
-        <p className="font-black text-2xl text-gray-800 dark:text-gray-100 mt-0.5">{value}</p>
-      </div>
-      {delta ? (
-        <div className={cn("flex items-center gap-1 text-xs font-bold", delta.direction === "up" ? "text-emerald-500" : "text-red-500")}>
-          <MaterialSymbol icon={delta.direction === "up" ? "trending_up" : "trending_down"} size={14} />
-          <span>{delta.text}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500 truncate">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <p className="font-black text-xl text-gray-900 dark:text-gray-100 leading-tight">{value}</p>
+          {delta && (
+            <div className={cn("flex items-center gap-0.5 text-[11px] font-bold", delta.direction === "up" ? "text-emerald-500" : "text-red-500")}>
+              <MaterialSymbol icon={delta.direction === "up" ? "trending_up" : "trending_down"} size={13} />
+              <span>{delta.text}</span>
+            </div>
+          )}
         </div>
-      ) : (
-        <span className="text-xs font-bold text-gray-300 dark:text-gray-600">—</span>
-      )}
+      </div>
     </div>
   );
 }

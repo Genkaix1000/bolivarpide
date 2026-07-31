@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
@@ -8,6 +9,8 @@ import { MaterialSymbol } from "@/components/ui/material-symbol";
 interface NavbarProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
+  onSearchFocus: () => void;
+  searchQuery: string;
   selectedAddressId: string;
   setSelectedAddressId: (id: string) => void;
   savedAddresses: Array<{ id: string; name: string }>;
@@ -103,6 +106,8 @@ export function CherryBtn({
 export default function Navbar({
   currentTab,
   onTabChange,
+  onSearchFocus,
+  searchQuery,
   selectedAddressId,
   setSelectedAddressId,
   savedAddresses,
@@ -118,243 +123,199 @@ export default function Navbar({
     onTabChange(id);
   }, [onTabChange]);
 
-  // ── Dropdown state ─────────────────────────────────────────────────────────
-  const [showLocationDropdown,     setShowLocationDropdown]     = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
-  const [notifScrollState, setNotifScrollState] = useState({ isAtTop: true, isAtBottom: false });
-  const notifScrollRef = useRef<HTMLDivElement>(null);
-
-  const checkNotifScroll = () => {
-    const c = notifScrollRef.current;
-    if (!c) return;
-    setNotifScrollState({
-      isAtTop:    c.scrollTop <= 5,
-      isAtBottom: c.scrollTop + c.clientHeight >= c.scrollHeight - 5,
-    });
-  };
-
-  useEffect(() => {
-    if (showNotificationDropdown) {
-      setTimeout(checkNotifScroll, 100);
-    }
-  }, [showNotificationDropdown]);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showAddresses, setShowAddresses] = useState(false);
 
   const currentAddressName =
     savedAddresses.find(a => a.id === selectedAddressId)?.name || savedAddresses[0].name;
 
-  const notifications = [
-    { emoji: "🛵", title: "Tu pedido de Burger Beef está en camino",      time: "Hace 5 min"   },
-    { emoji: "🎁", title: "¡Tienes un cupón de 15% de descuento!",        time: "Hace 1 hora"  },
-    { emoji: "🍕", title: "Tu pizza favorita de Pizza Hut tiene 20% OFF", time: "Hace 3 horas" },
-    { emoji: "🛒", title: "Perfil completado: obtienes envío gratis",      time: "Hace 1 día"   },
-    { emoji: "🍩", title: "¡Nuevo local! 'Dunkin Donuts' se ha unido",    time: "Hace 2 días"  },
-  ];
-
   return (
-    <>
-      {/* Backdrop */}
-      {(showNotificationDropdown || showLocationDropdown) && (
-        <div
-          className="hidden md:block fixed inset-0 z-45 bg-black/15 dark:bg-black/45 backdrop-blur-[2.5px]"
-          onClick={() => { setShowNotificationDropdown(false); setShowLocationDropdown(false); }}
-        />
-      )}
+    <div className="fixed inset-x-0 top-0 z-50 md:sticky">
+      <header className="relative flex h-16 items-center gap-2 border-b border-gray-100 bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:h-[72px] md:gap-4 md:px-7">
+        <button
+          type="button"
+          onClick={() => {
+            setShowDashboard(true);
+            setShowAddresses(false);
+          }}
+          aria-label="Abrir menú"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
+        >
+          <MaterialSymbol icon="menu" size={20} />
+        </button>
 
-      {/* ── Mobile Bottom Navbar pill ─────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={() => handleTabChange("home")}
+          aria-label="Ir al inicio"
+          className="hidden shrink-0 items-center gap-2 rounded-xl transition-transform active:scale-95 md:flex"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-base font-black text-white shadow-sm">B</span>
+          <span className="text-base font-extrabold tracking-tight text-gray-800 dark:text-gray-100">BolivarPide</span>
+        </button>
 
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <nav className="w-[min(328px,calc(100vw-24px))] h-[64px] bg-[#faf6f1] dark:bg-[#1c1917] border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow flex items-center justify-between px-4">
-          {navItems.map(({ id, label, icon }) => {
-            const isActive = currentTab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => handleTabChange(id)}
-                className={cn(
-                  "flex items-center gap-1.5 transition-all duration-300 rounded-full h-[40px] px-3.5 select-none cursor-pointer overflow-hidden",
-                  isActive
-                    ? "bg-[#9a0002]/10 text-[#9a0002] font-extrabold"
-                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 bg-transparent"
-                )}
+        <button
+          type="button"
+          onClick={onSearchFocus}
+          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 text-left shadow-sm transition-colors hover:border-[#9a0002]/30 dark:border-[#3d3732] dark:bg-[#2a2623] md:h-11 md:px-4.5"
+        >
+          <MaterialSymbol icon="search" size={17} className="shrink-0 text-[#9a0002]" />
+          <span className="truncate text-[11px] font-medium text-gray-400 md:text-xs">
+            {searchQuery || 'Buscar "comida", locales...'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("cart")}
+          aria-label="Mi carrito"
+          className={cn(
+            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+            currentTab === "cart"
+              ? "bg-[#9a0002] text-white shadow-md shadow-[#9a0002]/25"
+              : "bg-[#9a0002]/10 text-[#9a0002] hover:bg-[#9a0002]/15",
+          )}
+        >
+          <MaterialSymbol icon="shopping_cart" size={17} fill={currentTab === "cart"} />
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#faf6f1] dark:ring-[#1c1917]" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowDashboard((open) => !open);
+            setShowAddresses(false);
+          }}
+          aria-label="Abrir menú"
+          aria-expanded={showDashboard}
+          className={cn(
+            "flex h-9 shrink-0 items-center gap-1 rounded-full px-1.5 transition-colors",
+            showDashboard ? "bg-[#9a0002] text-white" : "bg-[#ede4d9] text-[#9a0002] hover:bg-[#e0d5c8] dark:bg-[#302c28]",
+          )}
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#9a0002] text-[9px] font-black text-white">SA</span>
+          <MaterialSymbol icon="expand_more" size={15} className={cn("transition-transform", showDashboard && "rotate-180")} />
+        </button>
+
+        {typeof document !== "undefined" && createPortal(
+          <AnimatePresence>
+            {showDashboard && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Cerrar menú"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowDashboard(false)}
+                className="fixed inset-0 bg-black/15 backdrop-blur-[2.5px] dark:bg-black/45 md:hidden"
+              />
+              <motion.aside
+                initial={{ opacity: 0, x: -18 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="fixed inset-y-0 left-0 z-[60] flex w-[min(320px,calc(100vw-2rem))] flex-col overflow-y-auto bg-[#faf6f1] p-4 shadow-2xl dark:bg-[#1c1917] md:inset-y-auto md:left-auto md:right-7 md:top-[80px] md:w-[320px] md:rounded-[22px] md:border md:border-white/50 md:bg-[#faf6f1]/98 md:p-3 md:backdrop-blur-md dark:md:border-[#3d3732] dark:md:bg-[#1c1917]/98"
               >
-                <MaterialSymbol
-                  icon={icon}
-                  fill={isActive}
-                  size={18}
-                  className={isActive ? "text-[#9a0002]" : ""}
-                />
-                <span className={cn(
-                  "text-[11px] tracking-tight transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden",
-                  isActive ? "w-auto opacity-100 max-w-[80px]" : "w-0 opacity-0 max-w-0 pointer-events-none"
-                )}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* ── Desktop Top Header ────────────────────────────────────────────── */}
-      <div className="hidden md:block w-full px-6 pt-4 sticky top-0 z-50">
-        <header className="max-w-[1040px] h-[64px] mx-auto bg-[#faf6f1] dark:bg-[#1c1917] border-[1.5px] border-white/60 dark:border-[#3d3732] rounded-[32px] penpot-shadow flex items-center justify-between px-6 relative">
-
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-base shadow-sm">B</div>
-            <span className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-100">BolivarPide</span>
-          </div>
-
-
-          {/* Desktop Nav */}
-          <nav className="flex items-center gap-1">
-            {navItems.map(({ id, label, icon }) => {
-              const isActive = currentTab === id;
-              return (
+              <div className="mb-5 flex items-center justify-between md:mb-0 md:border-b md:border-[#ddd4c8]/80 md:px-2 md:pb-3 dark:md:border-[#3d3732]">
                 <button
-                  key={id}
-                  onClick={() => handleTabChange(id)}
-                  className={cn(
-                    "flex items-center gap-1.5 transition-all duration-300 rounded-full h-[40px] px-3.5 select-none cursor-pointer",
-                    isActive
-                      ? "bg-[#9a0002]/10 text-[#9a0002] font-extrabold"
-                      : "text-gray-600 dark:text-gray-400 hover:text-[#9a0002] hover:bg-[#9a0002]/5"
-                  )}
+                  type="button"
+                  onClick={() => handleTabChange("home")}
+                  className="flex items-center gap-3"
                 >
-                  <MaterialSymbol
-                    icon={icon}
-                    fill={isActive}
-                    size={16}
-                    className={isActive ? "text-[#9a0002]" : ""}
-                  />
-                  <span className="text-xs font-bold tracking-tight whitespace-nowrap">{label}</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-xs font-black text-white">SA</span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-extrabold text-gray-800 dark:text-gray-100">St. Abigail</p>
+                  <p className="truncate text-[10px] text-gray-400">client.abigail@delivery.com</p>
+                </div>
                 </button>
-              );
-            })}
-          </nav>
+                <button
+                  type="button"
+                  onClick={() => setShowDashboard(false)}
+                  aria-label="Cerrar menú"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] md:hidden"
+                >
+                  <MaterialSymbol icon="close" size={18} />
+                </button>
+              </div>
 
-          {/* Actions: Location | Theme | Bell */}
-          <div className="flex items-center gap-2.5 relative z-50">
+              <nav className="grid grid-cols-1 gap-1 md:mt-2 md:grid-cols-2">
+                {navItems.filter(({ id }) => id !== "cart").map(({ id, label, icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      handleTabChange(id);
+                      setShowDashboard(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-colors",
+                      currentTab === id
+                        ? "bg-[#9a0002]/10 text-[#9a0002]"
+                        : "text-gray-600 hover:bg-[#ede4d9] dark:text-gray-300 dark:hover:bg-[#302c28]",
+                    )}
+                  >
+                    <MaterialSymbol icon={icon} size={15} fill={currentTab === id} />
+                    {label}
+                  </button>
+                ))}
+              </nav>
 
-            {/* Location */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowLocationDropdown(!showLocationDropdown);
-                  setShowNotificationDropdown(false);
-                }}
-                 className={cn(
-                    "transition-all duration-300 flex items-center justify-center gap-1.5 h-[36px] px-3 rounded-full cursor-pointer",
-                    showLocationDropdown
-                      ? "bg-[#faf6f1]/90 dark:bg-[#1c1917]/85 border border-white/50 dark:border-[#3d3732]/80 text-[#9a0002] shadow-md backdrop-blur-md"
-                      : "bg-[#faf6f1]/40 hover:bg-[#9a0002]/10 dark:bg-white/5 dark:hover:bg-[#9a0002]/10 border border-white/20 dark:border-white/5 hover:border-[#9a0002]/20 text-gray-600 dark:text-gray-400 hover:text-[#9a0002] backdrop-blur-md"
-                )}
-              >
-                <MaterialSymbol
-                  icon="location_home"
-                  size={15}
-                  className={showLocationDropdown ? "text-[#9a0002]" : "text-gray-500 dark:text-gray-400"}
-                />
-                <span className="text-xs font-bold">
-                  {showLocationDropdown ? "Ubicación" : currentAddressName.split(",")[0]}
-                </span>
-                <MaterialSymbol
-                  icon="expand_more"
-                  size={12}
-                  className={showLocationDropdown ? "text-[#9a0002]" : "text-gray-400"}
-                />
-              </button>
+              <div className="mt-4 border-t border-[#ddd4c8]/80 pt-2 dark:border-[#3d3732] md:mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddresses((open) => !open)}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-bold text-gray-600 transition-colors hover:bg-[#ede4d9] dark:text-gray-300 dark:hover:bg-[#302c28]"
+                >
+                  <MaterialSymbol icon="location_home" size={15} className="text-[#9a0002]" />
+                  <span className="min-w-0 flex-1 truncate">{currentAddressName}</span>
+                  <MaterialSymbol icon="expand_more" size={14} className={cn("transition-transform", showAddresses && "rotate-180")} />
+                </button>
 
-              {showLocationDropdown && (
-                <div className="absolute top-[42px] right-0 w-[290px] bg-[#faf6f1]/96 dark:bg-[#231f1c]/96 border border-white/40 dark:border-[#3d3732] rounded-[20px] p-4 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-300 z-50 text-gray-800 dark:text-[#ece8e2]">
-                  <div className="space-y-2">
-                    {savedAddresses.map((addr, idx) => {
-                      const isSelected = addr.id === selectedAddressId;
-                      return (
-                        <div
-                          key={addr.id}
-                          onClick={() => { setSelectedAddressId(addr.id); setShowLocationDropdown(false); }}
+                <AnimatePresence>
+                  {showAddresses && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-1 overflow-hidden px-1 pt-1"
+                    >
+                      {savedAddresses.map((address) => (
+                        <button
+                          key={address.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAddressId(address.id);
+                            setShowAddresses(false);
+                          }}
                           className={cn(
-                            "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-200 animate-in fade-in slide-in-from-top-3 duration-300 fill-mode-both",
-                            idx === 0 ? "delay-75" : "delay-150",
-                            isSelected
-                              ? "border-[1.5px] border-[#9a0002] bg-[#9a0002]/5 text-[#9a0002] font-bold"
-                              : "border border-[#ddd4c8] dark:border-[#3d3732]/60 hover:bg-[#ede4d9]/50 dark:hover:bg-[#302c28]/60 text-gray-700 dark:text-[#d4cfc9]"
+                            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium transition-colors",
+                            selectedAddressId === address.id
+                              ? "bg-[#9a0002]/10 text-[#9a0002]"
+                              : "text-gray-500 hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#302c28]",
                           )}
                         >
-                          <span className="text-[11px] truncate max-w-[80%]">{addr.name}</span>
-                          <button onClick={(e) => { e.stopPropagation(); alert(`Editar: ${addr.name}`); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-[#d4cfc9] hover:bg-gray-100 dark:hover:bg-[#302c28] cursor-pointer">
-                            <MaterialSymbol icon="edit" size={11} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={() => { alert("Agregar dirección"); setShowLocationDropdown(false); }}
-                    className="w-full py-2.5 bg-[#ede4d9] dark:bg-[#2a2623] hover:bg-[#9a0002]/5 hover:text-[#9a0002] text-[10px] font-bold rounded-xl border border-dashed border-[#ddd4c8] dark:border-[#3d3732] flex items-center justify-center gap-1.5 transition-all mt-3 cursor-pointer animate-in fade-in slide-in-from-top-3 duration-300 delay-200 fill-mode-both"
-                  >
-                    <MaterialSymbol icon="add" size={12} />
-                    <span>Agregar nueva dirección</span>
-                  </button>
+                          <MaterialSymbol icon="location_on" size={13} fill={selectedAddressId === address.id} />
+                          <span className="truncate">{address.name}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="mt-1 flex items-center justify-between rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] font-bold text-gray-400">Apariencia</span>
+                  <ThemeToggleNavBtn className="h-8 w-8" />
                 </div>
-              )}
-            </div>
-
-            {/* Theme Toggle */}
-            <ThemeToggleNavBtn />
-
-            {/* Bell — Cherry Cola circle with expanding label */}
-            <div className="relative">
-              <CherryBtn
-                onClick={() => { setShowNotificationDropdown(!showNotificationDropdown); setShowLocationDropdown(false); }}
-                aria-label="Notificaciones"
-                className={cn(
-                  "transition-all duration-300 ease-in-out",
-                  showNotificationDropdown ? "gap-1.5 px-3.5" : "w-[36px]"
-                )}
-              >
-                <MaterialSymbol icon="notifications" size={15} className="text-white" />
-                <span className={cn(
-                  "text-xs font-bold tracking-tight transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden",
-                  showNotificationDropdown ? "w-auto opacity-100 max-w-[100px]" : "w-0 opacity-0 max-w-0"
-                )}>
-                  Notificaciones
-                </span>
-                {!showNotificationDropdown && (
-                  <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-[#ffeb3b] rounded-full ring-[1.5px] ring-[#9a0002] animate-pulse z-10" />
-                )}
-              </CherryBtn>
-
-              <AnimatePresence>
-                {showNotificationDropdown && (
-                  <motion.div
-                    {...NOTIFICATION_POPOVER_MOTION}
-                    className="absolute top-[44px] right-0 w-[270px] bg-[#faf6f1]/96 dark:bg-[#231f1c]/96 border border-white/40 dark:border-[#3d3732] rounded-[20px] p-4 shadow-2xl backdrop-blur-md z-50 text-gray-800 dark:text-[#ece8e2]"
-                  >
-                    <div className="relative w-full">
-                      <div className={cn("absolute top-0 left-0 right-[5px] h-6 bg-gradient-to-b from-[#faf6f1] dark:from-[#231f1c] to-transparent pointer-events-none z-10 transition-opacity duration-300", notifScrollState.isAtTop ? "opacity-0" : "opacity-100")} />
-                      <div className={cn("absolute bottom-0 left-0 right-[5px] h-6 bg-gradient-to-t from-[#faf6f1] dark:from-[#231f1c] to-transparent pointer-events-none z-10 transition-opacity duration-300", notifScrollState.isAtBottom ? "opacity-0" : "opacity-100")} />
-                      <div ref={notifScrollRef} onScroll={checkNotifScroll} className="max-h-[220px] overflow-y-auto custom-scrollbar pr-1.5 space-y-2">
-                        {notifications.map((n, idx) => (
-                          <div key={idx} className={cn("p-2.5 rounded-xl bg-[#ede4d9]/60 dark:bg-[#2a2623] hover:bg-[#ede4d9] dark:hover:bg-[#302c28]/60 transition-colors cursor-pointer flex gap-2 text-left animate-in fade-in slide-in-from-top-3 duration-300 fill-mode-both", idx === 0 ? "delay-75" : idx === 1 ? "delay-150" : "delay-200")}>
-                            <span className="text-base select-none">{n.emoji}</span>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[10px] font-bold leading-tight text-gray-800 dark:text-[#d4cfc9]">{n.title}</span>
-                              <span className="text-[8px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{n.time}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </header>
-      </div>
-    </>
+              </div>
+              </motion.aside>
+            </>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+      </header>
+    </div>
   );
 }
 

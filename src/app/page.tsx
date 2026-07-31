@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Navbar from "@/components/Navbar";
 import CurvedHomeHeader from "@/components/CurvedHomeHeader";
@@ -71,7 +72,7 @@ export default function HomePage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1200);
+    }, 2800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -309,10 +310,7 @@ export default function HomePage() {
       default:
         return (
           <div className="space-y-8 text-gray-800 dark:text-gray-200">
-            {isLoading ? (
-              <HomeSkeleton />
-            ) : (
-              <div className="animate-fade-in flex flex-col gap-8">
+            <div className="animate-fade-in flex flex-col gap-8">
                 {/* 1. Featured Chains */}
                 <div className="order-2 space-y-4">
                   <div className="flex items-center justify-between">
@@ -457,7 +455,6 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            )}
 
           </div>
         );
@@ -468,7 +465,13 @@ export default function HomePage() {
 
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#faf6f1] dark:bg-[#1c1917] pb-24 md:pb-8 relative">
+    <>
+      {/* Full-screen page loader — rendered at root level so it truly covers everything */}
+      <AnimatePresence>
+        {isLoading && <AwwwardsPageLoader key="page-loader" />}
+      </AnimatePresence>
+
+      <div className="min-h-screen flex flex-col bg-[#faf6f1] pb-8 pt-[72px] dark:bg-[#1c1917] md:pt-0 relative">
 
       {/* Backdrop starts below the location control so the header/location stay sharp */}
       {showLocationDropdown && (
@@ -494,6 +497,8 @@ export default function HomePage() {
       <Navbar
         currentTab={currentTab}
         onTabChange={handleTabChange}
+        onSearchFocus={() => setIsSearchFocused(true)}
+        searchQuery={searchQuery}
         selectedAddressId={selectedAddressId}
         setSelectedAddressId={setSelectedAddressId}
         savedAddresses={savedAddresses}
@@ -569,8 +574,6 @@ export default function HomePage() {
               }}
               onLocationAnchorChange={handleLocationAnchorChange}
               showLocationDropdown={showLocationDropdown}
-              onSearchFocus={() => setIsSearchFocused(true)}
-              searchQuery={searchQuery}
             />
           )}
         </div>
@@ -583,9 +586,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Immersive Mobile-only Full-screen Search Overlay */}
+      {/* Full-screen search overlay */}
       {isSearchFocused && (
-        <div className="md:hidden fixed inset-0 bg-[#faf6f1] dark:bg-[#0b0b0d] z-50 flex flex-col pt-4 px-4 pb-20 animate-fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-[#faf6f1] px-4 pb-20 pt-4 animate-fade-in dark:bg-[#0b0b0d]">
           {/* Header Row */}
           <div className="flex items-center gap-3 w-full">
             <button
@@ -639,77 +642,85 @@ export default function HomePage() {
       )}
 
     </div>
+    </>
   );
 }
 
-// Home Shimmer Skeleton Layout Component
-function HomeSkeleton() {
+const LOADING_WORDS = [
+  { text: "BUSCAS.", isOutline: true },
+  { text: "PEDIS.", isOutline: false },
+  { text: "TENES.", isOutline: true },
+  { text: "BOLIVARPIDE.", isOutline: false },
+];
+
+// Ultra-minimalist Accent Page Loader (Simultaneous Mechanical Letter-Drop Roller)
+function AwwwardsPageLoader() {
+  const [wordIndex, setWordIndex] = useState(0);
+
+  useEffect(() => {
+    const wordTimer = setInterval(() => {
+      setWordIndex((prev) => {
+        if (prev >= LOADING_WORDS.length - 1) {
+          clearInterval(wordTimer);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 550);
+    return () => clearInterval(wordTimer);
+  }, []);
+
+  const currentWord = LOADING_WORDS[wordIndex];
+  const characters = currentWord.text.split("");
+
+  const outlineStyle: React.CSSProperties = {
+    WebkitTextStrokeWidth: "2.5px",
+    WebkitTextStrokeColor: "#ffffff",
+    WebkitTextFillColor: "#9a0002",
+    color: "#9a0002",
+  };
+
   return (
-    <div className="space-y-8 text-gray-800 dark:text-gray-200 animate-pulse">
-      {/* Featured Chains Skeleton */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="h-5 w-36 shimmer-bg rounded-md" />
-          <div className="flex gap-1">
-            <div className="w-4 h-1.5 rounded-full shimmer-bg" />
-            <div className="w-4 h-1.5 rounded-full shimmer-bg" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-2 md:px-3">
-          {Array.from({ length: 2 }).map((_, idx) => (
-            <div key={idx} className="rounded-[16px] border border-[#ddd4c8] dark:border-[#3d3732]/80 h-[200px] flex flex-col overflow-hidden bg-[#faf6f1] dark:bg-[#1c1917]">
-              <div className="h-[130px] shimmer-bg" />
-              <div className="h-[70px] px-4 flex items-center justify-between bg-[#faf6f1] dark:bg-[#1c1917]">
-                <div className="flex items-center gap-3">
-                  <div className="w-[40px] h-[40px] rounded-full shimmer-bg" />
-                  <div className="space-y-1.5">
-                    <div className="h-3 w-24 shimmer-bg rounded" />
-                    <div className="h-2 w-32 shimmer-bg rounded" />
-                  </div>
-                </div>
-                <div className="w-10 h-5 shimmer-bg rounded-xl" />
+    <motion.div
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
+      className="fixed inset-0 z-[9999] bg-[#9a0002] flex items-center justify-center select-none overflow-hidden"
+    >
+      <div
+        className="relative w-full flex items-center justify-center overflow-hidden"
+        style={{ height: "clamp(3.5rem, 14vw, 8rem)" }}
+      >
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={wordIndex}
+            className="absolute inset-0 flex items-center justify-center tracking-tight font-black uppercase leading-none"
+            style={{ fontSize: "clamp(2.5rem, 11vw, 7rem)" }}
+          >
+            {characters.map((char, charIdx) => (
+              <div key={charIdx} className="overflow-hidden inline-block" style={{ lineHeight: 1.2 }}>
+                <motion.span
+                  initial={{ y: "-100%" }}
+                  animate={{ y: "0%" }}
+                  exit={{ y: "100%" }}
+                  transition={{
+                    duration: 0.32,
+                    delay: charIdx * 0.022,
+                    ease: [0.33, 1, 0.68, 1],
+                  }}
+                  style={{
+                    display: "inline-block",
+                    ...(currentWord.isOutline ? outlineStyle : { color: "#ffffff" }),
+                  }}
+                  className="font-black"
+                >
+                  {char}
+                </motion.span>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      {/* Backed up spacer to match real heights */}
-      <div className="space-y-4">
-        <div className="h-5 w-36 shimmer-bg rounded-md" />
-        <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-4 -mx-4 scroll-fade-middle">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="w-[220px] h-[210px] rounded-[16px] border border-[#ddd4c8] dark:border-[#3d3732]/80 flex-shrink-0 flex flex-col overflow-hidden bg-[#faf6f1] dark:bg-[#1c1917]">
-              <div className="h-[100px] shimmer-bg" />
-              <div className="p-3 flex-1 flex flex-col justify-between">
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3d3732]/60 pb-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-[22px] h-[22px] rounded-full shimmer-bg" />
-                    <div className="h-2.5 w-16 shimmer-bg rounded" />
-                  </div>
-                  <div className="w-8 h-3 shimmer-bg rounded" />
-                </div>
-                <div className="h-3 w-28 shimmer-bg rounded mt-2" />
-                <div className="flex items-center justify-between mt-3">
-                  <div className="h-3 w-12 shimmer-bg rounded" />
-                  <div className="w-5 h-5 rounded-full shimmer-bg" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Popular Chains Skeleton */}
-      <div className="space-y-4">
-        <div className="h-5 w-36 shimmer-bg rounded-md" />
-        <div className="flex justify-center gap-4 overflow-hidden h-[95px] items-center scroll-fade-middle">
-          <div className="w-[240px] h-[68px] rounded-[16px] border border-[#ddd4c8] dark:border-[#3d3732]/85 shimmer-bg opacity-30 scale-90" />
-          <div className="w-[240px] h-[68px] rounded-[16px] border border-[#ddd4c8] dark:border-[#3d3732]/85 shimmer-bg scale-100" />
-          <div className="w-[240px] h-[68px] rounded-[16px] border border-[#ddd4c8] dark:border-[#3d3732]/85 shimmer-bg opacity-30 scale-90" />
-        </div>
-      </div>
-    </div>
+    </motion.div>
   );
 }
 

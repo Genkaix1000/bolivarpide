@@ -245,16 +245,25 @@ html::-webkit-scrollbar-thumb:hover {
   --sidebar-ring: #6b635c;
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, #ede4d9 25%, #f7f1ea 50%, #ede4d9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
 .dark .shimmer-bg {
   background: linear-gradient(90deg, #2a2623 25%, #3a3530 50%, #2a2623 75%);
   background-size: 200% 100%;
-}
-
-@media (prefers-color-scheme: dark) {
-  .shimmer-bg {
-    background: linear-gradient(90deg, #2a2623 25%, #3a3530 50%, #2a2623 75%);
-    background-size: 200% 100%;
-  }
+  animation: shimmer 1.6s infinite linear;
 }
 
 @layer base {

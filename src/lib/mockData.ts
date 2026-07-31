@@ -58,10 +58,13 @@ export interface PopularChain {
 /** Panel de Negocio — mock types */
 export interface PanelProduct {
   id: string;
+  codeId?: string;
   name: string;
   category: string;
   price: number;
   available: boolean;
+  timePlaced?: string;
+  lastUpdated?: string;
 }
 
 export interface BusinessStats {
@@ -482,12 +485,21 @@ export const MOCK_DETAILED_ORDERS: DetailedOrder[] = [
 ];
 
 export const MOCK_PRODUCTS: PanelProduct[] = [
-  { id: "prod-1", name: "Pizza Muzzarella Gigante", category: "Pizzas", price: 6800, available: true },
-  { id: "prod-2", name: "Empanada Carne Cuchillo", category: "Empanadas", price: 1500, available: true },
-  { id: "prod-3", name: "Hamburguesa Doble Cheddar", category: "Hamburguesas", price: 5200, available: true },
-  { id: "prod-4", name: "Lomito Completo", category: "Sándwiches", price: 5500, available: false },
-  { id: "prod-5", name: "Torta Oreo", category: "Postres", price: 3800, available: true },
-  { id: "prod-6", name: "Papas Rústicas", category: "Guarniciones", price: 3500, available: true },
+  { id: "prod-1",  codeId: "3457283094", name: "Pizza Muzzarella Gigante",          category: "Pizzas",       price: 6800,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-2",  codeId: "1234509876", name: "Pizza Especial Don Luis",            category: "Pizzas",       price: 8200,  available: true,  timePlaced: "02/28/2025 05:30 PM", lastUpdated: "02/28/2026 05:30 PM" },
+  { id: "prod-3",  codeId: "9876543210", name: "Pizza Napolitana con Aceitunas",     category: "Pizzas",       price: 7400,  available: false, timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-4",  codeId: "3457283095", name: "Empanada Carne Cuchillo",            category: "Empanadas",    price: 1500,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-5",  codeId: "4567891230", name: "Empanada Pollo y Verdura",           category: "Empanadas",    price: 1400,  available: true,  timePlaced: "11/04/2025 01:15 PM", lastUpdated: "02/01/2026 10:20 AM" },
+  { id: "prod-6",  codeId: "7891234560", name: "Hamburguesa Doble Cheddar",          category: "Hamburguesas", price: 5200,  available: true,  timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-7",  codeId: "3457283096", name: "Hamburguesa Crispy Chicken",         category: "Hamburguesas", price: 4800,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-8",  codeId: "1234509877", name: "Lomito Completo",                    category: "Sándwiches",   price: 5500,  available: false, timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-9",  codeId: "5678901234", name: "Sándwich Caprese con Rúcula",        category: "Sándwiches",   price: 4100,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-10", codeId: "3457283097", name: "Torta Oreo",                         category: "Postres",      price: 3800,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-11", codeId: "1234509878", name: "Tiramisú Casero",                    category: "Postres",      price: 4200,  available: true,  timePlaced: "02/28/2025 05:30 PM", lastUpdated: "02/28/2026 05:30 PM" },
+  { id: "prod-12", codeId: "8901234567", name: "Papas Rústicas",                     category: "Guarniciones", price: 3500,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-13", codeId: "3457283098", name: "Bastones de Muzzarella",             category: "Guarniciones", price: 3000,  available: false, timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-14", codeId: "2345678901", name: "Coca-Cola 1.5L",                     category: "Bebidas",      price: 2200,  available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "02/28/2026 05:30 PM" },
+  { id: "prod-15", codeId: "6789012345", name: "Agua Mineral sin Gas 500ml",         category: "Bebidas",      price: 900,   available: true,  timePlaced: "10/15/2025 02:40 PM", lastUpdated: "02/28/2026 05:30 PM" },
 ];
 
 export const MOCK_DAYS: string[] = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
