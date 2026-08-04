@@ -13,7 +13,7 @@ export default function EquipoPage() {
       </p>
       <Link
         href="/negocio/dashboard"
-        className="mt-6 px-6 py-2 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-bold rounded-full hover:opacity-95 transition-all shadow-md shadow-red-500/20 cursor-pointer"
+        className="mt-6 px-6 py-2 bg-[#9a0002] hover:bg-[#850002] text-white text-xs font-bold rounded-full transition-all shadow-sm cursor-pointer"
       >
         Volver al Dashboard
       </Link>

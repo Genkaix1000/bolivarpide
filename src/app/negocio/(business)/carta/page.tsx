@@ -569,7 +569,7 @@ export default function CartaPage() {
         {/* New product button */}
         <button
           onClick={openNewDrawer}
-          className="h-10 px-4 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-black rounded-xl hover:opacity-95 active:scale-95 transition-all shadow-md shadow-red-950/20 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap flex-shrink-0"
+          className="h-10 px-4 bg-[#9a0002] text-white text-xs font-bold rounded-xl hover:bg-[#850002] active:scale-95 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap flex-shrink-0"
         >
           <MaterialSymbol icon="add" size={16} />
           <span>Nuevo Producto</span>

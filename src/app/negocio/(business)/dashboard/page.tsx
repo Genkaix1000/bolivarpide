@@ -107,12 +107,12 @@ export default function DashboardPage() {
 
           {/* ── Tutorial / Onboarding Banner (or Promo when 100%) ────────────── */}
           {!isTutorialComplete ? (
-            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-[#9a0002] via-[#800002] to-[#500001] text-white p-6 shadow-xl">
+            <div className="relative overflow-hidden rounded-[28px] bg-[#9a0002] text-white p-6 shadow-xl">
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
 
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase text-amber-200">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase text-white">
                     <MaterialSymbol icon="school" size={14} />
                     Configuración del Local ({progressPct}%)
                   </div>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                 {/* Progress bar */}
                 <div className="w-full h-2.5 bg-black/30 rounded-full overflow-hidden p-0.5 border border-white/10">
                   <div
-                    className="h-full bg-gradient-to-r from-amber-400 to-amber-200 rounded-full transition-all duration-500"
+                    className="h-full bg-white rounded-full transition-all duration-500"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             /* Replaced Banner when 100% complete: Promos & Active Orders CTA */
-            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-[#9a0002] via-[#800002] to-[#500001] text-white p-6 shadow-xl">
+            <div className="relative overflow-hidden rounded-[28px] bg-[#9a0002] text-white p-6 shadow-xl">
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
 
               <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
@@ -367,7 +367,7 @@ export default function DashboardPage() {
             {/* Avatar, Icon & Ratings */}
             <div className="flex flex-col items-center text-center mb-5">
               <div className="relative mb-3">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-[#9a0002]/15">
+                <div className="w-16 h-16 rounded-full bg-[#9a0002] flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-[#9a0002]/15">
                   {MOCK_BUSINESS.initials}
                 </div>
                 <span className="absolute -top-1 -right-2 px-2 py-0.5 rounded-full bg-[#9a0002] text-white text-[9px] font-black shadow-sm flex items-center gap-0.5">

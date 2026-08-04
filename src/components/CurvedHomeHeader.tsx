@@ -201,22 +201,21 @@ function CategoryButton({
     >
       <span
         className={cn(
-          "flex items-center justify-center rounded-full transition-all duration-300 active:scale-90",
+          "flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 border bg-white dark:bg-[#231f1c]",
           isActive
-            ? "scale-105 shadow-lg ring-[2.5px] ring-[#9a0002]/45"
-            : "shadow-md",
+            ? "scale-105 shadow-md ring-2 ring-[#9a0002] border-[#9a0002] text-[#9a0002]"
+            : "border-gray-200 dark:border-[#3d3732] shadow-sm text-gray-700 dark:text-gray-300 hover:border-[#9a0002]/40",
         )}
         style={{
           width: ICON_SIZE,
           height: ICON_SIZE,
-          backgroundColor: isActive ? "#f5e6d3" : "#f0e0c8",
         }}
       >
         <MaterialSymbol
           icon={item.icon}
           size={26}
           fill={isActive}
-          className={isActive ? "text-[#9a0002]" : "text-[#3d2b1f]"}
+          className={isActive ? "text-[#9a0002]" : "text-gray-700 dark:text-gray-300"}
         />
       </span>
       {/* Unified dark label — never accent red */}

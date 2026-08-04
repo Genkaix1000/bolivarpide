@@ -170,10 +170,10 @@ export default function Navbar({
           onClick={() => handleTabChange("cart")}
           aria-label="Mi carrito"
           className={cn(
-            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors bg-white dark:bg-[#2a2623] shadow-sm",
             currentTab === "cart"
-              ? "bg-[#9a0002] text-white shadow-md shadow-[#9a0002]/25"
-              : "bg-[#9a0002]/10 text-[#9a0002] hover:bg-[#9a0002]/15",
+              ? "border-2 border-[#9a0002] text-[#9a0002] ring-1 ring-[#9a0002]/30"
+              : "border border-gray-200 dark:border-[#3d3732] text-gray-700 dark:text-gray-300 hover:text-[#9a0002] hover:border-[#9a0002]/30",
           )}
         >
           <MaterialSymbol icon="shopping_cart" size={17} fill={currentTab === "cart"} />
@@ -189,8 +189,10 @@ export default function Navbar({
           aria-label="Abrir menú"
           aria-expanded={showDashboard}
           className={cn(
-            "flex h-9 shrink-0 items-center gap-1 rounded-full px-1.5 transition-colors",
-            showDashboard ? "bg-[#9a0002] text-white" : "bg-[#ede4d9] text-[#9a0002] hover:bg-[#e0d5c8] dark:bg-[#302c28]",
+            "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2 py-1 transition-colors bg-white dark:bg-[#2a2623] shadow-sm border",
+            showDashboard
+              ? "border-2 border-[#9a0002] text-[#9a0002]"
+              : "border-gray-200 dark:border-[#3d3732] text-gray-700 dark:text-gray-300 hover:border-[#9a0002]/40",
           )}
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#9a0002] text-[9px] font-black text-white">SA</span>
@@ -208,68 +210,71 @@ export default function Navbar({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowDashboard(false)}
-                className="fixed inset-0 bg-black/15 backdrop-blur-[2.5px] dark:bg-black/45 md:hidden"
+                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40"
               />
               <motion.aside
                 initial={{ opacity: 0, x: -18 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -18 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-y-0 left-0 z-[60] flex w-[min(320px,calc(100vw-2rem))] flex-col overflow-y-auto bg-[#faf6f1] p-4 shadow-2xl dark:bg-[#1c1917] md:inset-y-auto md:left-auto md:right-7 md:top-[80px] md:w-[320px] md:rounded-[22px] md:border md:border-white/50 md:bg-[#faf6f1]/98 md:p-3 md:backdrop-blur-md dark:md:border-[#3d3732] dark:md:bg-[#1c1917]/98"
+                className="fixed inset-y-0 left-0 z-[60] flex w-[260px] flex-col overflow-y-auto bg-[#faf6f1] p-3 shadow-2xl dark:bg-[#1c1917] md:inset-y-auto md:left-auto md:right-7 md:top-[80px] md:w-[280px] md:rounded-[22px] md:border md:border-white/50 md:bg-[#faf6f1]/98 md:backdrop-blur-md dark:md:border-[#3d3732] dark:md:bg-[#1c1917]/98"
               >
-              <div className="mb-5 flex items-center justify-between md:mb-0 md:border-b md:border-[#ddd4c8]/80 md:px-2 md:pb-3 dark:md:border-[#3d3732]">
+              <div className="mb-3 flex items-center justify-between border-b border-gray-200/60 pb-3 dark:border-[#3d3732] px-2">
                 <button
                   type="button"
                   onClick={() => handleTabChange("home")}
-                  className="flex items-center gap-3"
+                  className="flex items-center gap-2.5 overflow-hidden"
                 >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-xs font-black text-white">SA</span>
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-extrabold text-gray-800 dark:text-gray-100">St. Abigail</p>
-                  <p className="truncate text-[10px] text-gray-400">client.abigail@delivery.com</p>
-                </div>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-xs font-black text-white shadow-sm">SA</span>
+                  <div className="min-w-0 text-left">
+                    <p className="truncate text-xs font-extrabold text-gray-800 dark:text-gray-100">St. Abigail</p>
+                    <p className="truncate text-[10px] text-gray-400">client.abigail@delivery.com</p>
+                  </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDashboard(false)}
                   aria-label="Cerrar menú"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] md:hidden"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <MaterialSymbol icon="close" size={18} />
                 </button>
               </div>
 
-              <nav className="grid grid-cols-1 gap-1 md:mt-2 md:grid-cols-2">
-                {navItems.filter(({ id }) => id !== "cart").map(({ id, label, icon }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      handleTabChange(id);
-                      setShowDashboard(false);
-                    }}
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-colors",
-                      currentTab === id
-                        ? "bg-[#9a0002]/10 text-[#9a0002]"
-                        : "text-gray-600 hover:bg-[#ede4d9] dark:text-gray-300 dark:hover:bg-[#302c28]",
-                    )}
-                  >
-                    <MaterialSymbol icon={icon} size={15} fill={currentTab === id} />
-                    {label}
-                  </button>
-                ))}
+              <nav className="flex flex-col gap-1 px-1">
+                {navItems.map(({ id, label, icon }) => {
+                  const isActive = currentTab === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        handleTabChange(id);
+                        setShowDashboard(false);
+                      }}
+                      className={cn(
+                        "group relative flex h-11 items-center gap-3 rounded-xl px-3.5 border-l-2 my-0.5 transition-all duration-200 cursor-pointer text-sm font-bold tracking-tight text-left",
+                        isActive
+                          ? "bg-[#9a0002]/10 text-[#9a0002] font-bold border-[#9a0002]"
+                          : "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200 border-transparent",
+                      )}
+                    >
+                      <MaterialSymbol icon={icon} size={20} fill={isActive} className="flex-shrink-0" />
+                      <span className="flex-1">{label}</span>
+                    </button>
+                  );
+                })}
               </nav>
 
-              <div className="mt-4 border-t border-[#ddd4c8]/80 pt-2 dark:border-[#3d3732] md:mt-2">
+              <div className="mt-3 border-t border-gray-200/60 pt-2 dark:border-[#3d3732] px-1">
                 <button
                   type="button"
                   onClick={() => setShowAddresses((open) => !open)}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-bold text-gray-600 transition-colors hover:bg-[#ede4d9] dark:text-gray-300 dark:hover:bg-[#302c28]"
+                  className="flex w-full h-10 items-center gap-2.5 rounded-xl px-3 text-left text-xs font-bold text-gray-600 transition-colors hover:bg-[#ede4d9]/60 dark:text-gray-300 dark:hover:bg-[#2a2623]"
                 >
-                  <MaterialSymbol icon="location_home" size={15} className="text-[#9a0002]" />
+                  <MaterialSymbol icon="location_home" size={18} className="text-[#9a0002]" />
                   <span className="min-w-0 flex-1 truncate">{currentAddressName}</span>
-                  <MaterialSymbol icon="expand_more" size={14} className={cn("transition-transform", showAddresses && "rotate-180")} />
+                  <MaterialSymbol icon="expand_more" size={16} className={cn("transition-transform", showAddresses && "rotate-180")} />
                 </button>
 
                 <AnimatePresence>
@@ -289,13 +294,13 @@ export default function Navbar({
                             setShowAddresses(false);
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-medium transition-colors",
+                            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition-colors border-l-2",
                             selectedAddressId === address.id
-                              ? "bg-[#9a0002]/10 text-[#9a0002]"
-                              : "text-gray-500 hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#302c28]",
+                              ? "bg-[#9a0002]/10 text-[#9a0002] border-[#9a0002] font-bold"
+                              : "text-gray-500 hover:bg-[#ede4d9]/60 dark:text-gray-400 dark:hover:bg-[#2a2623] border-transparent",
                           )}
                         >
-                          <MaterialSymbol icon="location_on" size={13} fill={selectedAddressId === address.id} />
+                          <MaterialSymbol icon="location_on" size={14} fill={selectedAddressId === address.id} />
                           <span className="truncate">{address.name}</span>
                         </button>
                       ))}
@@ -303,8 +308,8 @@ export default function Navbar({
                   )}
                 </AnimatePresence>
 
-                <div className="mt-1 flex items-center justify-between rounded-xl px-3 py-1.5">
-                  <span className="text-[10px] font-bold text-gray-400">Apariencia</span>
+                <div className="mt-2 flex h-10 items-center justify-between rounded-xl px-3">
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Apariencia</span>
                   <ThemeToggleNavBtn className="h-8 w-8" />
                 </div>
               </div>

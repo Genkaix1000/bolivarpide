@@ -529,10 +529,10 @@ export default function BusinessRegisterPage() {
                                     setErrors((prev) => ({ ...prev, businessType: "" }));
                                   }}
                                   className={cn(
-                                    "py-3 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer",
+                                    "py-3 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer bg-white dark:bg-[#231f1c]",
                                     isSelected
-                                      ? "border-[#9a0002] bg-[#9a0002]/5 text-[#9a0002] font-bold shadow-md shadow-red-500/5"
-                                      : "border-gray-200 dark:border-[#3d3732] bg-gray-50 dark:bg-[#1c1917] text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-[#3d3732]"
+                                      ? "border-2 border-[#9a0002] text-[#9a0002] font-extrabold shadow-sm"
+                                      : "border-gray-200 dark:border-[#3d3732] text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-[#3d3732]"
                                   )}
                                 >
                                   <MaterialSymbol icon={type.icon} size={18} />
@@ -557,12 +557,16 @@ export default function BusinessRegisterPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.3 }}
-                              className="space-y-2.5 overflow-hidden"
+                              className="overflow-hidden space-y-1.5 pt-1"
                             >
-                              <div className="h-[1.5px] bg-gray-100 dark:bg-[#2a2623] w-full my-1" />
-                              <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">
-                                Especialidad del Restaurante
-                              </label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                  <MaterialSymbol icon="restaurant" size={14} className="text-[#9a0002]" />
+                                  Especialidad Gastronómica
+                                  <span className="text-[#9a0002]">*</span>
+                                </label>
+                                <span className="text-[10px] text-gray-400 font-medium">Selecciona 1 opción</span>
+                              </div>
                               <div className="relative">
                                 <div
                                   className={cn(
@@ -997,7 +1001,7 @@ export default function BusinessRegisterPage() {
                         onClick={handleNextStep}
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
-                        className="px-5 py-2.5 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-bold rounded-xl hover:opacity-95 transition-all shadow-md shadow-red-500/10 flex items-center gap-1.5 select-none cursor-pointer"
+                        className="px-5 py-2.5 bg-[#9a0002] hover:bg-[#850002] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 select-none cursor-pointer"
                       >
                         <span>Siguiente</span>
                         <MaterialSymbol icon="chevron_right" size={14} />
@@ -1111,7 +1115,7 @@ export default function BusinessRegisterPage() {
                   <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm pt-4">
                     <Link
                       href="/"
-                      className="flex-1 py-3 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-bold rounded-xl hover:opacity-95 transition-all text-center select-none cursor-pointer shadow-md shadow-red-500/10"
+                      className="flex-1 py-3 bg-[#9a0002] hover:bg-[#850002] text-white text-xs font-bold rounded-xl transition-all text-center select-none cursor-pointer shadow-sm"
                     >
                       Volver al Inicio
                     </Link>

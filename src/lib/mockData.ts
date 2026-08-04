@@ -138,36 +138,36 @@ export const CATEGORIES: Category[] = [
     name: "Kioscos",
     icon: "storefront",
     emoji: "storefront",
-    bgColor: "bg-orange-50 dark:bg-orange-950/20",
-    textColor: "text-orange-600 dark:text-orange-400",
-    activeBgColor: "bg-orange-100 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-800"
+    bgColor: "bg-white dark:bg-[#231f1c]",
+    textColor: "text-gray-700 dark:text-gray-300",
+    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "cafes",
     name: "Cafeterías",
     icon: "local_cafe",
     emoji: "local_cafe",
-    bgColor: "bg-purple-50 dark:bg-purple-950/20",
-    textColor: "text-purple-600 dark:text-purple-400",
-    activeBgColor: "bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800"
+    bgColor: "bg-white dark:bg-[#231f1c]",
+    textColor: "text-gray-700 dark:text-gray-300",
+    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "restaurants",
     name: "Restaurantes",
     icon: "restaurant_menu",
     emoji: "restaurant_menu",
-    bgColor: "bg-red-50 dark:bg-red-950/20",
-    textColor: "text-red-600 dark:text-red-400",
-    activeBgColor: "bg-red-100 dark:bg-red-900/40 border border-red-200 dark:border-red-800"
+    bgColor: "bg-white dark:bg-[#231f1c]",
+    textColor: "text-gray-700 dark:text-gray-300",
+    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "pharmacies",
     name: "Farmacias",
     icon: "medication",
     emoji: "medication",
-    bgColor: "bg-cyan-50 dark:bg-cyan-950/20",
-    textColor: "text-cyan-600 dark:text-cyan-400",
-    activeBgColor: "bg-cyan-100 dark:bg-cyan-900/40 border border-cyan-200 dark:border-cyan-800"
+    bgColor: "bg-white dark:bg-[#231f1c]",
+    textColor: "text-gray-700 dark:text-gray-300",
+    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   }
 ];
 
@@ -186,7 +186,7 @@ export const PROMO_BANNERS: PromoBanner[] = [
     subtitle: "Disfrutá tus desayunos favoritos sin costo de envío.",
     icon: "local_cafe",
     emoji: "local_cafe",
-    gradient: "from-[#ff9800] to-[#6b0001]"
+    gradient: "from-[#9a0002] to-[#6b0001]"
   },
   {
     id: "promo-pharmacy",
@@ -194,7 +194,7 @@ export const PROMO_BANNERS: PromoBanner[] = [
     subtitle: "Medicamentos y cuidado personal directo a tu puerta.",
     icon: "medication",
     emoji: "medication",
-    gradient: "from-[#00bcd4] to-[#009688]"
+    gradient: "from-[#9a0002] to-[#6b0001]"
   }
 ];
 
@@ -232,9 +232,9 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     id: "mccafe",
     name: "McCafé",
     bannerText: "Croissants & Coffee",
-    bannerBg: "bg-gradient-to-r from-amber-800 to-yellow-600",
+    bannerBg: "bg-[#6d4c41]",
     logoEmoji: "☕",
-    logoBg: "bg-amber-100 dark:bg-amber-950/40",
+    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "12 min",
     deliveryFee: 790.00,
     rating: 4.8
@@ -243,9 +243,9 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     id: "burgerboz",
     name: "Burger Boz",
     bannerText: "Las Mejores Hamburguesas",
-    bannerBg: "bg-gradient-to-r from-red-700 to-amber-600",
+    bannerBg: "bg-[#9a0002]",
     logoEmoji: "🍔",
-    logoBg: "bg-red-100 dark:bg-red-950/40",
+    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "15 min",
     deliveryFee: 650.00,
     rating: 4.6
@@ -254,9 +254,9 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     id: "pizzastore",
     name: "Pizza Store",
     bannerText: "Pizzas de Masa Madre",
-    bannerBg: "bg-gradient-to-r from-orange-600 to-yellow-600",
+    bannerBg: "bg-[#5d4037]",
     logoEmoji: "🍕",
-    logoBg: "bg-orange-100 dark:bg-orange-950/40",
+    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "20 min",
     deliveryFee: 550.00,
     rating: 4.7
@@ -265,9 +265,9 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     id: "sushiworld",
     name: "Sushi World",
     bannerText: "Sushi Premium & Wok",
-    bannerBg: "bg-gradient-to-r from-indigo-900 to-purple-800",
+    bannerBg: "bg-[#37474f]",
     logoEmoji: "🍣",
-    logoBg: "bg-indigo-100 dark:bg-indigo-950/40",
+    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "25 min",
     deliveryFee: 890.00,
     rating: 4.9
@@ -282,7 +282,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "burgerboz",
     price: 5900.00,
     emoji: "🍔",
-    bgColor: "bg-amber-50 dark:bg-amber-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "cheese-meat-pizza",
@@ -291,7 +291,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "pizzastore",
     price: 6800.00,
     emoji: "🍕",
-    bgColor: "bg-orange-50 dark:bg-orange-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "cappuccino-media",
@@ -300,7 +300,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "mccafe",
     price: 3400.00,
     emoji: "☕",
-    bgColor: "bg-yellow-50 dark:bg-yellow-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "salmon-combo",
@@ -309,7 +309,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "sushiworld",
     price: 12500.00,
     emoji: "🍣",
-    bgColor: "bg-indigo-50 dark:bg-indigo-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "double-cheddar",
@@ -318,7 +318,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "burgerboz",
     price: 6400.00,
     emoji: "🍔",
-    bgColor: "bg-red-50 dark:bg-red-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "garlic-bread",
@@ -327,7 +327,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "pizzastore",
     price: 2900.00,
     emoji: "🥖",
-    bgColor: "bg-amber-50 dark:bg-amber-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "muffin-chocolate",
@@ -336,7 +336,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "mccafe",
     price: 1900.00,
     emoji: "🧁",
-    bgColor: "bg-yellow-50 dark:bg-yellow-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "veggie-roll",
@@ -345,7 +345,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "sushiworld",
     price: 9800.00,
     emoji: "🍣",
-    bgColor: "bg-indigo-50 dark:bg-indigo-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "loaded-fries",
@@ -354,7 +354,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     chainId: "burgerboz",
     price: 4500.00,
     emoji: "🍟",
-    bgColor: "bg-red-50 dark:bg-red-950/30"
+    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   }
 ];
 

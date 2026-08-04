@@ -444,8 +444,8 @@ export default function HomePage() {
                               </div>
                             </div>
 
-                            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
-                              <MaterialSymbol icon="star" size={9} fill className="text-amber-500" />
+                            <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
+                              <MaterialSymbol icon="star" size={9} fill className="text-[#9a0002]" />
                               <span>{chain.rating}</span>
                             </div>
                           </div>
@@ -808,8 +808,8 @@ function SearchOverlayContent({
                 </div>
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
-                <MaterialSymbol icon="star" size={9} fill className="text-amber-500" />
+              <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
+                <MaterialSymbol icon="star" size={9} fill className="text-[#9a0002]" />
                 <span>{chain.rating}</span>
               </div>
             </div>
@@ -823,7 +823,7 @@ function SearchOverlayContent({
 // Reusable Featured Chain Card Component with hover styles
 function FeaturedCard({ chain }: { chain: FeaturedChain }) {
   return (
-    <div className="group rounded-[16px] bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/50 penpot-shadow overflow-hidden transition-all duration-300 cursor-pointer">
+    <div className="group rounded-[16px] bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/50 penpot-shadow overflow-hidden transition-all duration-300 cursor-pointer">
       {/* Banner */}
       <div className={`h-[130px] ${chain.bannerBg} relative flex items-center justify-center p-6 text-white`}>
         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors duration-300" />
@@ -837,9 +837,9 @@ function FeaturedCard({ chain }: { chain: FeaturedChain }) {
       </div>
 
       {/* Details */}
-      <div className="h-[70px] px-4 flex items-center justify-between bg-[#faf6f1] dark:bg-[#1c1917]">
+      <div className="h-[70px] px-4 flex items-center justify-between bg-white dark:bg-[#1c1917]">
         <div className="flex items-center gap-3">
-          <div className={`w-[40px] h-[40px] rounded-full ${chain.logoBg} flex items-center justify-center text-xl shadow-inner`}>
+          <div className={`w-[40px] h-[40px] rounded-full ${chain.logoBg} flex items-center justify-center text-xl shadow-inner border border-gray-100 dark:border-[#3d3732]`}>
             {chain.logoEmoji}
           </div>
           <div>
@@ -853,8 +853,8 @@ function FeaturedCard({ chain }: { chain: FeaturedChain }) {
           </div>
         </div>
 
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 py-1 px-2.5 rounded-xl flex items-center gap-1 font-extrabold text-xs">
-          <MaterialSymbol icon="star" size={11} fill className="text-amber-500" />
+        <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-1 px-2.5 rounded-xl flex items-center gap-1 font-extrabold text-xs">
+          <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
           <span>{chain.rating}</span>
         </div>
       </div>
@@ -875,7 +875,7 @@ function TrendingMenuCard({
   return (
     <div
       className={cn(
-        "bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 penpot-shadow rounded-[16px] p-0 flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer",
+        "bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 penpot-shadow rounded-[16px] p-0 flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer",
         className
       )}
     >
@@ -889,7 +889,7 @@ function TrendingMenuCard({
         {/* Owner Header */}
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3d3732]/60 pb-2 mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className={`w-[22px] h-[22px] rounded-full ${ownerChain?.logoBg || 'bg-red-50'} flex items-center justify-center text-[10px] shadow-inner flex-shrink-0`}>
+            <div className={`w-[22px] h-[22px] rounded-full ${ownerChain?.logoBg || 'bg-[#faf6f1]'} border border-gray-100 dark:border-[#3d3732] flex items-center justify-center text-[10px] shadow-inner flex-shrink-0`}>
               {ownerChain?.logoEmoji || '🍔'}
             </div>
             <span className="font-extrabold text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-[85px]">
@@ -909,7 +909,7 @@ function TrendingMenuCard({
           </h4>
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-[#9a0002]">${item.price.toLocaleString("es-AR")}</span>
-            <button className="w-5 h-5 rounded-full bg-[#9a0002]/10 hover:bg-[#9a0002] hover:text-white text-[#9a0002] transition-all flex items-center justify-center font-bold text-xs cursor-pointer">
+            <button className="w-6 h-6 rounded-full bg-[#9a0002] text-white hover:bg-[#850002] shadow-xs flex items-center justify-center font-black text-xs cursor-pointer active:scale-95 transition-all">
               +
             </button>
           </div>
