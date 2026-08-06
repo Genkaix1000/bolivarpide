@@ -42,3 +42,9 @@ next-env.d.ts
 
 # local agent secrets
 .agents/mcp_config.json
+
+# agent and project config (local only)
+.agents/
+.gemini/
+skills/
+docs/
