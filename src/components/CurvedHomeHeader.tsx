@@ -11,11 +11,12 @@ import {
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 import {
   CATEGORIES,
+  PROMO_BANNERS,
   RESTAURANT_SPECIALTIES,
 } from "@/lib/mockData";
 
@@ -39,6 +40,7 @@ interface CarouselItem {
   id: string;
   label: string;
   icon: string;
+  image?: string;
 }
 
 interface ArcGeometry {
@@ -64,10 +66,174 @@ const SAGITTA_MIN = 88;
 const SAGITTA_MAX = 150;
 /** Extend the ellipse past both viewport edges to hide its corners. */
 const OVAL_OVERSCAN_RATIO = 0.07;
-/** Vertical pad at the left/right ends so the search row stays inside the red. */
-const MIN_EDGE_HEIGHT = 30;
+/** Vertical pad at the left/right ends so the promo carousel & controls sit comfortably inside the red. */
+const MIN_EDGE_HEIGHT = 165;
 /** Moves the location control down toward the oval edge. Adjust this manually. */
-const LOCATION_OFFSET_Y = 20;
+const LOCATION_OFFSET_Y = 10;
+
+function HeaderFullBleedPromoCarousel() {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const x = useMotionValue(0);
+  const n = PROMO_BANNERS.length;
+
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Snap strip to the active slide (also after resize).
+  useEffect(() => {
+    if (!width || dragging) return;
+    animate(x, -index * width, {
+      type: "spring",
+      stiffness: 320,
+      damping: 34,
+      mass: 0.85,
+    });
+  }, [index, width, dragging, x]);
+
+  useEffect(() => {
+    if (isPaused || dragging || !width) return;
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % n);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [isPaused, dragging, width, n]);
+
+  const goTo = (idx: number) => {
+    setIndex(Math.min(Math.max(idx, 0), n - 1));
+  };
+
+  return (
+    <div
+      ref={viewportRef}
+      className="absolute inset-0 select-none overflow-hidden touch-pan-y"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {width > 0 && (
+        <motion.div
+          className="flex h-full cursor-grab active:cursor-grabbing"
+          style={{ x, width: width * n }}
+          drag="x"
+          dragConstraints={{ left: -(n - 1) * width, right: 0 }}
+          dragElastic={0.18}
+          dragMomentum={false}
+          onDragStart={() => {
+            setDragging(true);
+            setIsPaused(true);
+          }}
+          onDragEnd={(_, info) => {
+            const offset = info.offset.x;
+            const velocity = info.velocity.x;
+            let next = index;
+            // Follow the finger: enough distance OR a flick.
+            if (offset < -width * 0.18 || velocity < -500) {
+              next = Math.min(index + 1, n - 1);
+            } else if (offset > width * 0.18 || velocity > 500) {
+              next = Math.max(index - 1, 0);
+            }
+            setIndex(next);
+            setDragging(false);
+            window.setTimeout(() => setIsPaused(false), 2600);
+          }}
+        >
+          {PROMO_BANNERS.map((banner, i) => (
+            <div
+              key={banner.id}
+              className="relative h-full flex-shrink-0 overflow-hidden"
+              style={{ width }}
+            >
+              {banner.image && (
+                <img
+                  src={banner.image}
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 90% 75% at 50% 100%, rgba(107,0,1,0.92) 0%, rgba(154,0,2,0.5) 32%, rgba(154,0,2,0.1) 58%, transparent 72%)",
+                }}
+              />
+
+              <motion.div
+                className="relative z-10 mx-auto flex h-full max-w-[1040px] flex-col justify-center px-5 pb-14 pt-12 sm:px-10 md:px-12"
+                animate={{ opacity: !dragging || i === index ? 1 : 0.55 }}
+                transition={{ duration: 0.15 }}
+              >
+                <div className="flex max-w-[90%] flex-col items-start sm:max-w-[62%] md:max-w-[52%]">
+                  {banner.badge && (
+                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#9a0002] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-md sm:text-[11px]">
+                      <MaterialSymbol icon={banner.icon || "local_offer"} size={14} fill />
+                      {banner.badge}
+                    </span>
+                  )}
+                  <h2 className="text-lg font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:text-2xl md:text-3xl">
+                    {banner.title}
+                  </h2>
+                  <p className="mt-1.5 line-clamp-2 max-w-[420px] text-xs font-medium text-white/95 drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)] sm:text-sm">
+                    {banner.subtitle}
+                  </p>
+                  {banner.ctaText && (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => alert(`Promo: ${banner.title}`)}
+                      className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[#faf6f1] px-5 text-sm font-black text-[#9a0002] shadow-lg shadow-black/25 transition-all hover:bg-white active:scale-[0.97]"
+                    >
+                      <MaterialSymbol icon={banner.icon || "arrow_forward"} size={18} fill />
+                      <span>{banner.ctaText}</span>
+                      <MaterialSymbol icon="arrow_forward" size={16} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-0.5 pt-3">
+        {PROMO_BANNERS.map((_, idx) => {
+          const active = idx === index;
+          return (
+            <button
+              key={idx}
+              type="button"
+              aria-label={`Promo ${idx + 1}`}
+              aria-current={active}
+              onClick={() => goTo(idx)}
+              className="pointer-events-auto flex h-10 min-w-10 cursor-pointer items-center justify-center"
+            >
+              <span
+                className={cn(
+                  "block rounded-full transition-all duration-300",
+                  active
+                    ? "h-2 w-6 bg-white shadow-sm shadow-black/30"
+                    : "h-2 w-2 bg-white/45 hover:bg-white/70",
+                )}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /** Curve depth (center drop below the edge line), not including edge height. */
 function computeCurveDepth(width: number): number {
@@ -118,56 +284,116 @@ function ovalHeaderPath(
   return `M ${left} 0 L ${right} 0 L ${right} ${edgeH} A ${rx} ${ry} 0 0 1 ${left} ${edgeH} Z`;
 }
 
-function CircleProgress({
+/** Room under the icon for a 2-line label (was clipping specialty names). */
+const LABEL_SPACE = 28;
+function arcStageHeight(geo: ArcGeometry): number {
+  // Icon bottom at deepest point ≈ sagitta + ICON_CENTER, then label below.
+  return geo.sagitta + ICON_CENTER + LABEL_SPACE;
+}
+
+/** Mouse/pen: press + drag to scroll. Touch keeps native pan (feels better). */
+function attachDragScroll(
+  el: HTMLElement,
+  opts?: { snap?: number | (() => number) },
+) {
+  let dragging = false;
+  let moved = false;
+  let startX = 0;
+  let startScroll = 0;
+
+  const onDown = (e: PointerEvent) => {
+    if (e.pointerType === "touch") return;
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startScroll = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+    el.style.cursor = "grabbing";
+  };
+
+  const onMove = (e: PointerEvent) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 4) moved = true;
+    el.scrollLeft = startScroll - dx;
+  };
+
+  const onUp = (e: PointerEvent) => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.cursor = "";
+    const snapRaw = opts?.snap;
+    const snap = typeof snapRaw === "function" ? snapRaw() : snapRaw;
+    if (snap && snap > 0) {
+      const i = Math.round(el.scrollLeft / snap);
+      el.scrollTo({ left: i * snap, behavior: "smooth" });
+    }
+    if (moved) {
+      const suppress = (ev: Event) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        el.removeEventListener("click", suppress, true);
+      };
+      el.addEventListener("click", suppress, true);
+    }
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+  };
+
+  el.style.cursor = "grab";
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
+  return () => {
+    el.style.cursor = "";
+    el.removeEventListener("pointerdown", onDown);
+    el.removeEventListener("pointermove", onMove);
+    el.removeEventListener("pointerup", onUp);
+    el.removeEventListener("pointercancel", onUp);
+  };
+}
+
+/** Short centered scrubber — only when content overflows. */
+function MiniScrollBar({
   scrollLeft,
   scrollWidth,
   clientWidth,
-  onChange,
+  onSeek,
 }: {
   scrollLeft: number;
   scrollWidth: number;
   clientWidth: number;
-  onChange: (position: number) => void;
+  onSeek: (left: number) => void;
 }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const maxScroll = Math.max(scrollWidth - clientWidth, 1);
-  const progress = Math.min(Math.max(scrollLeft / maxScroll, 0), 1);
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
-    onChange((x / rect.width) * maxScroll);
-  };
-
-  const thumbX = 12 + progress * (160 - 24);
+  if (scrollWidth <= clientWidth + 2) return null;
+  const trackW = 112;
+  const max = Math.max(scrollWidth - clientWidth, 1);
+  const thumbW = Math.max((clientWidth / scrollWidth) * trackW, 28);
+  const thumbX = (scrollLeft / max) * (trackW - thumbW);
 
   return (
     <div
-      ref={trackRef}
-      onPointerDown={handlePointerDown}
-      className="relative mx-auto h-8 w-40 cursor-pointer touch-none select-none"
+      className="pointer-events-auto mx-auto mt-1 h-3 w-[112px] cursor-pointer touch-none"
+      onPointerDown={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.min(Math.max(e.clientX - rect.left, 0), trackW);
+        onSeek((x / trackW) * max);
+      }}
+      role="scrollbar"
+      aria-valuenow={Math.round(scrollLeft)}
+      aria-valuemin={0}
+      aria-valuemax={Math.round(max)}
     >
-      <svg
-        viewBox="0 0 160 34"
-        className="absolute inset-0 h-full w-full overflow-visible"
-        aria-hidden
-      >
-        <path
-          d="M12 8 Q80 30 148 8"
-          fill="none"
-          stroke="#9a0002"
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity={0.35}
+      <div className="relative top-1 h-1 w-full rounded-full bg-[#9a0002]/20 dark:bg-[#9a0002]/30">
+        <div
+          className="absolute top-0 h-1 rounded-full bg-[#9a0002]"
+          style={{ width: thumbW, left: thumbX }}
         />
-        <circle
-          cx={thumbX}
-          cy={8 + 14 * (1 - Math.pow(progress * 2 - 1, 2))}
-          r={5.5}
-          className="fill-[#9a0002]"
-        />
-      </svg>
+      </div>
     </div>
   );
 }
@@ -178,22 +404,22 @@ function CategoryButton({
   onSelect,
   style,
   className,
+  buttonRef,
 }: {
   item: CarouselItem;
   isActive: boolean;
   onSelect: (id: string) => void;
   style?: CSSProperties;
   className?: string;
+  buttonRef?: (el: HTMLButtonElement | null) => void;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={() => onSelect(item.id)}
       className={cn(
-        // No transition on the button itself: its `transform` (translateY) tracks
-        // the arc curve every scroll frame, and any CSS transition here would fight
-        // that update, making icons visibly lag behind and "fall" into place instead
-        // of following the curvature 1:1. Press feedback lives on the inner circle instead.
+        // No CSS transition on transform — arc Y is updated every scroll frame in JS.
         "pointer-events-auto flex flex-col items-center gap-1",
         className,
       )}
@@ -201,25 +427,29 @@ function CategoryButton({
     >
       <span
         className={cn(
-          "flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 border bg-white dark:bg-[#231f1c]",
+          "flex items-center justify-center rounded-full border bg-white p-0.5 shadow-sm transition-all duration-300 active:scale-90 dark:bg-[#231f1c] overflow-hidden",
           isActive
-            ? "scale-105 shadow-md ring-2 ring-[#9a0002] border-[#9a0002] text-[#9a0002]"
-            : "border-gray-200 dark:border-[#3d3732] shadow-sm text-gray-700 dark:text-gray-300 hover:border-[#9a0002]/40",
+            ? "scale-105 border-[#9a0002] text-[#9a0002] shadow-md ring-2 ring-[#9a0002]"
+            : "border-gray-200 text-gray-700 hover:border-[#9a0002]/40 dark:border-[#3d3732] dark:text-gray-300",
         )}
-        style={{
-          width: ICON_SIZE,
-          height: ICON_SIZE,
-        }}
+        style={{ width: ICON_SIZE, height: ICON_SIZE }}
       >
-        <MaterialSymbol
-          icon={item.icon}
-          size={26}
-          fill={isActive}
-          className={isActive ? "text-[#9a0002]" : "text-gray-700 dark:text-gray-300"}
-        />
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.label}
+            className="h-full w-full rounded-full object-cover"
+          />
+        ) : (
+          <MaterialSymbol
+            icon={item.icon}
+            size={26}
+            fill={isActive}
+            className={isActive ? "text-[#9a0002]" : "text-gray-700 dark:text-gray-300"}
+          />
+        )}
       </span>
-      {/* Unified dark label — never accent red */}
-      <span className="max-w-[72px] truncate text-center text-[10px] font-bold tracking-tight text-gray-700 dark:text-gray-300">
+      <span className="line-clamp-2 w-full max-w-[72px] text-center text-[10px] font-bold leading-tight tracking-tight text-gray-700 dark:text-gray-300">
         {item.label}
       </span>
     </button>
@@ -250,9 +480,7 @@ function FitArcCarousel({
   return (
     <div
       className="semicircle-stage pointer-events-none relative w-full overflow-visible"
-      style={{
-        height: geo.sagitta + ITEM_BOX - ICON_CENTER,
-      }}
+      style={{ height: arcStageHeight(geo) }}
     >
       {items.map((item, i) => {
         const x = n === 1 ? geo.cx : edgePad + (i / (n - 1)) * usable;
@@ -278,7 +506,7 @@ function FitArcCarousel({
   );
 }
 
-/** Drag mode: scrollable track; each item follows arcY from its live viewport X. */
+/** Drag mode: native touch pan + mouse drag; arc Y via DOM (no React lag on fast scroll). */
 function DragArcCarousel({
   items,
   selectedId,
@@ -291,89 +519,82 @@ function DragArcCarousel({
   geo: ArcGeometry;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const rafRef = useRef<number | null>(null);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [scrollDim, setScrollDim] = useState({
-    scrollWidth: 0,
-    clientWidth: 0,
-  });
+  const [bar, setBar] = useState({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
 
-  const sidePad = Math.max((geo.width - ITEM_BOX) / 2, SIDE_PAD);
+  const sidePad = SIDE_PAD;
   const pitch = ITEM_BOX + ITEM_GAP;
 
-  // Reads scroll position only — item Y-offsets are derived (below) purely from
-  // scrollLeft + layout math, never from getBoundingClientRect. That keeps the
-  // curve perfectly in sync with scroll on every render, with no measurement lag
-  // and no "flat until measured" flash on mount.
-  const readScroll = useCallback(() => {
+  const applyArc = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    setScrollLeft(el.scrollLeft);
-    setScrollDim({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth });
+    const sl = el.scrollLeft;
+    for (let i = 0; i < items.length; i++) {
+      const node = itemRefs.current[i];
+      if (!node) continue;
+      const y = arcY(sidePad + i * pitch + ITEM_BOX / 2 - sl, geo) - ICON_CENTER;
+      node.style.transform = `translateY(${y}px)`;
+    }
+  }, [items.length, sidePad, pitch, geo]);
+
+  const syncBar = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setBar({
+      scrollLeft: el.scrollLeft,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    });
   }, []);
 
-  const scheduleRead = useCallback(() => {
+  const onScroll = useCallback(() => {
+    applyArc();
     if (rafRef.current !== null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      readScroll();
+      syncBar();
     });
-  }, [readScroll]);
+  }, [applyArc, syncBar]);
 
-  // Synchronous on mount/resize so the very first paint is already curved and centered.
   useLayoutEffect(() => {
-    readScroll();
-  }, [readScroll, items.length, geo.width]);
+    applyArc();
+    syncBar();
+  }, [applyArc, syncBar, items.length, geo.width]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.addEventListener("scroll", scheduleRead, { passive: true });
-    const ro = new ResizeObserver(scheduleRead);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(() => {
+      applyArc();
+      syncBar();
+    });
     ro.observe(el);
+    const detachDrag = attachDragScroll(el);
     return () => {
-      el.removeEventListener("scroll", scheduleRead);
+      el.removeEventListener("scroll", onScroll);
       ro.disconnect();
+      detachDrag();
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [scheduleRead]);
-
-  const offsets = useMemo(
-    () =>
-      items.map((_, i) => {
-        const itemCenterX = sidePad + i * pitch + ITEM_BOX / 2 - scrollLeft;
-        return arcY(itemCenterX, geo) - ICON_CENTER;
-      }),
-    [items, sidePad, pitch, scrollLeft, geo],
-  );
-
-  const scrollTo = useCallback((targetScroll: number) => {
-    scrollRef.current?.scrollTo({ left: targetScroll, behavior: "smooth" });
-  }, []);
+  }, [onScroll, applyArc, syncBar]);
 
   return (
     <div className="pointer-events-none flex w-full flex-col items-center">
       <div
         className="semicircle-stage pointer-events-none relative w-full"
-        style={{
-          height: geo.sagitta + ITEM_BOX - ICON_CENTER,
-          maskImage:
-            "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-        }}
+        style={{ height: arcStageHeight(geo) }}
       >
         <div
           ref={scrollRef}
-          className="semicircle-track pointer-events-auto flex h-full overflow-x-auto scroll-smooth"
+          className="semicircle-track pointer-events-auto flex h-full overflow-x-auto no-scrollbar"
           style={{
             gap: ITEM_GAP,
             paddingLeft: sidePad,
             paddingRight: sidePad,
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
+            touchAction: "pan-x",
           }}
         >
           {items.map((item, idx) => (
@@ -383,24 +604,23 @@ function DragArcCarousel({
               isActive={selectedId === item.id}
               onSelect={onSelect}
               className="flex-shrink-0"
-              style={{
-                width: ITEM_BOX,
-                scrollSnapAlign: "center",
-                transform: `translateY(${offsets[idx] ?? 0}px)`,
+              buttonRef={(node) => {
+                itemRefs.current[idx] = node;
               }}
+              style={{ width: ITEM_BOX }}
             />
           ))}
         </div>
       </div>
 
-      <div className="pointer-events-auto mt-0.5">
-        <CircleProgress
-          scrollLeft={scrollLeft}
-          scrollWidth={scrollDim.scrollWidth}
-          clientWidth={scrollDim.clientWidth}
-          onChange={scrollTo}
-        />
-      </div>
+      <MiniScrollBar
+        scrollLeft={bar.scrollLeft}
+        scrollWidth={bar.scrollWidth}
+        clientWidth={bar.clientWidth}
+        onSeek={(left) => {
+          scrollRef.current?.scrollTo({ left, behavior: "smooth" });
+        }}
+      />
     </div>
   );
 }
@@ -461,7 +681,6 @@ export default function CurvedHomeHeader({
   const locationBtnRef = useRef<HTMLButtonElement>(null);
   const anchorCbRef = useRef(onLocationAnchorChange);
   const reactId = useId();
-  const gradId = `header-cherry-${reactId.replace(/:/g, "")}`;
   const [headerWidth, setHeaderWidth] = useState(0);
   const [showSpecialties, setShowSpecialties] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
@@ -553,18 +772,15 @@ export default function CurvedHomeHeader({
     onSpecialtyChange(null);
   };
 
-  const shortLocation = locationLabel.split(",")[0] || locationLabel;
   const svgW = headerWidth || 375;
   const svgH = Math.ceil(headerHeight);
   const fillPath = ovalHeaderPath(svgW, headerCurveDepth, MIN_EDGE_HEIGHT);
+  const clipId = `header-clip-${reactId.replace(/:/g, "")}`;
 
   return (
     <div ref={headerRef} className={cn("relative w-full", className)}>
-      {/* Oval header: flat top, shallow curve pointing down */}
-      <div
-        className="relative text-white"
-        style={{ height: svgH }}
-      >
+      {/* Oval header: promo clipped to shape; bowl scrim lives inside carousel under text */}
+      <div className="relative overflow-hidden text-white" style={{ height: svgH }}>
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
           width={headerWidth || "100%"}
@@ -574,68 +790,17 @@ export default function CurvedHomeHeader({
           aria-hidden
         >
           <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#9a0002" />
-              <stop offset="55%" stopColor="#850002" />
-              <stop offset="100%" stopColor="#6b0001" />
-            </linearGradient>
+            <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+              <path d={fillPath} />
+            </clipPath>
           </defs>
-          <path d={fillPath} fill={`url(#${gradId})`} />
         </svg>
 
         <div
-          className="relative z-10 mx-auto flex h-full max-w-[1040px] flex-col px-5 md:px-8"
-          style={{
-            paddingTop: "0.875rem",
-            paddingBottom: "max(2rem, 22%)",
-          }}
+          className="absolute inset-0"
+          style={{ clipPath: `url(#${clipId})` }}
         >
-          {/* Center: location sits alone now that search lives in the navbar. */}
-          <div
-            className="relative flex flex-1 items-center justify-center"
-            style={{ transform: `translateY(${LOCATION_OFFSET_Y}px)` }}
-          >
-            <button
-              ref={locationBtnRef}
-              type="button"
-              onClick={() => {
-                const btn = locationBtnRef.current;
-                if (btn) {
-                  const r = btn.getBoundingClientRect();
-                  setDropdownPos({
-                    top: r.bottom + 8,
-                    left: r.left + r.width / 2,
-                  });
-                  anchorCbRef.current?.(r.bottom);
-                }
-                onLocationClick();
-              }}
-              className={cn(
-                "group relative flex cursor-pointer flex-col items-center gap-0",
-                showLocationDropdown && "z-50",
-              )}
-            >
-              <span className="text-[10px] font-medium tracking-wide text-white/55">
-                Ubicación actual
-              </span>
-              <span className="flex items-center gap-1 text-[14px] font-extrabold text-[#f5e6d3] transition-colors group-hover:text-white">
-                <MaterialSymbol
-                  icon="near_me"
-                  size={14}
-                  fill={showLocationDropdown}
-                />
-                {shortLocation}
-                <MaterialSymbol
-                  icon="expand_more"
-                  size={15}
-                  className={cn(
-                    "text-[#f5e6d3]/80 transition-transform duration-200",
-                    showLocationDropdown && "rotate-180",
-                  )}
-                />
-              </span>
-            </button>
-          </div>
+          <HeaderFullBleedPromoCarousel />
         </div>
       </div>
 

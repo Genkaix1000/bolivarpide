@@ -11,9 +11,12 @@ interface NavbarProps {
   onTabChange: (tab: string) => void;
   onSearchFocus: () => void;
   searchQuery: string;
-  selectedAddressId: string;
-  setSelectedAddressId: (id: string) => void;
-  savedAddresses: Array<{ id: string; name: string }>;
+  locationLabel?: string;
+  savedAddresses?: Array<{ id: string; name: string }>;
+  selectedAddressId?: string;
+  onSelectAddress?: (id: string) => void;
+  showLocationDropdown?: boolean;
+  onLocationClick?: () => void;
 }
 
 /** Shared notification popover animation for desktop navbar and mobile header. */
@@ -24,17 +27,34 @@ export const NOTIFICATION_POPOVER_MOTION = {
   transition: { duration: 0.2 },
 } as const;
 
+const DESKTOP_TABS = [
+  { id: "home", label: "Inicio", icon: "home" },
+  { id: "discover", label: "Explorar", icon: "explore" },
+  { id: "cart", label: "Mi Carrito", icon: "shopping_cart" },
+] as const;
+
+const DRAWER_TABS = [
+  ...DESKTOP_TABS,
+  { id: "profile", label: "Mi Perfil", icon: "badge" },
+] as const;
+
+const MOCK_NOTIFICATIONS = [
+  { emoji: "🛵", title: "Tu pedido de Burger Beef está en camino", time: "Hace 5 min" },
+  { emoji: "🎁", title: "¡Tienes un cupón de 15% de descuento!", time: "Hace 1 hora" },
+  { emoji: "🍕", title: "Tu pizza favorita de Pizza Hut tiene 20% OFF", time: "Hace 3 horas" },
+];
+
 // ─── Shared helper: origin-aware clip-path view-transition ────────────────────
 export function startThemeTransitionFrom(el: HTMLElement | null, toDark: boolean) {
   const applyClass = () => {
     if (toDark) document.documentElement.classList.add("dark");
-    else        document.documentElement.classList.remove("dark");
+    else document.documentElement.classList.remove("dark");
   };
   let cx = "50%", cy = "50%";
   if (el) {
     const r = el.getBoundingClientRect();
-    cx = `${Math.round(r.left + r.width  / 2)}px`;
-    cy = `${Math.round(r.top  + r.height / 2)}px`;
+    cx = `${Math.round(r.left + r.width / 2)}px`;
+    cy = `${Math.round(r.top + r.height / 2)}px`;
   }
   const styleId = "theme-vt";
   let style = document.getElementById(styleId) as HTMLStyleElement | null;
@@ -70,7 +90,7 @@ export function startThemeTransitionFrom(el: HTMLElement | null, toDark: boolean
   }
 }
 
-// ─── Cherry Cola action button (shared style: theme toggle, bell) ─────────────
+// ─── Cherry Cola action button (shared: landing + negocio theme/bell) ─────────
 export function CherryBtn({
   onClick,
   children,
@@ -91,7 +111,7 @@ export function CherryBtn({
       onClick={onClick}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex-shrink-0 h-[36px] rounded-full flex items-center justify-center",
+        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
         "bg-[#9a0002] text-white shadow-md shadow-[#9a0002]/30",
         "hover:brightness-110 active:brightness-90",
         "transition-all duration-300 ease-in-out cursor-pointer",
@@ -108,213 +128,276 @@ export default function Navbar({
   onTabChange,
   onSearchFocus,
   searchQuery,
-  selectedAddressId,
-  setSelectedAddressId,
+  locationLabel,
   savedAddresses,
+  selectedAddressId,
+  onSelectAddress,
+  showLocationDropdown,
+  onLocationClick,
 }: NavbarProps) {
-  const navItems = React.useMemo(() => [
-    { id: "home",     label: "Inicio",     icon: "home" },
-    { id: "discover", label: "Explorar",   icon: "explore" },
-    { id: "cart",     label: "Mi Carrito", icon: "shopping_cart" },
-    { id: "profile",  label: "Mi Perfil",  icon: "badge" },
-  ], []);
-
   const handleTabChange = useCallback((id: string) => {
     onTabChange(id);
   }, [onTabChange]);
 
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showAddresses, setShowAddresses] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const locationBtnRef = useRef<HTMLButtonElement>(null);
 
-  const currentAddressName =
-    savedAddresses.find(a => a.id === selectedAddressId)?.name || savedAddresses[0].name;
+  const shortLocation = locationLabel ? (locationLabel.split(",")[0] || locationLabel) : "St. Abigail";
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 md:sticky">
-      <header className="relative flex h-16 items-center gap-2 border-b border-gray-100 bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:h-[72px] md:gap-4 md:px-7">
-        <button
-          type="button"
-          onClick={() => {
-            setShowDashboard(true);
-            setShowAddresses(false);
-          }}
-          aria-label="Abrir menú"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
-        >
-          <MaterialSymbol icon="menu" size={20} />
-        </button>
+      <header className="relative h-[72px] border-b border-gray-100 bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:px-8">
+        <div className="mx-auto flex h-full w-full max-w-[1040px] items-center gap-3">
+          {/* Left cluster: brand · search · location · tabs */}
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDashboard(true)}
+              aria-label="Abrir menú"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
+            >
+              <MaterialSymbol icon="menu" size={20} />
+            </button>
 
-        <button
-          type="button"
-          onClick={() => handleTabChange("home")}
-          aria-label="Ir al inicio"
-          className="hidden shrink-0 items-center gap-2 rounded-xl transition-transform active:scale-95 md:flex"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-base font-black text-white shadow-sm">B</span>
-          <span className="text-base font-extrabold tracking-tight text-gray-800 dark:text-gray-100">BolivarPide</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("home")}
+              aria-label="Ir al inicio"
+              className="hidden shrink-0 items-center gap-2 rounded-xl transition-transform active:scale-95 md:flex"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-lg font-black text-white shadow-sm">B</span>
+              <span className="text-sm font-extrabold tracking-tight text-gray-800 dark:text-gray-100">BolivarPide</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={onSearchFocus}
-          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 text-left shadow-sm transition-colors hover:border-[#9a0002]/30 dark:border-[#3d3732] dark:bg-[#2a2623] md:h-11 md:px-4.5"
-        >
-          <MaterialSymbol icon="search" size={17} className="shrink-0 text-[#9a0002]" />
-          <span className="truncate text-[11px] font-medium text-gray-400 md:text-xs">
-            {searchQuery || 'Buscar "comida", locales...'}
-          </span>
-        </button>
+            {/* Location selector pill in Navbar */}
+            {locationLabel && (
+              <button
+                ref={locationBtnRef}
+                type="button"
+                onClick={onLocationClick}
+                className={cn(
+                  "flex h-11 items-center gap-1.5 rounded-full border border-gray-200 dark:border-[#3d3732] bg-white dark:bg-[#2a2623] px-3.5 shadow-xs transition-all hover:border-[#9a0002]/40 text-left shrink-0 cursor-pointer",
+                  showLocationDropdown && "ring-2 ring-[#9a0002]/30 border-[#9a0002]"
+                )}
+              >
+                <MaterialSymbol icon="near_me" size={14} className="text-[#9a0002] shrink-0" fill={showLocationDropdown} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase leading-none">Ubicación</span>
+                  <span className="text-[11px] font-extrabold text-gray-800 dark:text-gray-200 truncate max-w-[95px] sm:max-w-[140px] leading-tight">
+                    {shortLocation}
+                  </span>
+                </div>
+                <MaterialSymbol icon="expand_more" size={14} className={cn("text-gray-400 shrink-0 transition-transform duration-200", showLocationDropdown && "rotate-180")} />
+              </button>
+            )}
 
-        <button
-          type="button"
-          onClick={() => handleTabChange("cart")}
-          aria-label="Mi carrito"
-          className={cn(
-            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors bg-white dark:bg-[#2a2623] shadow-sm",
-            currentTab === "cart"
-              ? "border-2 border-[#9a0002] text-[#9a0002] ring-1 ring-[#9a0002]/30"
-              : "border border-gray-200 dark:border-[#3d3732] text-gray-700 dark:text-gray-300 hover:text-[#9a0002] hover:border-[#9a0002]/30",
+            <button
+              type="button"
+              onClick={onSearchFocus}
+              className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-gray-200 bg-white px-4.5 text-left shadow-sm transition-colors hover:border-[#9a0002]/40 dark:border-[#3d3732] dark:bg-[#2a2623] md:max-w-xs"
+            >
+              <MaterialSymbol icon="search" size={17} className="shrink-0 text-[#9a0002]" />
+              <span className="truncate text-xs font-medium text-gray-400">
+                {searchQuery || 'Buscar comida...'}
+              </span>
+            </button>
+
+            <nav className="hidden items-center gap-0.5 md:flex">
+              {DESKTOP_TABS.map(({ id, label, icon }) => {
+                const isActive = currentTab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => handleTabChange(id)}
+                    className={cn(
+                      "relative flex h-10 items-center gap-1.5 rounded-full px-3.5 select-none cursor-pointer transition-colors",
+                      isActive
+                        ? "bg-[#9a0002]/10 text-[#9a0002] font-extrabold"
+                        : "text-gray-600 dark:text-gray-400 hover:text-[#9a0002] hover:bg-[#9a0002]/5 font-bold",
+                    )}
+                  >
+                    <MaterialSymbol icon={icon} fill={isActive} size={16} />
+                    <span className="text-xs tracking-tight whitespace-nowrap">{label}</span>
+                    {id === "cart" && (
+                      <span className="absolute right-1.5 top-1 h-2 w-2 rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#faf6f1] dark:ring-[#1c1917]" />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Right cluster: theme · notif · | · user (same as negocio) */}
+          <div className="relative z-50 hidden shrink-0 items-center gap-2.5 md:flex">
+            <ThemeToggleNavBtn clipId="nav-theme-desk" />
+
+            <div className="relative">
+              <CherryBtn
+                onClick={() => setShowNotifications((o) => !o)}
+                aria-label="Notificaciones"
+              >
+                <MaterialSymbol icon="notifications" size={17} className="text-white" />
+                {!showNotifications && (
+                  <span className="absolute -top-1.5 -right-1.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
+                )}
+              </CherryBtn>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    {...NOTIFICATION_POPOVER_MOTION}
+                    className="absolute top-[48px] right-0 z-50 w-[270px] rounded-[20px] border border-white/40 bg-[#faf6f1]/96 p-4 shadow-2xl backdrop-blur-md dark:border-[#3d3732] dark:bg-[#231f1c]/96 dark:text-[#ece8e2]"
+                  >
+                    <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
+                      {MOCK_NOTIFICATIONS.map((n, idx) => (
+                        <div
+                          key={idx}
+                          className="flex cursor-pointer gap-2 rounded-xl bg-[#ede4d9]/60 p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
+                        >
+                          <span className="select-none text-base">{n.emoji}</span>
+                          <div className="flex min-w-0 flex-col">
+                            <span className="text-[10px] font-bold leading-tight text-gray-800 dark:text-[#d4cfc9]">{n.title}</span>
+                            <span className="mt-0.5 text-[8px] font-medium text-gray-400 dark:text-gray-500">{n.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="mx-0.5 h-7 w-px bg-gray-200 dark:bg-[#3d3732]" />
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("profile")}
+              aria-label="Mi perfil"
+              className={cn(
+                "flex items-center gap-2.5 rounded-full transition-shadow cursor-pointer",
+                currentTab === "profile" && "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-[#faf6f1] dark:ring-offset-[#1c1917]",
+              )}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] text-[10px] font-black text-white shadow-sm ring-2 ring-white dark:ring-[#2a2623]">
+                SA
+              </span>
+              <span className="hidden text-sm font-bold text-gray-800 dark:text-gray-200 xl:inline">
+                St. Abigail
+              </span>
+            </button>
+          </div>
+
+          {/* Mobile: cart + profile */}
+          <button
+            type="button"
+            onClick={() => handleTabChange("cart")}
+            aria-label="Mi carrito"
+            className={cn(
+              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm transition-colors dark:bg-[#2a2623] md:hidden",
+              currentTab === "cart"
+                ? "border-2 border-[#9a0002] text-[#9a0002] ring-1 ring-[#9a0002]/30"
+                : "border border-gray-200 text-gray-700 dark:border-[#3d3732] dark:text-gray-300",
+            )}
+          >
+            <MaterialSymbol icon="shopping_cart" size={17} fill={currentTab === "cart"} />
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#faf6f1] dark:ring-[#1c1917]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange("profile")}
+            aria-label="Mi perfil"
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] text-[10px] font-black text-white shadow-sm ring-2 ring-white dark:ring-[#2a2623] md:hidden",
+              currentTab === "profile" && "ring-[#9a0002] ring-offset-2 ring-offset-[#faf6f1] dark:ring-offset-[#1c1917]",
+            )}
+          >
+            SA
+          </button>
+
+          {showNotifications && (
+            <button
+              type="button"
+              aria-label="Cerrar notificaciones"
+              className="fixed inset-x-0 bottom-0 top-[72px] z-40 hidden md:block"
+              onClick={() => setShowNotifications(false)}
+            />
           )}
-        >
-          <MaterialSymbol icon="shopping_cart" size={17} fill={currentTab === "cart"} />
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#faf6f1] dark:ring-[#1c1917]" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setShowDashboard((open) => !open);
-            setShowAddresses(false);
-          }}
-          aria-label="Abrir menú"
-          aria-expanded={showDashboard}
-          className={cn(
-            "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2 py-1 transition-colors bg-white dark:bg-[#2a2623] shadow-sm border",
-            showDashboard
-              ? "border-2 border-[#9a0002] text-[#9a0002]"
-              : "border-gray-200 dark:border-[#3d3732] text-gray-700 dark:text-gray-300 hover:border-[#9a0002]/40",
-          )}
-        >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#9a0002] text-[9px] font-black text-white">SA</span>
-          <MaterialSymbol icon="expand_more" size={15} className={cn("transition-transform", showDashboard && "rotate-180")} />
-        </button>
+        </div>
 
         {typeof document !== "undefined" && createPortal(
           <AnimatePresence>
             {showDashboard && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Cerrar menú"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowDashboard(false)}
-                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40"
-              />
-              <motion.aside
-                initial={{ opacity: 0, x: -18 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -18 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-y-0 left-0 z-[60] flex w-[260px] flex-col overflow-y-auto bg-[#faf6f1] p-3 shadow-2xl dark:bg-[#1c1917] md:inset-y-auto md:left-auto md:right-7 md:top-[80px] md:w-[280px] md:rounded-[22px] md:border md:border-white/50 md:bg-[#faf6f1]/98 md:backdrop-blur-md dark:md:border-[#3d3732] dark:md:bg-[#1c1917]/98"
-              >
-              <div className="mb-3 flex items-center justify-between border-b border-gray-200/60 pb-3 dark:border-[#3d3732] px-2">
-                <button
+              <>
+                <motion.button
                   type="button"
-                  onClick={() => handleTabChange("home")}
-                  className="flex items-center gap-2.5 overflow-hidden"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-xs font-black text-white shadow-sm">SA</span>
-                  <div className="min-w-0 text-left">
-                    <p className="truncate text-xs font-extrabold text-gray-800 dark:text-gray-100">St. Abigail</p>
-                    <p className="truncate text-[10px] text-gray-400">client.abigail@delivery.com</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDashboard(false)}
                   aria-label="Cerrar menú"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] hover:text-gray-700 transition-colors cursor-pointer"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowDashboard(false)}
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] md:hidden"
+                />
+                <motion.aside
+                  initial={{ opacity: 0, x: -18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -18 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="fixed inset-y-0 left-0 z-[60] flex w-[260px] flex-col overflow-y-auto bg-[#faf6f1] p-3 shadow-2xl dark:bg-[#1c1917] md:hidden"
                 >
-                  <MaterialSymbol icon="close" size={18} />
-                </button>
-              </div>
-
-              <nav className="flex flex-col gap-1 px-1">
-                {navItems.map(({ id, label, icon }) => {
-                  const isActive = currentTab === id;
-                  return (
+                  <div className="mb-3 flex items-center justify-between border-b border-gray-200/60 px-2 pb-3 dark:border-[#3d3732]">
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-xs font-black text-white shadow-sm">SA</span>
+                      <div className="min-w-0 text-left">
+                        <p className="truncate text-xs font-extrabold text-gray-800 dark:text-gray-100">St. Abigail</p>
+                        <p className="truncate text-[10px] text-gray-400">client.abigail@delivery.com</p>
+                      </div>
+                    </div>
                     <button
-                      key={id}
                       type="button"
-                      onClick={() => {
-                        handleTabChange(id);
-                        setShowDashboard(false);
-                      }}
-                      className={cn(
-                        "group relative flex h-11 items-center gap-3 rounded-xl px-3.5 border-l-2 my-0.5 transition-all duration-200 cursor-pointer text-sm font-bold tracking-tight text-left",
-                        isActive
-                          ? "bg-[#9a0002]/10 text-[#9a0002] font-bold border-[#9a0002]"
-                          : "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200 border-transparent",
-                      )}
+                      onClick={() => setShowDashboard(false)}
+                      aria-label="Cerrar menú"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#ede4d9] hover:text-gray-700 dark:hover:bg-[#2a2623]"
                     >
-                      <MaterialSymbol icon={icon} size={20} fill={isActive} className="flex-shrink-0" />
-                      <span className="flex-1">{label}</span>
+                      <MaterialSymbol icon="close" size={18} />
                     </button>
-                  );
-                })}
-              </nav>
+                  </div>
 
-              <div className="mt-3 border-t border-gray-200/60 pt-2 dark:border-[#3d3732] px-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAddresses((open) => !open)}
-                  className="flex w-full h-10 items-center gap-2.5 rounded-xl px-3 text-left text-xs font-bold text-gray-600 transition-colors hover:bg-[#ede4d9]/60 dark:text-gray-300 dark:hover:bg-[#2a2623]"
-                >
-                  <MaterialSymbol icon="location_home" size={18} className="text-[#9a0002]" />
-                  <span className="min-w-0 flex-1 truncate">{currentAddressName}</span>
-                  <MaterialSymbol icon="expand_more" size={16} className={cn("transition-transform", showAddresses && "rotate-180")} />
-                </button>
-
-                <AnimatePresence>
-                  {showAddresses && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-1 overflow-hidden px-1 pt-1"
-                    >
-                      {savedAddresses.map((address) => (
+                  <nav className="flex flex-col gap-1 px-1">
+                    {DRAWER_TABS.map(({ id, label, icon }) => {
+                      const isActive = currentTab === id;
+                      return (
                         <button
-                          key={address.id}
+                          key={id}
                           type="button"
                           onClick={() => {
-                            setSelectedAddressId(address.id);
-                            setShowAddresses(false);
+                            handleTabChange(id);
+                            setShowDashboard(false);
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition-colors border-l-2",
-                            selectedAddressId === address.id
-                              ? "bg-[#9a0002]/10 text-[#9a0002] border-[#9a0002] font-bold"
-                              : "text-gray-500 hover:bg-[#ede4d9]/60 dark:text-gray-400 dark:hover:bg-[#2a2623] border-transparent",
+                            "my-0.5 flex h-11 cursor-pointer items-center gap-3 rounded-xl border-l-2 px-3.5 text-left text-sm font-bold tracking-tight transition-all duration-200",
+                            isActive
+                              ? "border-[#9a0002] bg-[#9a0002]/10 text-[#9a0002]"
+                              : "border-transparent text-gray-500 hover:bg-[#ede4d9]/60 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-[#2a2623] dark:hover:text-gray-200",
                           )}
                         >
-                          <MaterialSymbol icon="location_on" size={14} fill={selectedAddressId === address.id} />
-                          <span className="truncate">{address.name}</span>
+                          <MaterialSymbol icon={icon} size={20} fill={isActive} className="flex-shrink-0" />
+                          <span className="flex-1">{label}</span>
                         </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      );
+                    })}
+                  </nav>
 
-                <div className="mt-2 flex h-10 items-center justify-between rounded-xl px-3">
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Apariencia</span>
-                  <ThemeToggleNavBtn className="h-8 w-8" />
-                </div>
-              </div>
-              </motion.aside>
-            </>
+                  <div className="mt-3 border-t border-gray-200/60 px-1 pt-2 dark:border-[#3d3732]">
+                    <div className="flex h-10 items-center justify-between rounded-xl px-3">
+                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Apariencia</span>
+                      <ThemeToggleNavBtn className="h-8 w-8" clipId="nav-theme-drawer" />
+                    </div>
+                  </div>
+                </motion.aside>
+              </>
             )}
           </AnimatePresence>,
           document.body,
@@ -325,7 +408,7 @@ export default function Navbar({
 }
 
 // ─── Skiper sun/moon toggle (shared design) ───────────────────────────────────
-function ThemeToggleNavBtn({ className = "" }: { className?: string }) {
+function ThemeToggleNavBtn({ className = "", clipId = "skipper-clip" }: { className?: string; clipId?: string }) {
   const [isDark, setIsDark] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -338,8 +421,8 @@ function ThemeToggleNavBtn({ className = "" }: { className?: string }) {
   }, [isDark]);
 
   return (
-    <CherryBtn onClick={toggle} btnRef={btnRef} aria-label={isDark ? "Modo claro" : "Modo oscuro"} className={cn("w-[36px] overflow-hidden", className)}>
-      <SkiperSunMoon isDark={isDark} />
+    <CherryBtn onClick={toggle} btnRef={btnRef} aria-label={isDark ? "Modo claro" : "Modo oscuro"} className={cn("overflow-hidden", className)}>
+      <SkiperSunMoon isDark={isDark} clipId={clipId} />
     </CherryBtn>
   );
 }

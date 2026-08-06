@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { StatCard } from "@/components/business/StatCard";
@@ -27,59 +27,256 @@ const PERIODS = [
 ];
 
 const STATUS_CONFIG: Record<RecentOrder["status"], { icon: string; label: string; classes: string }> = {
-  pending: { icon: "schedule", label: "Nuevo", classes: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/40" },
-  accepted: { icon: "check_circle", label: "Aceptado", classes: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40" },
-  preparing: { icon: "skillet", label: "En Cocina", classes: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/40" },
-  delivering: { icon: "two_wheeler", label: "En Camino", classes: "bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/40" },
-  delivered: { icon: "task_alt", label: "Entregado", classes: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/40" },
-  cancelled: { icon: "cancel", label: "Cancelado", classes: "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40" },
+  pending: { icon: "schedule", label: "Nuevo", classes: "bg-[#f2ece2] text-gray-700 dark:bg-[#231f1c] dark:text-gray-300" },
+  accepted: { icon: "check_circle", label: "Aceptado", classes: "bg-[#f2ece2] text-gray-700 dark:bg-[#231f1c] dark:text-gray-300" },
+  preparing: { icon: "skillet", label: "En Cocina", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
+  delivering: { icon: "two_wheeler", label: "En Camino", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
+  delivered: { icon: "task_alt", label: "Entregado", classes: "bg-[#f2ece2] text-gray-700 dark:bg-[#231f1c] dark:text-gray-300" },
+  cancelled: { icon: "cancel", label: "Cancelado", classes: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 };
+
+/** Hardcoded onboarding tour — wire to real routes/uploads later */
+const TOUR_STEPS = [
+  {
+    id: "profile",
+    title: "Logo y portada",
+    body: "Subí el logo de tu local y una foto de portada atractiva. Es lo primero que ven los clientes en Cadenas destacadas.",
+    hint: "Portada 1200×480 (≈2.5:1) · Logo 512×512 cuadrado",
+    href: "/negocio/configuracion",
+  },
+  {
+    id: "menu",
+    title: "Cargá tu carta",
+    body: "Agregá al menos 5 productos con foto, precio y categoría. Sin menú, el local no aparece en búsquedas.",
+    hint: "Fotos de plato 800×600 · tocá + Nuevo producto en Carta",
+    href: "/negocio/carta",
+  },
+  {
+    id: "qr",
+    title: "Menú QR",
+    body: "Generá el QR para mesas y mostrador. Los clientes escanean y piden sin descargar nada.",
+    hint: "Se genera solo cuando hay productos publicados",
+    href: "/negocio/carta",
+  },
+  {
+    id: "promos",
+    title: "Primera promoción",
+    body: "Creá un descuento de bienvenida. Las promos impulsan el primer pedido y mejoran el ranking.",
+    hint: "Ej: 15% off en el primer pedido · válido 7 días",
+    href: "/negocio/configuracion",
+  },
+  {
+    id: "logistics",
+    title: "Asociá un repartidor",
+    body: "Invitá al menos un delivery o activá take away. Sin logística no se pueden completar pedidos.",
+    hint: "Código de invitación desde Equipo → Asociar",
+    href: "/negocio/equipo",
+  },
+];
+
+const CARD =
+  "bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_10px_40px_-16px_rgba(61,43,31,0.18)] rounded-[24px]";
 
 function formatCurrency(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
 }
 
+function ProgressRing({ pct, children }: { pct: number; children: ReactNode }) {
+  const r = 44;
+  const c = 2 * Math.PI * r;
+  const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
+  return (
+    <div className="relative w-[124px] h-[124px] flex items-center justify-center">
+      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100" aria-hidden>
+        <circle cx="50" cy="50" r={r} fill="none" className="stroke-[#ede4d9] dark:stroke-[#3d3732]" strokeWidth="4.5" />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke="#9a0002"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <div className="w-[64px] h-[64px] rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-white font-black text-lg ring-4 ring-white dark:ring-[#1c1917]">
+        {children}
+      </div>
+      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-white dark:bg-[#231f1c] text-[10px] font-black text-gray-700 dark:text-gray-200 shadow-sm border border-black/[0.04]">
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+function TourModal({
+  stepIndex,
+  onClose,
+  onPrev,
+  onNext,
+  onFinish,
+}: {
+  stepIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onFinish: () => void;
+}) {
+  const step = TOUR_STEPS[stepIndex];
+  const isLast = stepIndex === TOUR_STEPS.length - 1;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <button type="button" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" aria-label="Cerrar tour" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white dark:bg-[#1c1917] rounded-[24px] shadow-2xl border border-black/[0.06] dark:border-[#3d3732] p-6 animate-in fade-in zoom-in-95">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            Paso {stepIndex + 1} de {TOUR_STEPS.length}
+          </span>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full hover:bg-[#f2ece2] dark:hover:bg-[#231f1c] flex items-center justify-center text-gray-400 cursor-pointer">
+            <MaterialSymbol icon="close" size={18} />
+          </button>
+        </div>
+
+        <div className="w-12 h-12 rounded-2xl bg-[#9a0002]/10 text-[#9a0002] flex items-center justify-center mb-4">
+          <MaterialSymbol icon="lightbulb" size={24} />
+        </div>
+        <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{step.title}</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.body}</p>
+        <div className="mt-4 px-3 py-2.5 rounded-xl bg-[#f2ece2] dark:bg-[#231f1c] text-[12px] font-bold text-gray-700 dark:text-gray-300 flex items-start gap-2">
+          <MaterialSymbol icon="info" size={16} className="text-[#9a0002] flex-shrink-0 mt-0.5" />
+          <span>{step.hint}</span>
+        </div>
+
+        <div className="mt-3 flex gap-1">
+          {TOUR_STEPS.map((_, i) => (
+            <div key={i} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-[#9a0002]" : "bg-[#ede4d9] dark:bg-[#3d3732]")} />
+          ))}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={stepIndex === 0}
+            className="px-3 py-2 rounded-full text-xs font-bold text-gray-500 disabled:opacity-30 hover:bg-[#f2ece2] dark:hover:bg-[#231f1c] cursor-pointer disabled:cursor-default"
+          >
+            Anterior
+          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={step.href}
+              onClick={onClose}
+              className="px-3.5 py-2 rounded-full text-xs font-bold text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#3d3732] hover:bg-[#f2ece2] dark:hover:bg-[#231f1c]"
+            >
+              Ir a la sección
+            </Link>
+            {isLast ? (
+              <button
+                type="button"
+                onClick={onFinish}
+                className="px-4 py-2 rounded-full text-xs font-black bg-[#9a0002] text-white hover:bg-[#6b0001] cursor-pointer"
+              >
+                Listo
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onNext}
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-xs font-black bg-[#9a0002] text-white cursor-pointer hover:brightness-110"
+              >
+                Siguiente
+                <MaterialSymbol icon="arrow_forward" size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [period, setPeriod] = useState("today");
   const [isOpen, setIsOpen] = useState(MOCK_BUSINESS.isOpen);
-  const [products, setProducts] = useState<PanelProduct[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<PanelProduct[]>(MOCK_PRODUCTS.slice(0, 8));
   const [tasks, setTasks] = useState<TutorialTask[]>(MOCK_TUTORIAL_TASKS);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const stockRef = useRef<HTMLDivElement>(null);
+  const [stockScroll, setStockScroll] = useState({ isAtStart: true, isAtEnd: false });
 
   const s = MOCK_BUSINESS_STATS;
-
-  // Calculo de progreso de onboarding
   const completedCount = tasks.filter((t) => t.completed).length;
   const progressPct = Math.round((completedCount / tasks.length) * 100);
   const isTutorialComplete = progressPct === 100;
+  const ratingPct = Math.round((MOCK_BUSINESS.rating / 5) * 100);
+  const revenueDeltaPct = Math.round(((s.revenueMonth - s.revenueMonthLast) / s.revenueMonthLast) * 100);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+
+  useEffect(() => {
+    const el = stockRef.current;
+    if (!el) return;
+    const check = () => {
+      setStockScroll({
+        isAtStart: el.scrollLeft <= 10,
+        isAtEnd: el.scrollLeft + el.clientWidth >= el.scrollWidth - 15,
+      });
+    };
+    check();
+    el.addEventListener("scroll", check);
+    window.addEventListener("resize", check);
+    return () => {
+      el.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [products.length]);
 
   const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
   };
 
   const toggleProductStock = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, available: !p.available } : p))
-    );
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, available: !p.available } : p)));
   };
 
-  const revenueDeltaPct = Math.round(((s.revenueMonth - s.revenueMonthLast) / s.revenueMonthLast) * 100);
+  const startTour = () => {
+    const firstIncomplete = TOUR_STEPS.findIndex((s) => !tasks.find((t) => t.id === s.id)?.completed);
+    setTourStep(firstIncomplete >= 0 ? firstIncomplete : 0);
+    setTourOpen(true);
+  };
 
   return (
     <div className="space-y-6 text-gray-800 dark:text-gray-200 max-w-[1280px] mx-auto">
-      {/* ── Page Header ─────────────────────────────────────────────────────────── */}
+      {tourOpen && (
+        <TourModal
+          stepIndex={tourStep}
+          onClose={() => setTourOpen(false)}
+          onPrev={() => setTourStep((i) => Math.max(0, i - 1))}
+          onNext={() => setTourStep((i) => Math.min(TOUR_STEPS.length - 1, i + 1))}
+          onFinish={() => {
+            setTasks((prev) => prev.map((t) => ({ ...t, completed: true })));
+            setTourOpen(false);
+          }}
+        />
+      )}
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl md:text-[28px] font-black text-gray-900 dark:text-white tracking-tight">
             Dashboard
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Resumen general del rendimiento e indicadores de tu negocio
+          <p className="text-sm text-gray-400 mt-1">
+            Resumen general del rendimiento de tu negocio
           </p>
         </div>
 
-        <div className="flex items-center gap-1 bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-full p-1 penpot-shadow w-fit">
+        <div className={cn(CARD, "flex items-center gap-1 p-1 w-fit")}>
           {PERIODS.map((p) => (
             <button
               key={p.id}
@@ -88,7 +285,7 @@ export default function DashboardPage() {
                 "px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap",
                 period === p.id
                   ? "bg-[#9a0002] text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               )}
             >
               {p.label}
@@ -97,22 +294,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════════
-          MAIN GRID — Left (3/5): Tutorial/Promo + KPIs | Right (2/5): Stats + Deliveries
-      ══════════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+        <div className="lg:col-span-3 flex flex-col gap-5">
 
-        {/* ── LEFT COLUMN (3 cols): Tutorial/Banner + KPI Cards + Activity ───── */}
-        <div className="lg:col-span-3 space-y-6">
-
-          {/* ── Tutorial / Onboarding Banner (or Promo when 100%) ────────────── */}
+          {/* Lively onboarding banner (restored) */}
           {!isTutorialComplete ? (
-            <div className="relative overflow-hidden rounded-[28px] bg-[#9a0002] text-white p-6 shadow-xl">
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#9a0002] via-[#9a0002] to-[#6b0001] text-white p-5 md:p-6 shadow-[0_20px_50px_-20px_rgba(154,0,2,0.55)]">
+              <div className="pointer-events-none absolute -right-8 -top-10 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+              <div className="pointer-events-none absolute right-10 top-8 w-16 h-16 rotate-12 rounded-2xl border border-white/20 bg-white/10" />
+              <div className="pointer-events-none absolute right-28 bottom-6 w-10 h-10 -rotate-12 rounded-xl border border-white/15 bg-white/5" />
+              <svg className="pointer-events-none absolute right-6 bottom-8 w-24 h-24 text-white/15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5L12 2z" />
+              </svg>
 
-              <div className="relative z-10 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase text-white">
+              <div className="relative z-10 space-y-4 max-w-xl">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-wider uppercase">
                     <MaterialSymbol icon="school" size={14} />
                     Configuración del Local ({progressPct}%)
                   </div>
@@ -126,20 +323,15 @@ export default function DashboardPage() {
                     ¡Completá tu negocio para vender más!
                   </h2>
                   <p className="text-xs text-red-100/90 font-medium">
-                    Seguí el tutorial paso a paso para dejar tu local 100% visible para los clientes.
+                    Seguí el paso a paso. El tour te muestra qué subir y dónde hacerlo.
                   </p>
                 </div>
 
-                {/* Progress bar */}
                 <div className="w-full h-2.5 bg-black/30 rounded-full overflow-hidden p-0.5 border border-white/10">
-                  <div
-                    className="h-full bg-white rounded-full transition-all duration-500"
-                    style={{ width: `${progressPct}%` }}
-                  />
+                  <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
                 </div>
 
-                {/* Task Checklist */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {tasks.map((task) => (
                     <button
                       key={task.id}
@@ -151,40 +343,50 @@ export default function DashboardPage() {
                           : "bg-black/20 border-white/10 text-white/70 hover:bg-black/30"
                       )}
                     >
-                      <div className={cn(
-                        "w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors",
-                        task.completed ? "bg-emerald-400 text-gray-950" : "border border-white/40"
-                      )}>
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0",
+                          task.completed ? "bg-emerald-400 text-gray-950" : "border border-white/40"
+                        )}
+                      >
                         {task.completed && <MaterialSymbol icon="check" size={14} className="font-bold" />}
                       </div>
-                      <span className={cn("truncate", task.completed && "line-through opacity-80")}>
-                        {task.label}
-                      </span>
+                      <span className={cn("truncate", task.completed && "line-through opacity-80")}>{task.label}</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="pt-2 flex items-center justify-between flex-wrap gap-3 border-t border-white/10">
-                  <span className="text-[11px] text-white/80 font-medium">
-                    💡 Tocá en cada paso para marcarlo como listo
-                  </span>
+                <div className="pt-1 flex items-center justify-between flex-wrap gap-3 border-t border-white/10">
                   <button
+                    type="button"
                     onClick={() => setTasks((prev) => prev.map((t) => ({ ...t, completed: true })))}
-                    className="text-xs font-black text-amber-200 hover:underline cursor-pointer"
+                    className="text-[11px] text-white/70 font-medium hover:text-white cursor-pointer"
                   >
                     Simular 100% completado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={startTour}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gray-950 hover:bg-black text-white text-xs font-black transition-all cursor-pointer shadow-lg"
+                  >
+                    <MaterialSymbol icon="play_arrow" size={18} fill />
+                    Iniciar tour
+                    <MaterialSymbol icon="arrow_forward" size={16} />
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* Replaced Banner when 100% complete: Promos & Active Orders CTA */
-            <div className="relative overflow-hidden rounded-[28px] bg-[#9a0002] text-white p-6 shadow-xl">
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#9a0002] via-[#9a0002] to-[#6b0001] text-white p-5 md:p-6 shadow-[0_20px_50px_-20px_rgba(154,0,2,0.55)]">
+              <div className="pointer-events-none absolute -right-8 -top-10 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+              <div className="pointer-events-none absolute right-10 top-8 w-16 h-16 rotate-12 rounded-2xl border border-white/20 bg-white/10" />
+              <svg className="pointer-events-none absolute right-8 bottom-8 w-28 h-28 text-white/15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5L12 2z" />
+              </svg>
 
               <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-[11px] font-bold tracking-wider uppercase text-emerald-300">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-[11px] font-bold tracking-wider uppercase text-emerald-200">
                     <MaterialSymbol icon="verified" size={14} />
                     Local 100% Verificado
                   </div>
@@ -195,255 +397,315 @@ export default function DashboardPage() {
                     Tu carta, código QR y fotos lucen geniales. Promocioná descuentos o gestioná las comandas en tiempo real.
                   </p>
                 </div>
-
                 <Link
                   href="/negocio/pedidos"
-                  className="group inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-100 text-[#9a0002] font-black text-sm transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full bg-gray-950 hover:bg-black text-white font-black text-sm transition-all shadow-lg cursor-pointer whitespace-nowrap"
                 >
-                  <MaterialSymbol icon="receipt_long" size={20} className="text-[#9a0002]" />
-                  <span>Ir a Pedidos Activos</span>
-                  <MaterialSymbol icon="arrow_forward" size={16} className="text-[#9a0002] group-hover:translate-x-0.5 transition-transform" />
+                  Ir a Pedidos
+                  <MaterialSymbol icon="arrow_forward" size={18} />
                 </Link>
               </div>
             </div>
           )}
 
-          {/* ── KPI Cards Grid (Aligned horizontally to cover the banner width) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             <StatCard
               icon="payments"
-              iconBg="bg-emerald-50 dark:bg-emerald-950/30"
-              iconColor="text-emerald-500"
               value={formatCurrency(s.revenueMonth)}
               label="Generado en el mes"
               delta={{ text: `+${revenueDeltaPct}% vs mes ant.`, direction: "up" }}
             />
             <StatCard
               icon="task_alt"
-              iconBg="bg-blue-50 dark:bg-blue-950/30"
-              iconColor="text-blue-500"
               value={String(s.completedOrdersMonth)}
               label="Pedidos completados"
               delta={{ text: "Mes en curso", direction: "up" }}
             />
             <StatCard
               icon="receipt"
-              iconBg="bg-amber-50 dark:bg-amber-950/30"
-              iconColor="text-amber-500"
               value={formatCurrency(s.avgTicket)}
               label="Ticket promedio"
               delta={{ text: "+4% vs mes ant.", direction: "up" }}
             />
             <StatCard
               icon="timer"
-              iconBg="bg-purple-50 dark:bg-purple-950/30"
-              iconColor="text-purple-500"
               value={`${s.avgResponseTimeMin}m / ${s.avgPrepTimeMin}m`}
               label="T. Respuesta / Prep."
-              delta={{ text: "T. Resp / T. Prep", direction: "up" }}
             />
           </div>
 
-          {/* ── Actividad Reciente ─────────────────────────────────────────────── */}
-          <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                <MaterialSymbol icon="history" size={18} className="text-[#9a0002]" />
-                Actividad Reciente
-              </h3>
-              <Link href="/negocio/pedidos" className="text-xs font-bold text-[#9a0002] hover:underline">
-                Ver todos
-              </Link>
-            </div>
-
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-left min-w-[480px]">
-                <thead>
-                  <tr className="text-[9px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-200 dark:border-[#3d3732]">
-                    <th className="pb-2 px-1">#Pedido</th>
-                    <th className="pb-2 px-1">Cliente</th>
-                    <th className="pb-2 px-1">Items</th>
-                    <th className="pb-2 px-1">Total</th>
-                    <th className="pb-2 px-1">Estado</th>
-                    <th className="pb-2 px-1 text-right">Hora</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_RECENT_ORDERS.map((order, idx) => {
-                    const status = STATUS_CONFIG[order.status];
-                    return (
-                      <tr
-                        key={order.id}
-                        className={cn(
-                          idx !== MOCK_RECENT_ORDERS.length - 1 && "border-b border-[#ddd4c8]/60 dark:border-[#3d3732]/60"
-                        )}
-                      >
-                        <td className="py-3 px-1 text-xs font-black text-gray-800 dark:text-gray-200">#{order.orderNumber}</td>
-                        <td className="py-3 px-1 text-xs font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">{order.customerName}</td>
-                        <td className="py-3 px-1 text-xs text-gray-500 dark:text-gray-400">{order.itemsCount} items</td>
-                        <td className="py-3 px-1 text-xs font-black text-[#9a0002]">{formatCurrency(order.total)}</td>
-                        <td className="py-3 px-1">
-                          <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[9px] font-black whitespace-nowrap", status.classes)}>
-                            <MaterialSymbol icon={status.icon} size={11} fill />
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className="py-3 px-1 text-xs text-gray-400 text-right whitespace-nowrap">{order.time}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ── Control Rápido de Stock ────────────────────────────────────────── */}
-          <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
-            <div className="flex items-center justify-between mb-3">
+          {/* Stock */}
+          <section className="min-w-0">
+            <div className="flex items-end justify-between gap-3 mb-3">
               <div>
-                <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                  <MaterialSymbol icon="inventory_2" size={18} className="text-[#9a0002]" />
-                  Control Rápido de Stock
+                <h3 className="font-black text-base text-gray-900 dark:text-white tracking-tight">
+                  Control rápido de stock
                 </h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">Pausá platos sin stock con 1 clic</p>
+                <p className="text-xs text-gray-400 mt-0.5">Pausá platos sin stock con 1 clic</p>
               </div>
-              <Link href="/negocio/carta" className="text-xs font-bold text-[#9a0002] hover:underline">
-                Editar Menú
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              {products.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/70 dark:bg-[#231f1c]/70 border border-gray-100 dark:border-[#3d3732]"
-                >
-                  <div className="truncate pr-2">
-                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{prod.name}</p>
-                    <p className="text-[10px] text-gray-400">{formatCurrency(prod.price)}</p>
-                  </div>
-                  <button
-                    onClick={() => toggleProductStock(prod.id)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer whitespace-nowrap border",
-                      prod.available
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50"
-                        : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
-                    )}
-                  >
-                    {prod.available ? "Disponible" : "Pausado"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── RIGHT COLUMN (2 cols): Business Stats + Drivers ────────────────── */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* ── Business Profile & Weekly Sales Chart ────────────────────────── */}
-          <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                <MaterialSymbol icon="store" size={18} className="text-[#9a0002]" />
-                Estadísticas del Local
-              </h3>
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={cn(
-                  "px-2.5 py-1 rounded-full text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border",
-                  isOpen
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400"
-                    : "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-400"
-                )}
-              >
-                <span className={cn("w-1.5 h-1.5 rounded-full", isOpen ? "bg-emerald-500 animate-ping" : "bg-gray-400")} />
-                {isOpen ? "ABIERTO" : "CERRADO"}
-              </button>
-            </div>
-
-            {/* Avatar, Icon & Ratings */}
-            <div className="flex flex-col items-center text-center mb-5">
-              <div className="relative mb-3">
-                <div className="w-16 h-16 rounded-full bg-[#9a0002] flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-[#9a0002]/15">
-                  {MOCK_BUSINESS.initials}
-                </div>
-                <span className="absolute -top-1 -right-2 px-2 py-0.5 rounded-full bg-[#9a0002] text-white text-[9px] font-black shadow-sm flex items-center gap-0.5">
-                  ⭐ {MOCK_BUSINESS.rating}
-                </span>
-              </div>
-              <p className="font-extrabold text-base text-gray-900 dark:text-gray-100">{MOCK_BUSINESS.name}</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                {MOCK_BUSINESS.reviewsCount} opiniones · T. Respuesta ~{s.avgResponseTimeMin} min
-              </p>
-            </div>
-
-            {/* Weekly Sales Chart */}
-            <div className="pt-2">
-              <p className="text-[11px] font-extrabold uppercase text-gray-400 tracking-wider mb-2">Ventas Semanales</p>
-              <SimpleBarChart data={MOCK_WEEKLY_SALES} labels={MOCK_DAYS} />
-            </div>
-          </div>
-
-          {/* ── Deliveries Asociados (Located directly below the business stats) ── */}
-          <div className="bg-[#faf6f1] dark:bg-[#1c1917] border border-gray-100 dark:border-[#3d3732] penpot-shadow rounded-[24px] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                <MaterialSymbol icon="two_wheeler" size={18} className="text-[#9a0002]" />
-                Deliveries Asociados
-              </h3>
               <Link
-                href="/negocio/equipo"
-                title="Asociar nuevo repartidor"
-                className="w-7 h-7 rounded-full bg-[#9a0002]/10 text-[#9a0002] flex items-center justify-center hover:scale-105 transition-transform"
+                href="/negocio/carta"
+                className="text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
               >
-                <MaterialSymbol icon="person_add" size={16} />
+                Editar menú
               </Link>
             </div>
 
-            <div className="space-y-3">
-              {MOCK_DRIVERS.map((driver) => (
-                <div
-                  key={driver.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/70 dark:bg-[#231f1c]/70 border border-gray-100 dark:border-[#3d3732]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#9a0002]/10 text-[#9a0002] font-black text-xs flex items-center justify-center">
-                      {driver.name.charAt(0)}
+            <div className="relative w-full">
+              <div
+                className={cn(
+                  "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                  stockScroll.isAtStart ? "opacity-0" : "opacity-100"
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                  stockScroll.isAtEnd ? "opacity-0" : "opacity-100"
+                )}
+              />
+
+              <div ref={stockRef} className="flex gap-4 overflow-x-auto custom-scrollbar px-3 pt-2 pb-4">
+                {products.map((prod) => (
+                  <div key={prod.id} className={cn(CARD, "w-[200px] flex-shrink-0 overflow-hidden")}>
+                    <div className="relative h-[118px] bg-[#f2ece2] dark:bg-[#231f1c]">
+                      {prod.image ? (
+                        <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => toggleProductStock(prod.id)}
+                        className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 dark:bg-[#1c1917]/95 shadow-sm flex items-center justify-center cursor-pointer text-gray-500"
+                        title={prod.available ? "Pausar" : "Activar"}
+                      >
+                        <MaterialSymbol
+                          icon="favorite"
+                          size={16}
+                          fill={prod.available}
+                          className={prod.available ? "text-[#9a0002]" : "text-gray-400"}
+                        />
+                      </button>
+                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/95 dark:bg-[#1c1917]/95 text-gray-600 dark:text-gray-300">
+                        {prod.category}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{driver.name}</p>
-                      <p className="text-[10px] text-gray-400">{driver.role}</p>
+                    <div className="p-3.5">
+                      <p className="text-sm font-black text-gray-900 dark:text-white line-clamp-2 min-h-[2.5rem]">
+                        {prod.name}
+                      </p>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-[#f2ece2] dark:bg-[#231f1c] flex-shrink-0">
+                          {MOCK_BUSINESS.logoImage ? (
+                            <img src={MOCK_BUSINESS.logoImage} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] font-black flex items-center justify-center h-full text-gray-600">
+                              {MOCK_BUSINESS.initials.charAt(0)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate">
+                            {formatCurrency(prod.price)}
+                          </p>
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {prod.available ? "Disponible" : "Pausado"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
 
-                  <span
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-[9px] font-black uppercase border",
-                      driver.status === "available"
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40"
-                        : "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/40"
-                    )}
-                  >
-                    {driver.status === "available" ? "Disponible" : `En reparto #${driver.currentOrder}`}
-                  </span>
-                </div>
-              ))}
+        {/* Right rail — cover + stats + deliveries */}
+        <aside className="lg:col-span-2 flex min-h-0">
+          <section className={cn(CARD, "w-full flex-1 flex flex-col overflow-hidden")}>
+            {/* Cover like featured chains (h≈130) */}
+            <div className="relative h-[120px] flex-shrink-0 bg-[#5d4037]">
+              {MOCK_BUSINESS.bannerImage && (
+                <img
+                  src={MOCK_BUSINESS.bannerImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+              <div className="absolute top-3 right-3">
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-md",
+                    isOpen ? "bg-white/90 text-gray-800" : "bg-black/50 text-white"
+                  )}
+                >
+                  <span className={cn("w-1.5 h-1.5 rounded-full", isOpen ? "bg-emerald-500 animate-pulse" : "bg-gray-300")} />
+                  {isOpen ? "Abierto" : "Cerrado"}
+                </button>
+              </div>
+              {MOCK_BUSINESS.tagline && (
+                <p className="absolute bottom-3 left-4 right-4 text-white text-xs font-bold drop-shadow-sm line-clamp-1">
+                  {MOCK_BUSINESS.tagline}
+                </p>
+              )}
             </div>
 
-            <Link
-              href="/negocio/equipo"
-              className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[#9a0002]/20 text-[#9a0002] text-xs font-bold hover:bg-[#9a0002]/5 transition-colors cursor-pointer"
-            >
-              <MaterialSymbol icon="group" size={16} />
-              <span>Gestionar Equipo & Repartidores</span>
-            </Link>
-          </div>
+            <div className="flex flex-col flex-1 p-5 pt-0">
+              <div className="flex flex-col items-center text-center -mt-10 mb-4">
+                <ProgressRing pct={isTutorialComplete ? ratingPct : progressPct}>
+                  {MOCK_BUSINESS.logoImage ? (
+                    <img src={MOCK_BUSINESS.logoImage} alt={MOCK_BUSINESS.name} className="w-full h-full object-cover" />
+                  ) : (
+                    MOCK_BUSINESS.initials
+                  )}
+                </ProgressRing>
+                <p className="mt-4 font-black text-base text-gray-900 dark:text-white tracking-tight">
+                  {greeting}, {MOCK_BUSINESS.name.split(" ").slice(-2).join(" ")} 🔥
+                </p>
+                <p className="text-xs text-gray-400 mt-1 max-w-[240px]">
+                  {MOCK_BUSINESS.rating} ★ · {MOCK_BUSINESS.reviewsCount} opiniones · resp. ~{s.avgResponseTimeMin} min
+                </p>
+              </div>
 
-        </div>
+              <div className="mb-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-300 dark:text-gray-500 mb-1">
+                  Ventas semanales
+                </p>
+                <SimpleBarChart data={MOCK_WEEKLY_SALES} labels={MOCK_DAYS} />
+              </div>
+
+              <div className="mt-auto pt-5 border-t border-[#f0ebe4] dark:border-[#2a2623]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-sm text-gray-900 dark:text-white">Deliveries asociados</h3>
+                  <Link
+                    href="/negocio/equipo"
+                    className="w-8 h-8 rounded-full bg-[#f2ece2] dark:bg-[#231f1c] text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors"
+                    title="Asociar repartidor"
+                  >
+                    <MaterialSymbol icon="person_add" size={16} />
+                  </Link>
+                </div>
+
+                <div className="space-y-3">
+                  {MOCK_DRIVERS.map((driver) => (
+                    <div key={driver.id} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[#f2ece2] dark:bg-[#231f1c] text-gray-700 dark:text-gray-300 font-black text-sm flex items-center justify-center flex-shrink-0">
+                          {driver.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{driver.name}</p>
+                          <p className="text-[11px] text-gray-400">{driver.role}</p>
+                        </div>
+                      </div>
+
+                      {driver.status === "available" ? (
+                        <Link
+                          href="/negocio/pedidos"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#3d3732] text-gray-600 dark:text-gray-300 text-[11px] font-bold hover:bg-[#f2ece2] dark:hover:bg-[#231f1c] transition-colors whitespace-nowrap"
+                        >
+                          <MaterialSymbol icon="add" size={14} />
+                          Asignar
+                        </Link>
+                      ) : (
+                        <span className="px-3 py-1.5 rounded-full bg-[#f2ece2] dark:bg-[#231f1c] text-gray-600 dark:text-gray-300 text-[10px] font-black whitespace-nowrap">
+                          #{driver.currentOrder}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <Link
+                  href="/negocio/equipo"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-[#f2ece2] hover:bg-[#ede4d9] dark:bg-[#231f1c] dark:hover:bg-[#2a2623] text-gray-700 dark:text-gray-300 text-xs font-bold transition-colors"
+                >
+                  Ver todos
+                </Link>
+              </div>
+            </div>
+          </section>
+        </aside>
       </div>
+
+      {/* Actividad — full width */}
+      <section className={cn(CARD, "p-5 md:p-6")}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-black text-base text-gray-900 dark:text-white tracking-tight">
+            Actividad reciente
+          </h3>
+          <Link
+            href="/negocio/pedidos"
+            className="text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+          >
+            Ver todos
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto -mx-1">
+          <table className="w-full text-left min-w-[640px]">
+            <thead>
+              <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-300 dark:text-gray-500">
+                <th className="pb-3 px-2 font-bold">Cliente</th>
+                <th className="pb-3 px-2 font-bold">Tipo</th>
+                <th className="pb-3 px-2 font-bold">Detalle</th>
+                <th className="pb-3 px-2 font-bold text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOCK_RECENT_ORDERS.map((order, idx) => {
+                const status = STATUS_CONFIG[order.status];
+                return (
+                  <tr
+                    key={order.id}
+                    className={cn(
+                      idx !== MOCK_RECENT_ORDERS.length - 1 && "border-b border-[#f0ebe4] dark:border-[#2a2623]"
+                    )}
+                  >
+                    <td className="py-3.5 px-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[#f2ece2] dark:bg-[#231f1c] text-gray-700 dark:text-gray-300 font-black text-xs flex items-center justify-center flex-shrink-0">
+                          {order.customerName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                            {order.customerName}
+                          </p>
+                          <p className="text-[11px] text-gray-400">#{order.orderNumber} · {order.time}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-2">
+                      <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap", status.classes)}>
+                        <MaterialSymbol icon={status.icon} size={12} fill />
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-2">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {order.itemsCount} items
+                      </p>
+                      <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100">{formatCurrency(order.total)}</p>
+                    </td>
+                    <td className="py-3.5 px-2 text-right">
+                      <Link
+                        href="/negocio/pedidos"
+                        className="inline-flex w-9 h-9 rounded-full bg-[#f2ece2] dark:bg-[#231f1c] text-gray-500 hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-gray-900 items-center justify-center transition-colors"
+                        aria-label={`Ver pedido ${order.orderNumber}`}
+                      >
+                        <MaterialSymbol icon="arrow_forward" size={16} />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

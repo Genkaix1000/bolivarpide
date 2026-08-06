@@ -84,7 +84,7 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
   const sidebarContent = (isMobile: boolean) => {
     const isIconOnly = collapsed && !isMobile;
     return (
-      <div className="flex flex-col h-full py-2">
+      <div className={cn("flex flex-col h-full py-2 overflow-x-hidden", isIconOnly && "overflow-y-auto no-scrollbar")}>
         {/* Header */}
         <div className={cn("flex items-center h-[56px] mb-2", isIconOnly ? "justify-center px-0 flex-col gap-2" : "justify-between px-4")}>
           <div className="flex items-center gap-2.5 overflow-hidden">
@@ -133,7 +133,12 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
         )}
 
         {/* Nav */}
-        <nav className={cn("flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar", isIconOnly ? "px-2" : "px-3")}>
+        <nav
+          className={cn(
+            "flex-1 flex flex-col gap-1 overflow-y-auto overflow-x-hidden",
+            isIconOnly ? "px-2 no-scrollbar" : "px-3 custom-scrollbar"
+          )}
+        >
           {NAV_ITEMS.map((item) => renderNavItem(item, isMobile))}
         </nav>
 
@@ -170,7 +175,7 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-[#faf6f1] dark:bg-[#1c1917] border-r border-gray-100 dark:border-[#3d3732] transition-all duration-300 z-30",
+          "hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-[#faf6f1] dark:bg-[#1c1917] border-r border-gray-100 dark:border-[#3d3732] transition-all duration-300 z-30 overflow-x-hidden",
           collapsed ? "w-[64px]" : "w-[240px]"
         )}
       >

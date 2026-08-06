@@ -182,8 +182,13 @@ html::-webkit-scrollbar-thumb:hover {
   align-items: flex-start;
 }
 
+/* Native bar hidden — MiniScrollBar (short, centered) shows only on overflow */
 .semicircle-track::-webkit-scrollbar {
   display: none;
+}
+.semicircle-track {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Hide Scrollbar Utilities */

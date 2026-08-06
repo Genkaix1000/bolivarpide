@@ -64,8 +64,8 @@ export function SimpleBarChart({ data, labels, className }: SimpleBarChartProps)
                 y={y}
                 width={barWidth}
                 height={barH}
-                rx={6}
-                className={cn("transition-all duration-200", isHover || isPeak ? "fill-[#9a0002]" : "fill-[#9a0002]/25")}
+                rx={8}
+                className={cn("transition-all duration-200", isHover || isPeak ? "fill-[#9a0002]" : "fill-[#9a0002]/20")}
               />
               <text
                 x={x + barWidth / 2}

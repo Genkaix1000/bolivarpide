@@ -152,21 +152,22 @@ export default function HomePage() {
   // Monitor scrolling state for Menús del Momento to apply dynamic mask fades
   useEffect(() => {
     if (isLoading) return;
-    const container = trendingContainerRef.current;
-    if (!container) return;
+    const el = trendingContainerRef.current;
+    if (!el) return;
 
-    const checkScroll = () => {
-      const isAtStart = container.scrollLeft <= 10;
-      const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 15;
-      setTrendingScrollState({ isAtStart, isAtEnd });
+    const check = () => {
+      setTrendingScrollState({
+        isAtStart: el.scrollLeft <= 10,
+        isAtEnd: el.scrollLeft + el.clientWidth >= el.scrollWidth - 15,
+      });
     };
 
-    checkScroll();
-    container.addEventListener("scroll", checkScroll);
-    window.addEventListener("resize", checkScroll);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
     return () => {
-      container.removeEventListener("scroll", checkScroll);
-      window.removeEventListener("resize", checkScroll);
+      el.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
     };
   }, [isLoading]);
 
@@ -363,28 +364,24 @@ export default function HomePage() {
                     <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Menús del momento</h3>
                   </div>
 
-                  {/* Relative wrapper for absolute scroll fade overlays */}
+                  {/* Relative wrapper for absolute scroll fade overlays (same pattern as negocio stock) */}
                   <div className="relative w-full">
-                    {/* Left overlay */}
                     <div
                       className={cn(
-                        "absolute left-0 top-0 bottom-[5px] w-8 bg-gradient-to-r from-gray-50 dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                        "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
                         trendingScrollState.isAtStart ? "opacity-0" : "opacity-100"
                       )}
                     />
-
-                    {/* Right overlay */}
                     <div
                       className={cn(
-                        "absolute right-0 top-0 bottom-[5px] w-8 bg-gradient-to-l from-gray-50 dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                        "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
                         trendingScrollState.isAtEnd ? "opacity-0" : "opacity-100"
                       )}
                     />
 
-                    {/* Scrollable container */}
                     <div
                       ref={trendingContainerRef}
-                      className="flex items-center gap-4 overflow-x-auto custom-scrollbar pt-1 pb-4"
+                      className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-3 pt-2 pb-4"
                     >
                       {TRENDING_ITEMS.map((item) => {
                         const ownerChain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
@@ -432,8 +429,14 @@ export default function HomePage() {
                               }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div className={`w-[38px] h-[38px] rounded-full ${chain.logoBg} flex items-center justify-center text-lg shadow-inner`}>
-                                {chain.logoEmoji}
+                              <div className="w-[38px] h-[38px] rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-[#3d3732] shadow-xs">
+                                {chain.logoImage ? (
+                                  <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className={`w-full h-full ${chain.logoBg || 'bg-yellow-400'} flex items-center justify-center text-xs font-bold`}>
+                                    {chain.logoEmoji || chain.name[0]}
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <h5 className="font-extrabold text-[11px] text-gray-800 dark:text-gray-100">{chain.name}</h5>
@@ -499,9 +502,17 @@ export default function HomePage() {
         onTabChange={handleTabChange}
         onSearchFocus={() => setIsSearchFocused(true)}
         searchQuery={searchQuery}
-        selectedAddressId={selectedAddressId}
-        setSelectedAddressId={setSelectedAddressId}
+        locationLabel={currentAddressName}
         savedAddresses={savedAddresses}
+        selectedAddressId={selectedAddressId}
+        onSelectAddress={(id) => {
+          setSelectedAddressId(id);
+          setShowLocationDropdown(false);
+        }}
+        showLocationDropdown={showLocationDropdown}
+        onLocationClick={() => {
+          setShowLocationDropdown(!showLocationDropdown);
+        }}
       />
 
       {/* Full-bleed curved home header */}
@@ -580,7 +591,7 @@ export default function HomePage() {
       )}
 
       {/* Main Container */}
-      <div className="flex-1 w-full max-w-[1040px] mx-auto px-4 md:px-0 relative">
+      <div className="flex-1 w-full max-w-[1040px] mx-auto px-4 md:px-8 relative">
         <div className={cn(currentTab === "home" ? "mt-2 md:mt-4" : "mt-4 md:mt-6")}>
           {renderTabContent()}
         </div>
@@ -796,8 +807,14 @@ function SearchOverlayContent({
               className="w-[240px] flex-shrink-0 p-3.5 bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 rounded-[16px] penpot-shadow flex items-center justify-between cursor-pointer hover:border-[#9a0002]/30 active:scale-98 transition-all duration-300"
             >
               <div className="flex items-center gap-3">
-                <div className={`w-[38px] h-[38px] rounded-full ${chain.logoBg} flex items-center justify-center text-lg shadow-inner`}>
-                  {chain.logoEmoji}
+                <div className="w-[38px] h-[38px] rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-[#3d3732] shadow-xs">
+                  {chain.logoImage ? (
+                    <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={`w-full h-full ${chain.logoBg || 'bg-yellow-400'} flex items-center justify-center text-xs font-bold`}>
+                      {chain.logoEmoji || chain.id}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h5 className="font-extrabold text-[11px] text-gray-800 dark:text-gray-100">{chain.name}</h5>
@@ -825,22 +842,35 @@ function FeaturedCard({ chain }: { chain: FeaturedChain }) {
   return (
     <div className="group rounded-[16px] bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/50 penpot-shadow overflow-hidden transition-all duration-300 cursor-pointer">
       {/* Banner */}
-      <div className={`h-[130px] ${chain.bannerBg} relative flex items-center justify-center p-6 text-white`}>
-        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors duration-300" />
+      <div className={`h-[130px] ${chain.bannerBg} relative flex items-center justify-center p-6 text-white overflow-hidden`}>
+        {chain.bannerImage && (
+          <img
+            src={chain.bannerImage}
+            alt={chain.name}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors duration-300" />
         <div className="relative z-10 text-center">
-          <span className="text-[10px] bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+          <span className="text-[10px] bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full font-bold uppercase tracking-wider text-white border border-white/30">
             Destacado
           </span>
-          <h4 className="text-lg font-black mt-1.5 drop-shadow">{chain.name}</h4>
-          <p className="text-xs text-white/90 font-medium drop-shadow">{chain.bannerText}</p>
+          <h4 className="text-lg font-black mt-1.5 drop-shadow-md text-white">{chain.name}</h4>
+          <p className="text-xs text-white/95 font-medium drop-shadow-sm">{chain.bannerText}</p>
         </div>
       </div>
 
       {/* Details */}
       <div className="h-[70px] px-4 flex items-center justify-between bg-white dark:bg-[#1c1917]">
         <div className="flex items-center gap-3">
-          <div className={`w-[40px] h-[40px] rounded-full ${chain.logoBg} flex items-center justify-center text-xl shadow-inner border border-gray-100 dark:border-[#3d3732]`}>
-            {chain.logoEmoji}
+          <div className="w-[42px] h-[42px] rounded-full overflow-hidden border-2 border-white dark:border-[#3d3732] shadow-md flex-shrink-0">
+            {chain.logoImage ? (
+              <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className={`w-full h-full ${chain.logoBg} flex items-center justify-center text-xl`}>
+                {chain.logoEmoji}
+              </div>
+            )}
           </div>
           <div>
             <h5 className="font-extrabold text-xs text-gray-800 dark:text-gray-100">{chain.name}</h5>
@@ -875,13 +905,24 @@ function TrendingMenuCard({
   return (
     <div
       className={cn(
-        "bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 penpot-shadow rounded-[16px] p-0 flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer",
+        "bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 penpot-shadow rounded-[16px] p-0 flex flex-col overflow-hidden hover:shadow-xl hover:-translate-y-1 hover:border-[#9a0002]/40 transition-all duration-300 group cursor-pointer",
         className
       )}
     >
       {/* Product Image Box */}
-      <div className={`h-[100px] ${item.bgColor} flex items-center justify-center text-4xl shadow-inner group-hover:scale-105 transition-transform duration-300`}>
-        {item.emoji}
+      <div className="h-[125px] w-full relative overflow-hidden bg-[#ede4d9]/50 dark:bg-[#231f1c]">
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl">
+            {item.emoji}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-20 transition-opacity" />
       </div>
 
       {/* Product details with owner brand headers */}
@@ -889,8 +930,14 @@ function TrendingMenuCard({
         {/* Owner Header */}
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3d3732]/60 pb-2 mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className={`w-[22px] h-[22px] rounded-full ${ownerChain?.logoBg || 'bg-[#faf6f1]'} border border-gray-100 dark:border-[#3d3732] flex items-center justify-center text-[10px] shadow-inner flex-shrink-0`}>
-              {ownerChain?.logoEmoji || '🍔'}
+            <div className="w-[22px] h-[22px] rounded-full overflow-hidden border border-gray-100 dark:border-[#3d3732] flex-shrink-0">
+              {ownerChain?.logoImage ? (
+                <img src={ownerChain.logoImage} alt={ownerChain.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-[10px]">
+                  {ownerChain?.logoEmoji || '🍔'}
+                </div>
+              )}
             </div>
             <span className="font-extrabold text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-[85px]">
               {ownerChain?.name || item.storeName}
@@ -904,7 +951,7 @@ function TrendingMenuCard({
 
         {/* Item Name & Pricing */}
         <div className="flex flex-col justify-between h-[48px] mt-0.5">
-          <h4 className="font-extrabold text-xs text-gray-800 dark:text-gray-100 leading-tight truncate">
+          <h4 className="font-extrabold text-xs text-gray-800 dark:text-gray-100 leading-tight truncate group-hover:text-[#9a0002] transition-colors">
             {item.name}
           </h4>
           <div className="flex items-center justify-between">
