@@ -433,7 +433,7 @@ export default function HomePage() {
                                 {chain.logoImage ? (
                                   <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className={`w-full h-full ${chain.logoBg || 'bg-yellow-400'} flex items-center justify-center text-xs font-bold`}>
+                                  <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xs font-bold">
                                     {chain.logoEmoji || chain.name[0]}
                                   </div>
                                 )}
@@ -811,7 +811,7 @@ function SearchOverlayContent({
                   {chain.logoImage ? (
                     <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className={`w-full h-full ${chain.logoBg || 'bg-yellow-400'} flex items-center justify-center text-xs font-bold`}>
+                    <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xs font-bold">
                       {chain.logoEmoji || chain.id}
                     </div>
                   )}
@@ -867,7 +867,7 @@ function FeaturedCard({ chain }: { chain: FeaturedChain }) {
             {chain.logoImage ? (
               <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
             ) : (
-              <div className={`w-full h-full ${chain.logoBg} flex items-center justify-center text-xl`}>
+              <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xl">
                 {chain.logoEmoji}
               </div>
             )}

@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -317,66 +316,8 @@ html::-webkit-scrollbar-thumb:hover {
   background: #c62828;
 }
 
-
-/* Shimmer Animation – Warm Cream tones */
-@keyframes shimmer-ani {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-.shimmer-bg {
-  background: linear-gradient(
-    90deg,
-    #ede4d9 25%,
-    #faf6f1 50%,
-    #ede4d9 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer-ani 1.5s infinite linear;
-}
-
-/* Scroll Fade Mask States to hide/blur sharp cuts dynamically based on overflow scroll position */
-.scroll-fade-start {
-  mask-image: linear-gradient(to right, black 90%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
-}
-
-.scroll-fade-end {
-  mask-image: linear-gradient(to left, black 90%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to left, black 90%, transparent 100%);
-}
-
+/* Horizontal scroll fade mask for edge fading */
 .scroll-fade-middle {
   mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
-}
-
-.scroll-fade-none {
-  mask-image: none;
-  -webkit-mask-image: none;
-}
-
-/* Vertical Scroll Fade Mask States */
-.scroll-fade-y-start {
-  mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
-}
-
-.scroll-fade-y-end {
-  mask-image: linear-gradient(to top, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, black 85%, transparent 100%);
-}
-
-.scroll-fade-y-middle {
-  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
-}
-
-.scroll-fade-y-none {
-  mask-image: none;
-  -webkit-mask-image: none;
 }

@@ -12,7 +12,7 @@ export function BusinessLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-[#faf6f1] dark:bg-[#1c1917]">
+    <div className="flex min-h-screen bg-[#f3efe8] dark:bg-[#1c1917]">
       <BusinessSidebar
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
@@ -23,7 +23,7 @@ export function BusinessLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <BusinessTopbar onMenuClick={() => setMobileOpen(true)} />
 
-        <main className="flex-1 overflow-x-hidden px-4 py-4 md:px-8 md:py-8">
+        <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-7">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={pathname}

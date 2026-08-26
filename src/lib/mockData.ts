@@ -4,11 +4,6 @@ export interface Category {
   /** Material Symbol ligature name */
   icon: string;
   image?: string;
-  /** @deprecated use `icon` — kept for gradual migration */
-  emoji: string;
-  bgColor: string;
-  textColor: string;
-  activeBgColor: string;
 }
 
 export interface PromoBanner {
@@ -20,9 +15,6 @@ export interface PromoBanner {
   image?: string;
   /** Material Symbol ligature name */
   icon: string;
-  /** @deprecated use `icon` */
-  emoji: string;
-  gradient: string;
 }
 
 export interface SpecialtyCategory {
@@ -40,7 +32,6 @@ export interface FeaturedChain {
   bannerImage?: string;
   logoEmoji: string;
   logoImage?: string;
-  logoBg: string;
   timeEstimate: string;
   deliveryFee: number;
   rating: number;
@@ -54,7 +45,6 @@ export interface TrendingItem {
   price: number;
   emoji: string;
   image?: string;
-  bgColor: string;
 }
 
 export interface PopularChain {
@@ -155,37 +145,21 @@ export const CATEGORIES: Category[] = [
     id: "kiosks",
     name: "Kioscos",
     icon: "storefront",
-    emoji: "storefront",
-    bgColor: "bg-white dark:bg-[#231f1c]",
-    textColor: "text-gray-700 dark:text-gray-300",
-    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "cafes",
     name: "Cafeterías",
     icon: "local_cafe",
-    emoji: "local_cafe",
-    bgColor: "bg-white dark:bg-[#231f1c]",
-    textColor: "text-gray-700 dark:text-gray-300",
-    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "restaurants",
     name: "Restaurantes",
     icon: "restaurant_menu",
-    emoji: "restaurant_menu",
-    bgColor: "bg-white dark:bg-[#231f1c]",
-    textColor: "text-gray-700 dark:text-gray-300",
-    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   },
   {
     id: "pharmacies",
     name: "Farmacias",
     icon: "medication",
-    emoji: "medication",
-    bgColor: "bg-white dark:bg-[#231f1c]",
-    textColor: "text-gray-700 dark:text-gray-300",
-    activeBgColor: "bg-[#9a0002]/10 border border-[#9a0002] text-[#9a0002]"
   }
 ];
 
@@ -198,8 +172,6 @@ export const PROMO_BANNERS: PromoBanner[] = [
     ctaText: "Pedir 2x1",
     image: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1000&q=80",
     icon: "restaurant_menu",
-    emoji: "restaurant_menu",
-    gradient: "from-[#9a0002] to-[#6b0001]"
   },
   {
     id: "promo-pizza",
@@ -209,8 +181,6 @@ export const PROMO_BANNERS: PromoBanner[] = [
     ctaText: "Ver Pizzas",
     image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=80",
     icon: "local_pizza",
-    emoji: "local_pizza",
-    gradient: "from-[#9a0002] to-[#6b0001]"
   },
   {
     id: "promo-coffee",
@@ -220,8 +190,6 @@ export const PROMO_BANNERS: PromoBanner[] = [
     ctaText: "Ver Cafeterías",
     image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1000&q=80",
     icon: "local_cafe",
-    emoji: "local_cafe",
-    gradient: "from-[#9a0002] to-[#6b0001]"
   },
   {
     id: "promo-sushi",
@@ -231,8 +199,6 @@ export const PROMO_BANNERS: PromoBanner[] = [
     ctaText: "Pedir Sushi",
     image: "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=1000&q=80",
     icon: "set_meal",
-    emoji: "set_meal",
-    gradient: "from-[#9a0002] to-[#6b0001]"
   }
 ];
 
@@ -274,7 +240,6 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     bannerImage: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80",
     logoEmoji: "☕",
     logoImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80",
-    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "12 min",
     deliveryFee: 790.00,
     rating: 4.8
@@ -287,7 +252,6 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     bannerImage: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=80",
     logoEmoji: "🍔",
     logoImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80",
-    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "15 min",
     deliveryFee: 650.00,
     rating: 4.6
@@ -300,7 +264,6 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     bannerImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
     logoEmoji: "🍕",
     logoImage: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=200&q=80",
-    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "20 min",
     deliveryFee: 550.00,
     rating: 4.7
@@ -313,7 +276,6 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     bannerImage: "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=800&q=80",
     logoEmoji: "🍣",
     logoImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=200&q=80",
-    logoBg: "bg-[#faf6f1] dark:bg-[#2a2623]",
     timeEstimate: "25 min",
     deliveryFee: 890.00,
     rating: 4.9
@@ -329,7 +291,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 5900.00,
     emoji: "🍔",
     image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "cheese-meat-pizza",
@@ -339,7 +300,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 6800.00,
     emoji: "🍕",
     image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "cappuccino-media",
@@ -349,7 +309,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 3400.00,
     emoji: "☕",
     image: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "salmon-combo",
@@ -359,7 +318,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 12500.00,
     emoji: "🍣",
     image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "double-cheddar",
@@ -369,7 +327,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 6400.00,
     emoji: "🍔",
     image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "garlic-bread",
@@ -379,7 +336,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 2900.00,
     emoji: "🥖",
     image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "muffin-chocolate",
@@ -389,7 +345,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 1900.00,
     emoji: "🧁",
     image: "https://images.unsplash.com/photo-1607958996333-41aef7caefaa?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "veggie-roll",
@@ -399,7 +354,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 9800.00,
     emoji: "🍣",
     image: "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   },
   {
     id: "loaded-fries",
@@ -409,7 +363,6 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 4500.00,
     emoji: "🍟",
     image: "https://images.unsplash.com/photo-1585109649139-366815a0d713?auto=format&fit=crop&w=600&q=80",
-    bgColor: "bg-[#ede4d9]/50 dark:bg-[#231f1c]"
   }
 ];
 
@@ -474,6 +427,22 @@ export const MOCK_RECENT_ORDERS: RecentOrder[] = [
 
 export const MOCK_DETAILED_ORDERS: DetailedOrder[] = [
   {
+    id: "ord-6",
+    orderNumber: 1044,
+    customerName: "Camila Torres",
+    customerPhone: "2314-770184",
+    deliveryAddress: "Mitre 218",
+    itemsCount: 2,
+    items: [
+      { name: "Pizza Napolitana con Aceitunas", qty: 1, price: 7400 },
+      { name: "Coca-Cola 1.5L", qty: 1, price: 2200 },
+    ],
+    total: 9600,
+    paymentMethod: "Mercado Pago",
+    status: "pending",
+    time: "18:55",
+  },
+  {
     id: "ord-1",
     orderNumber: 1043,
     customerName: "Valentina Paz",
@@ -506,6 +475,24 @@ export const MOCK_DETAILED_ORDERS: DetailedOrder[] = [
     status: "preparing",
     estimatedTime: 20,
     time: "18:40",
+  },
+  {
+    id: "ord-5",
+    orderNumber: 1038,
+    customerName: "Diego Ruiz",
+    customerPhone: "2314-334871",
+    deliveryAddress: "Sarmiento 77, Local 4",
+    itemsCount: 8,
+    items: [
+      { name: "Empanada Carne Cuchillo", qty: 6, price: 1500 },
+      { name: "Agua Mineral sin Gas 500ml", qty: 2, price: 900 },
+    ],
+    total: 10800,
+    paymentMethod: "Efectivo",
+    status: "preparing",
+    estimatedTime: 15,
+    time: "18:28",
+    notes: "Sin aceitunas.",
   },
   {
     id: "ord-3",

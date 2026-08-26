@@ -2,15 +2,18 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const GENERAL_NAV = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/negocio/dashboard" },
-  { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: "/negocio/pedidos", badge: 3 },
+  { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: "/negocio/pedidos", badge: 2 },
   { id: "carta", label: "Carta", icon: "menu_book", href: "/negocio/carta" },
+];
+
+const SUPPORT_NAV = [
   { id: "equipo", label: "Equipo", icon: "group", href: "/negocio/equipo" },
 ];
 
@@ -23,12 +26,6 @@ interface BusinessSidebarProps {
 
 export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileClose }: BusinessSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleLogout = () => {
-    onMobileClose();
-    router.push("/");
-  };
 
   const renderNavItem = (item: { id: string; label: string; icon: string; href: string; badge?: number }, isMobile: boolean) => {
     const isActive = pathname === item.href;
@@ -42,38 +39,39 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
         className={cn(
           "group relative flex items-center transition-all duration-200 cursor-pointer",
           isIconOnly
-            ? "justify-center h-12 w-12 mx-auto rounded-2xl my-0.5"
-            : "gap-3 h-11 rounded-xl px-3.5 border-l-2 my-0.5",
-          isIconOnly && isActive && "bg-[#9a0002]/10 dark:bg-[#9a0002]/20 text-[#9a0002] dark:text-[#ff6b6b] shadow-xs",
-          isIconOnly && !isActive && "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] hover:text-gray-900 dark:hover:text-gray-100",
-          !isIconOnly && isActive && "bg-[#9a0002]/10 text-[#9a0002] font-bold border-[#9a0002]",
-          !isIconOnly && !isActive && "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200 border-transparent"
+            ? "justify-center h-10 w-10 mx-auto rounded-xl my-0.5"
+            : "gap-3 h-10 rounded-xl px-3 my-0.5",
+          isIconOnly && isActive && "bg-[#9a0002]/10 dark:bg-[#9a0002]/20 text-[#9a0002]",
+          isIconOnly && !isActive && "text-gray-400 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-100",
+          !isIconOnly && isActive && "bg-[#9a0002]/10 text-[#9a0002] font-semibold",
+          !isIconOnly && !isActive && "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200"
         )}
       >
         <div className="relative flex items-center justify-center">
-          <MaterialSymbol icon={item.icon} size={22} fill={isActive} className="flex-shrink-0" />
+          <MaterialSymbol icon={item.icon} size={20} fill={isActive} className="flex-shrink-0" />
           {isIconOnly && item.badge && item.badge > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#9a0002] text-white text-[9px] font-black flex items-center justify-center border-2 border-[#faf6f1] dark:border-[#1c1917]">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#9a0002] text-white text-[9px] font-black flex items-center justify-center border-2 border-[#f5f1eb] dark:border-[#1c1917]">
               {item.badge}
             </span>
           )}
         </div>
         <span
           className={cn(
-            "text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 overflow-hidden flex-1 flex items-center justify-between",
-            isIconOnly ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+            "text-[13px] font-medium tracking-tight whitespace-nowrap transition-all duration-300 overflow-hidden flex-1 flex items-center justify-between",
+            isIconOnly ? "w-0 opacity-0 hidden" : "w-auto opacity-100",
+            isActive && "font-semibold"
           )}
         >
           <span>{item.label}</span>
           {!isIconOnly && item.badge && item.badge > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-[#9a0002] text-white text-[10px] font-black shadow-xs animate-pulse">
-              {item.badge} nuevos
+            <span className="px-1.5 py-0.5 rounded-md bg-[#9a0002] text-white text-[10px] font-bold">
+              {item.badge}
             </span>
           )}
         </span>
 
         {isIconOnly && (
-          <span className="pointer-events-none absolute left-full ml-3 px-2.5 py-1.5 rounded-xl bg-gray-900 dark:bg-[#302c28] text-white text-xs font-bold whitespace-nowrap opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 z-50 shadow-xl">
+          <span className="pointer-events-none absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-gray-900 dark:bg-[#302c28] text-white text-xs font-medium whitespace-nowrap opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 z-50 shadow-xl">
             {item.label} {item.badge ? `(${item.badge})` : ""}
           </span>
         )}
@@ -81,19 +79,25 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
     );
   };
 
+  const sectionLabel = (label: string, isIconOnly: boolean) =>
+    !isIconOnly ? (
+      <p className="px-3 mb-1.5 mt-4 first:mt-0 text-[11px] font-medium text-gray-400 dark:text-gray-500 tracking-wide">
+        {label}
+      </p>
+    ) : null;
+
   const sidebarContent = (isMobile: boolean) => {
     const isIconOnly = collapsed && !isMobile;
     return (
-      <div className={cn("flex flex-col h-full py-2 overflow-x-hidden", isIconOnly && "overflow-y-auto no-scrollbar")}>
-        {/* Header */}
-        <div className={cn("flex items-center h-[56px] mb-2", isIconOnly ? "justify-center px-0 flex-col gap-2" : "justify-between px-4")}>
+      <div className={cn("flex flex-col h-full py-3 overflow-x-hidden", isIconOnly && "overflow-y-auto no-scrollbar")}>
+        <div className={cn("flex items-center h-[48px] mb-3", isIconOnly ? "justify-center px-0" : "justify-between px-4")}>
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-lg shadow-sm flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0">
               B
             </div>
             <span
               className={cn(
-                "font-extrabold text-sm tracking-tight text-gray-800 dark:text-gray-100 whitespace-nowrap transition-all duration-300",
+                "font-bold text-[15px] tracking-tight text-gray-900 dark:text-gray-100 whitespace-nowrap transition-all duration-300",
                 isIconOnly ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
               )}
             >
@@ -105,7 +109,7 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
             <button
               onClick={onMobileClose}
               aria-label="Cerrar menú"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] hover:text-gray-700 transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] cursor-pointer"
             >
               <MaterialSymbol icon="close" size={18} />
             </button>
@@ -115,7 +119,7 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
             <button
               onClick={onToggleCollapse}
               aria-label="Colapsar menú"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] hover:text-gray-700 transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623] cursor-pointer"
             >
               <MaterialSymbol icon="menu_open" size={18} />
             </button>
@@ -126,45 +130,71 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
           <button
             onClick={onToggleCollapse}
             aria-label="Expandir menú"
-            className="mx-auto mb-3 w-10 h-10 rounded-2xl flex items-center justify-center text-gray-500 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-100 transition-colors cursor-pointer"
+            className="mx-auto mb-3 w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] cursor-pointer"
           >
-            <MaterialSymbol icon="menu" size={20} />
+            <MaterialSymbol icon="menu" size={18} />
           </button>
         )}
 
-        {/* Nav */}
         <nav
           className={cn(
-            "flex-1 flex flex-col gap-1 overflow-y-auto overflow-x-hidden",
-            isIconOnly ? "px-2 no-scrollbar" : "px-3 custom-scrollbar"
+            "flex-1 flex flex-col overflow-y-auto overflow-x-hidden",
+            isIconOnly ? "px-2 no-scrollbar" : "px-2.5 custom-scrollbar"
           )}
         >
-          {NAV_ITEMS.map((item) => renderNavItem(item, isMobile))}
+          {sectionLabel("General", isIconOnly)}
+          {GENERAL_NAV.map((item) => renderNavItem(item, isMobile))}
+          {sectionLabel("Soporte", isIconOnly)}
+          {SUPPORT_NAV.map((item) => renderNavItem(item, isMobile))}
         </nav>
 
-        {/* Footer */}
-        <div className={cn("pb-2 pt-2 flex flex-col gap-1 border-t border-gray-200/60 dark:border-[#3d3732] mt-2", isIconOnly ? "px-2" : "px-3")}>
+        <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>
           {renderNavItem({ id: "configuracion", label: "Configuración", icon: "settings", href: "/negocio/configuracion" }, isMobile)}
-          <button
-            onClick={handleLogout}
-            title={isIconOnly ? "Desconectar" : undefined}
-            className={cn(
-              "group relative flex items-center transition-all duration-200 cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-[#9a0002]",
-              isIconOnly
-                ? "justify-center h-12 w-12 mx-auto rounded-2xl my-0.5"
-                : "gap-3 h-11 rounded-xl px-3.5 my-0.5"
+
+          {/* Free plan → Premium upgrade (hardcoded free) */}
+          <div className={cn("mt-3 mb-1", isIconOnly ? "flex justify-center" : "")}>
+            {isIconOnly ? (
+              <button
+                type="button"
+                title="Upgrade a Premium"
+                onClick={onMobileClose}
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white cursor-pointer shadow-sm"
+              >
+                <MaterialSymbol icon="workspace_premium" size={20} />
+              </button>
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002] via-[#8a0002] to-[#4a0001] p-3.5 text-white shadow-[0_12px_28px_-12px_rgba(154,0,2,0.55)]">
+                <div
+                  className="pointer-events-none absolute top-2 right-2 w-16 h-16 opacity-25"
+                  style={{
+                    backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px)",
+                    backgroundSize: "6px 6px",
+                    maskImage: "radial-gradient(circle at top right, black 30%, transparent 75%)",
+                    WebkitMaskImage: "radial-gradient(circle at top right, black 30%, transparent 75%)",
+                  }}
+                />
+                <div className="relative z-10 space-y-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/95 flex items-center justify-center text-[#9a0002]">
+                    <MaterialSymbol icon="emoji_events" size={18} fill />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-white/65">Plan actual · Free</p>
+                    <p className="text-[14px] font-bold tracking-tight mt-0.5">Upgrade a Premium</p>
+                    <p className="text-[11px] text-white/70 mt-1 leading-snug">
+                      Desbloqueá reportes, más equipo y prioridad en el ranking.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onMobileClose}
+                    className="w-full py-2.5 rounded-full bg-[#c62828] hover:bg-[#d32f2f] text-white text-[12px] font-bold transition-colors cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                  >
+                    Upgrade premium
+                  </button>
+                </div>
+              </div>
             )}
-          >
-            <MaterialSymbol icon="logout" size={21} className="flex-shrink-0" />
-            <span
-              className={cn(
-                "text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 overflow-hidden",
-                isIconOnly ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-              )}
-            >
-              Desconectar
-            </span>
-          </button>
+          </div>
         </div>
       </div>
     );
@@ -172,17 +202,15 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-[#faf6f1] dark:bg-[#1c1917] border-r border-gray-100 dark:border-[#3d3732] transition-all duration-300 z-30 overflow-x-hidden",
-          collapsed ? "w-[64px]" : "w-[240px]"
+          "hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-[#f5f1eb] dark:bg-[#161412] border-r border-[#e8e0d6] dark:border-[#3d3732] transition-all duration-300 z-30 overflow-x-hidden",
+          collapsed ? "w-[68px]" : "w-[240px]"
         )}
       >
         {sidebarContent(false)}
       </aside>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <React.Fragment>
@@ -199,7 +227,7 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="md:hidden fixed inset-y-0 left-0 w-[260px] bg-[#faf6f1] dark:bg-[#1c1917] border-r border-gray-100 dark:border-[#3d3732] z-50 shadow-2xl"
+              className="md:hidden fixed inset-y-0 left-0 w-[260px] bg-[#f5f1eb] dark:bg-[#161412] border-r border-[#e8e0d6] dark:border-[#3d3732] z-50 shadow-2xl"
             >
               {sidebarContent(true)}
             </motion.aside>
