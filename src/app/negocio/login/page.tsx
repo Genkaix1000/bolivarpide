@@ -12,11 +12,10 @@ export default async function NegocioLoginPage({
       next={sp.next ?? "/negocio"}
       error={sp.error}
       title="Acceso negocio"
-      subtitle="Operá tu local, gestioná comandas y controlá tu facturación."
-      panelTitle="Potenciá tus ventas y comandas"
-      panelBody="Administrá pedidos en tiempo real, actualizá tu carta digital y llegá a miles de clientes en Bolívar."
+      subtitle="Ingresá tus datos"
       altHref="/login"
-      altLabel="¿Sos cliente? Iniciar sesión"
+      altPrefix="¿Sos cliente?"
+      altLabel="Iniciar sesión"
     />
   );
 }

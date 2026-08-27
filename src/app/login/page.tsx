@@ -12,11 +12,10 @@ export default async function LoginPage({
       next={sp.next ?? "/"}
       error={sp.error}
       title="Iniciá sesión en tu cuenta"
-      subtitle="Pedí comida, seguí tus entregas y coleccioná insignias."
-      panelTitle="Pedí lo mejor de Bolívar en minutos"
-      panelBody="Descubrí los mejores restaurantes, hamburgueserías y cafeterías de la ciudad con entregas en tiempo real."
+      subtitle="Ingresá tus datos"
       altHref="/negocio/login"
-      altLabel="¿Tenés un comercio? Acceso negocio"
+      altPrefix="¿Tenés un local?"
+      altLabel="Acceso negocio"
     />
   );
 }
