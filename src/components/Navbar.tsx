@@ -400,88 +400,67 @@ export default function Navbar({
                     })}
                   </nav>
 
-                  {/* Catchy Promotion Cards in Mobile Drawer */}
-                  <div className="my-3 space-y-2.5 px-1">
-                    {/* Card Comercio */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002] via-[#850002] to-[#450001] p-3.5 text-white shadow-md">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-xs flex items-center gap-1">
-                          <span>🚀</span>
-                          <span>Impulsá tus ventas</span>
-                        </span>
-                      </div>
-                      <h5 className="text-[12px] font-bold text-white leading-tight">
-                        ¿Tenés un comercio?
-                      </h5>
-                      <p className="text-[10px] text-white/80 mt-0.5 leading-snug">
-                        Publicá tu carta y recibí pedidos directos por WhatsApp
-                      </p>
+                  {/* Drawer Footer con botones compactos al fondo a la izquierda */}
+                  <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
+                    <div className="space-y-1.5">
                       <Link
                         href="/negocio/registro"
                         onClick={() => setShowDashboard(false)}
-                        className="mt-2.5 block w-full py-1.5 px-2.5 bg-white text-[#9a0002] text-center text-[11px] font-bold rounded-xl shadow-xs hover:bg-gray-100 transition-all active:scale-95"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group"
                       >
-                        Adherir mi negocio →
+                        <div className="flex items-center gap-2">
+                          <MaterialSymbol icon="storefront" size={16} fill />
+                          <span className="text-[12px] font-bold">Adherir negocio</span>
+                        </div>
+                        <MaterialSymbol icon="arrow_forward" size={15} className="text-[#9a0002]/60 dark:text-red-400/60 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
-                    </div>
 
-                    {/* Card Repartidor */}
-                    <div className="relative overflow-hidden rounded-2xl bg-[#201c1a] dark:bg-[#231f1c] border border-amber-500/25 p-3.5 text-white shadow-sm">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                          <span>🛵</span>
-                          <span>Ingresos flexibles</span>
-                        </span>
-                      </div>
-                      <h5 className="text-[12px] font-bold text-gray-100 leading-tight">
-                        ¿Querés repartir?
-                      </h5>
-                      <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">
-                        Generá ingresos semanales con tus propios horarios
-                      </p>
                       <button
                         type="button"
                         onClick={() => {
                           handleTabChange("profile");
                           setShowDashboard(false);
                         }}
-                        className="mt-2.5 block w-full py-1.5 px-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 text-center text-[11px] font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-800 dark:text-amber-300 transition-all group cursor-pointer"
                       >
-                        Sumarme como repartidor →
+                        <div className="flex items-center gap-2">
+                          <MaterialSymbol icon="sports_motorsports" size={16} fill />
+                          <span className="text-[12px] font-bold">Sumarme como repartidor</span>
+                        </div>
+                        <MaterialSymbol icon="arrow_forward" size={15} className="text-amber-600/60 dark:text-amber-400/60 group-hover:translate-x-0.5 transition-transform" />
                       </button>
                     </div>
-                  </div>
 
-                  {/* Drawer Footer al fondo a la izquierda */}
-                  <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-2.5 space-y-1 dark:border-[#3d3732]">
-                    <div className="flex h-9 items-center justify-between rounded-xl px-3">
-                      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Apariencia</span>
-                      <ThemeToggleNavBtn className="h-7 w-7" clipId="nav-theme-drawer" />
+                    <div className="pt-2 border-t border-[#e8e0d6]/70 dark:border-[#3d3732]/70 space-y-1">
+                      <div className="flex h-9 items-center justify-between rounded-xl px-3">
+                        <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Apariencia</span>
+                        <ThemeToggleNavBtn className="h-7 w-7" clipId="nav-theme-drawer" />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleTabChange("profile");
+                          setShowDashboard(false);
+                        }}
+                        className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
+                      >
+                        <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
+                        <span>Configuración de cuenta</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetProfile();
+                          setShowDashboard(false);
+                        }}
+                        className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
+                      >
+                        <MaterialSymbol icon="logout" size={16} />
+                        <span>Cerrar sesión</span>
+                      </button>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleTabChange("profile");
-                        setShowDashboard(false);
-                      }}
-                      className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
-                    >
-                      <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
-                      <span>Configuración de cuenta</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetProfile();
-                        setShowDashboard(false);
-                      }}
-                      className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
-                    >
-                      <MaterialSymbol icon="logout" size={16} />
-                      <span>Cerrar sesión</span>
-                    </button>
                   </div>
                 </motion.aside>
               </>

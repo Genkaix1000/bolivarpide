@@ -305,53 +305,50 @@ export default function HomePage() {
                 <MaterialSymbol icon="location_on" size={18} className="text-[#9a0002]" />
               </div>
 
-              {/* High-Impact Conversion Cards (Comercio & Delivery) */}
-              <div className="space-y-3 pt-1">
-                {/* Card Comercio */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002] via-[#850002] to-[#450001] p-4 text-white shadow-[0_10px_25px_-10px_rgba(154,0,2,0.5)]">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-xs flex items-center gap-1">
-                      <span>🚀</span>
-                      <span>Impulsá tus ventas</span>
-                    </span>
-                    <MaterialSymbol icon="storefront" size={20} className="text-white/80" fill />
-                  </div>
-                  <h4 className="text-[14px] font-bold text-white leading-tight">
-                    ¿Tenés un comercio gastronómico?
-                  </h4>
-                  <p className="text-[11px] text-white/85 mt-1 leading-relaxed">
-                    Publicá tu carta digital, gestioná pedidos en tiempo real y llegá a miles de clientes en Bolívar.
-                  </p>
+              {/* Compact Conversion Options (Comercio & Delivery) */}
+              <div className="space-y-2 pt-1">
+                <h4 className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                  Oportunidades & Comunidad
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Link
                     href={isBusinessOwner ? "/negocio/dashboard" : "/negocio/registro"}
-                    className="mt-3 inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-white hover:bg-gray-100 text-[#9a0002] text-[12px] font-bold rounded-xl transition-all shadow-sm active:scale-95"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group active:scale-98"
                   >
-                    <span>{isBusinessOwner ? "Administrar mi comercio" : "Adherir mi negocio"}</span>
-                    <MaterialSymbol icon="arrow_forward" size={15} />
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-8 h-8 rounded-xl bg-[#9a0002]/15 flex items-center justify-center text-[#9a0002] dark:text-red-300 flex-shrink-0">
+                        <MaterialSymbol icon="storefront" size={18} fill />
+                      </span>
+                      <div className="min-w-0">
+                        <h5 className="text-[12px] font-bold text-gray-900 dark:text-gray-100 truncate">
+                          {isBusinessOwner ? "Mi negocio gastronómico" : "Adherir negocio"}
+                        </h5>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          {isBusinessOwner ? "Panel de administración" : "Publicá tu carta digital"}
+                        </p>
+                      </div>
+                    </div>
+                    <MaterialSymbol icon="arrow_forward" size={16} className="text-[#9a0002]/70 dark:text-red-400/70 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                   </Link>
-                </div>
 
-                {/* Card Repartidor */}
-                <div className="relative overflow-hidden rounded-2xl bg-[#201c1a] dark:bg-[#231f1c] border border-amber-500/25 p-4 text-white shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      <span>🛵</span>
-                      <span>Ingresos flexibles</span>
-                    </span>
-                    <MaterialSymbol icon="sports_motorsports" size={20} className="text-amber-400" fill />
-                  </div>
-                  <h4 className="text-[14px] font-bold text-gray-100 leading-tight">
-                    ¿Querés repartir con nosotros?
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                    Manejá tus propios horarios con tu moto o bici, cobrá semanalmente y sumate al equipo.
-                  </p>
                   <button
                     type="button"
-                    className="mt-3 w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-gray-950 text-[12px] font-bold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-800 dark:text-amber-300 transition-all group active:scale-98 cursor-pointer text-left"
                   >
-                    <span>Sumarme como repartidor</span>
-                    <MaterialSymbol icon="arrow_forward" size={15} />
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-700 dark:text-amber-300 flex-shrink-0">
+                        <MaterialSymbol icon="sports_motorsports" size={18} fill />
+                      </span>
+                      <div className="min-w-0">
+                        <h5 className="text-[12px] font-bold text-gray-900 dark:text-gray-100 truncate">
+                          Sumarme como repartidor
+                        </h5>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          Ingresos y horarios flexibles
+                        </p>
+                      </div>
+                    </div>
+                    <MaterialSymbol icon="arrow_forward" size={16} className="text-amber-600/70 dark:text-amber-400/70 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                   </button>
                 </div>
               </div>
