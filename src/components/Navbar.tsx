@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -135,7 +136,7 @@ export default function Navbar({
     onTabChange(id);
   }, [onTabChange]);
 
-  const { profile } = useUserProfile();
+  const { profile, resetProfile } = useUserProfile();
   const [showDashboard, setShowDashboard] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -307,15 +308,11 @@ export default function Navbar({
               onClick={() => handleTabChange("profile")}
               aria-label="Mi perfil"
               className={cn(
-                "flex items-center gap-2.5 rounded-2xl border border-[#e8e0d6] bg-white pl-1.5 pr-2.5 py-1.5 transition-colors hover:bg-[#faf6f1] dark:border-[#3d3732] dark:bg-[#231f1c] dark:hover:bg-[#2a2623] cursor-pointer",
-                currentTab === "profile" && "ring-2 ring-[#9a0002]/30 border-[#9a0002]",
+                "relative flex items-center justify-center rounded-full transition-transform duration-200 cursor-pointer active:scale-95 hover:scale-108 p-0.5",
+                currentTab === "profile" && "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-[#faf6f1] dark:ring-offset-[#1c1917]",
               )}
             >
-              <UserAvatarView avatar={profile.avatar} size="sm" />
-              <span className="hidden text-[13px] font-semibold text-gray-900 dark:text-gray-100 xl:inline">
-                {profile.name}
-              </span>
-              <MaterialSymbol icon="unfold_more" size={16} className="hidden text-gray-400 xl:inline" />
+              <UserAvatarView avatar={profile.avatar} size="md" showFrame />
             </button>
           </div>
 
@@ -350,20 +347,20 @@ export default function Navbar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -18 }}
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="fixed inset-y-0 left-0 z-[60] flex w-[260px] flex-col overflow-y-auto bg-[#f5f1eb] p-3 shadow-2xl dark:bg-[#161412] md:hidden"
+                  className="fixed inset-y-0 left-0 z-[60] flex w-[275px] flex-col overflow-y-auto bg-[#f5f1eb] p-3 shadow-2xl dark:bg-[#161412] md:hidden custom-scrollbar"
                 >
-                  <div className="mb-3 flex items-center justify-between border-b border-[#e8e0d6] px-2 pb-3 dark:border-[#3d3732]">
+                  <div className="mb-2 flex items-center justify-between border-b border-[#e8e0d6] px-1 pb-3 dark:border-[#3d3732]">
                     <button
                       type="button"
                       onClick={() => {
                         handleTabChange("profile");
                         setShowDashboard(false);
                       }}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden rounded-xl text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
+                      className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] p-1"
                     >
-                      <UserAvatarView avatar={profile.avatar} size="sm" />
+                      <UserAvatarView avatar={profile.avatar} size="md" showFrame />
                       <div className="min-w-0 text-left">
-                        <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{profile.name}</p>
+                        <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">{profile.name}</p>
                         <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
                       </div>
                     </button>
@@ -403,11 +400,88 @@ export default function Navbar({
                     })}
                   </nav>
 
-                  <div className="mt-3 border-t border-[#e8e0d6] px-1 pt-2 dark:border-[#3d3732]">
-                    <div className="flex h-10 items-center justify-between rounded-xl px-3">
-                      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Apariencia</span>
-                      <ThemeToggleNavBtn className="h-8 w-8" clipId="nav-theme-drawer" />
+                  {/* Catchy Promotion Cards in Mobile Drawer */}
+                  <div className="my-3 space-y-2.5 px-1">
+                    {/* Card Comercio */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002] via-[#850002] to-[#450001] p-3.5 text-white shadow-md">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-xs flex items-center gap-1">
+                          <span>🚀</span>
+                          <span>Impulsá tus ventas</span>
+                        </span>
+                      </div>
+                      <h5 className="text-[12px] font-bold text-white leading-tight">
+                        ¿Tenés un comercio?
+                      </h5>
+                      <p className="text-[10px] text-white/80 mt-0.5 leading-snug">
+                        Publicá tu carta y recibí pedidos directos por WhatsApp
+                      </p>
+                      <Link
+                        href="/negocio/registro"
+                        onClick={() => setShowDashboard(false)}
+                        className="mt-2.5 block w-full py-1.5 px-2.5 bg-white text-[#9a0002] text-center text-[11px] font-bold rounded-xl shadow-xs hover:bg-gray-100 transition-all active:scale-95"
+                      >
+                        Adherir mi negocio →
+                      </Link>
                     </div>
+
+                    {/* Card Repartidor */}
+                    <div className="relative overflow-hidden rounded-2xl bg-[#201c1a] dark:bg-[#231f1c] border border-amber-500/25 p-3.5 text-white shadow-sm">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <span>🛵</span>
+                          <span>Ingresos flexibles</span>
+                        </span>
+                      </div>
+                      <h5 className="text-[12px] font-bold text-gray-100 leading-tight">
+                        ¿Querés repartir?
+                      </h5>
+                      <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">
+                        Generá ingresos semanales con tus propios horarios
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleTabChange("profile");
+                          setShowDashboard(false);
+                        }}
+                        className="mt-2.5 block w-full py-1.5 px-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 text-center text-[11px] font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+                      >
+                        Sumarme como repartidor →
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Drawer Footer al fondo a la izquierda */}
+                  <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-2.5 space-y-1 dark:border-[#3d3732]">
+                    <div className="flex h-9 items-center justify-between rounded-xl px-3">
+                      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Apariencia</span>
+                      <ThemeToggleNavBtn className="h-7 w-7" clipId="nav-theme-drawer" />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleTabChange("profile");
+                        setShowDashboard(false);
+                      }}
+                      className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
+                    >
+                      <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
+                      <span>Configuración de cuenta</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetProfile();
+                        setShowDashboard(false);
+                      }}
+                      className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
+                    >
+                      <MaterialSymbol icon="logout" size={16} />
+                      <span>Cerrar sesión</span>
+                    </button>
                   </div>
                 </motion.aside>
               </>
