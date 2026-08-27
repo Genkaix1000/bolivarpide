@@ -7,25 +7,31 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 
-const GENERAL_NAV = [
-  { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/negocio/dashboard" },
-  { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: "/negocio/pedidos", badge: 2 },
-  { id: "carta", label: "Carta", icon: "menu_book", href: "/negocio/carta" },
-];
-
-const SUPPORT_NAV = [
-  { id: "equipo", label: "Equipo", icon: "group", href: "/negocio/equipo" },
-];
-
 interface BusinessSidebarProps {
+  businessId: string;
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMobileClose }: BusinessSidebarProps) {
+export function BusinessSidebar({
+  businessId,
+  collapsed,
+  onToggleCollapse,
+  mobileOpen,
+  onMobileClose,
+}: BusinessSidebarProps) {
   const pathname = usePathname();
+  const base = `/negocio/${businessId}`;
+  const GENERAL_NAV = [
+    { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
+    { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: `${base}/pedidos` },
+    { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
+  ];
+  const SUPPORT_NAV = [
+    { id: "equipo", label: "Equipo", icon: "group", href: `${base}/equipo` },
+  ];
 
   const renderNavItem = (item: { id: string; label: string; icon: string; href: string; badge?: number }, isMobile: boolean) => {
     const isActive = pathname === item.href;
@@ -149,7 +155,8 @@ export function BusinessSidebar({ collapsed, onToggleCollapse, mobileOpen, onMob
         </nav>
 
         <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>
-          {renderNavItem({ id: "configuracion", label: "Configuración", icon: "settings", href: "/negocio/configuracion" }, isMobile)}
+          {renderNavItem({ id: "configuracion", label: "Configuración", icon: "settings", href: `${base}/configuracion` }, isMobile)}
+          {renderNavItem({ id: "hub", label: "Mis locales", icon: "storefront", href: "/negocio" }, isMobile)}
 
           {/* Free plan → Premium upgrade (hardcoded free) */}
           <div className={cn("mt-3 mb-1", isIconOnly ? "flex justify-center" : "")}>

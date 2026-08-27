@@ -265,18 +265,18 @@ export const PLACEHOLDER_ICONS: PlaceholderIcon[] = [
 ];
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  id: "user-abigail",
-  name: "St. Abigail",
-  email: "client.abigail@delivery.com",
+  id: "guest",
+  name: "",
+  email: "",
   avatar: {
-    type: "character",
-    value: "char-cat-michi",
+    type: "initials",
+    value: "?",
     frameId: "none",
-    gradientId: "mint",
+    gradientId: "cherry",
   },
-  primaryAddress: "St. Abigail, Calle Ficticia 123",
-  awardedBadges: INITIAL_AWARDED_BADGES,
-  unlockedFrameIds: ["none", "frame-gold-legend", "frame-ruby-royale", "frame-sapphire-explorer"],
+  primaryAddress: "",
+  awardedBadges: [],
+  unlockedFrameIds: ["none"],
 };
 
 export function getColorPalette(colorId?: string): ColorOption {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const contactSchema = z.object({
   business_name: z.string().min(2, "El nombre del negocio es requerido.").max(100),
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = createServiceClient();
 
     const { error } = await supabase.from("leads").insert({
       business_name: parsed.data.business_name,

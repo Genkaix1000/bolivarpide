@@ -36,7 +36,7 @@ export function AvatarPickerModal({
   const [activeTab, setActiveTab] = useState<MainCategory>("personajes");
   const [classicSubTab, setClassicSubTab] = useState<"comida" | "estilo" | "emojis" | "initials">("comida");
   const [customInitials, setCustomInitials] = useState(
-    currentAvatar.type === "initials" ? currentAvatar.value : "SA"
+    currentAvatar.type === "initials" ? currentAvatar.value : "?"
   );
 
   // Sync state when modal opens
@@ -108,7 +108,7 @@ export function AvatarPickerModal({
     setSelectedAvatar((prev) => ({
       ...prev,
       type: "initials",
-      value: clean || "SA",
+      value: clean || "?",
     }));
   };
 
@@ -441,7 +441,7 @@ export function AvatarPickerModal({
                         maxLength={3}
                         value={customInitials}
                         onChange={(e) => handleInitialsChange(e.target.value)}
-                        placeholder="SA"
+                        placeholder="AB"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[#ddd4c8] dark:border-[#3d3732] bg-[#faf6f1] dark:bg-[#1c1917] text-gray-900 dark:text-gray-100 font-bold uppercase tracking-wider text-center text-lg focus:outline-none focus:border-[#9a0002]"
                       />
                     </div>

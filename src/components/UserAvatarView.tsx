@@ -109,7 +109,7 @@ export function UserAvatarView({
               )}
               {avatar.type === "initials" && (
                 <span className={cn("text-white font-black tracking-tight select-none font-sans", config.initialsText)}>
-                  {avatar.value || "SA"}
+                  {avatar.value || "?"}
                 </span>
               )}
             </div>

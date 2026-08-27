@@ -140,7 +140,9 @@ export default function Navbar({
   const [showDashboard, setShowDashboard] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const shortLocation = locationLabel ? (locationLabel.split(",")[0] || locationLabel) : "St. Abigail";
+  const shortLocation = locationLabel
+    ? locationLabel.split(",")[0] || locationLabel
+    : "Elegí dirección";
 
   const notificationPanel = (
     <motion.div
@@ -360,7 +362,9 @@ export default function Navbar({
                     >
                       <UserAvatarView avatar={profile.avatar} size="md" showFrame />
                       <div className="min-w-0 text-left">
-                        <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">{profile.name}</p>
+                        <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">
+                          {profile.name || "Invitado"}
+                        </p>
                         <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
                       </div>
                     </button>
@@ -404,15 +408,26 @@ export default function Navbar({
                   <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
                     <div className="space-y-1.5">
                       <Link
-                        href="/negocio/registro"
+                        href="/negocio"
                         onClick={() => setShowDashboard(false)}
                         className="flex items-center justify-between p-2.5 rounded-xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group"
                       >
                         <div className="flex items-center gap-2">
                           <MaterialSymbol icon="storefront" size={16} fill />
-                          <span className="text-[12px] font-bold">Adherir negocio</span>
+                          <span className="text-[12px] font-bold">Ir a mi negocio</span>
                         </div>
                         <MaterialSymbol icon="arrow_forward" size={15} className="text-[#9a0002]/60 dark:text-red-400/60 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                      <Link
+                        href="/negocio/registro"
+                        onClick={() => setShowDashboard(false)}
+                        className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#ede4d9]/70 border border-transparent text-gray-600 dark:text-gray-300 transition-all group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MaterialSymbol icon="add_business" size={16} />
+                          <span className="text-[12px] font-bold">Adherir negocio</span>
+                        </div>
+                        <MaterialSymbol icon="arrow_forward" size={15} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
 
                       <button

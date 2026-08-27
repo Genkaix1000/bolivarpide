@@ -24,7 +24,7 @@ import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 import { UserAwardBadge, getRarityColor, AVATAR_FRAMES } from "@/lib/userProfile";
 
 export default function HomePage() {
-  const { profile, updateAvatar } = useUserProfile();
+  const { profile, updateAvatar, isAuthenticated } = useUserProfile();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
   const [currentTab, setCurrentTab] = useState("home");
@@ -36,15 +36,12 @@ export default function HomePage() {
 
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
-  // Mocked business ownership flag (hardcoded per spec — no auth yet)
-  const [isBusinessOwner] = useState(true);
+  // Membership real (OAuth + business_members)
+  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
 
   // Saved Addresses Mock Data
-  const [selectedAddressId, setSelectedAddressId] = useState("addr-1");
-  const savedAddresses = [
-    { id: "addr-1", name: "St. Abigail, Calle Ficticia 123" },
-    { id: "addr-2", name: "Trabajo, Av. Corrientes 456" }
-  ];
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const savedAddresses: Array<{ id: string; name: string }> = [];
 
   // Searchbar States
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -69,14 +66,53 @@ export default function HomePage() {
   const [chainTouchEnd, setChainTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
-  // Shuffling Featured Chains & Recommended on Mount
+  // Shuffling Featured Chains & Recommended on Mount (+ published DB when hay)
   useEffect(() => {
-    const shuffled = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
-    setRandomizedChains(shuffled);
-
-    const shuffledRec = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
-    setRandomizedRecommended(shuffledRec);
-  }, [currentTab]); // reshuffle if tab changes or on load
+    let cancelled = false;
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const { toFeaturedChain } = await import("@/lib/business/home");
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: mem } = await supabase
+            .from("business_members")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .limit(1);
+          if (!cancelled) setIsBusinessOwner((mem?.length ?? 0) > 0);
+        }
+        const { data: pubs } = await supabase
+          .from("businesses")
+          .select(
+            "id, slug, name, tagline, logo_path, rating, reviews_count, prep_time_minutes, is_open, address",
+          )
+          .eq("published", true)
+          .order("name");
+        if (cancelled) return;
+        if (pubs && pubs.length > 0) {
+          const mapped = pubs.map(toFeaturedChain);
+          setRandomizedChains([...mapped].sort(() => Math.random() - 0.5));
+          setRandomizedRecommended([...mapped].sort(() => Math.random() - 0.5));
+          return;
+        }
+      } catch {
+        /* fallback mock */
+      }
+      if (cancelled) return;
+      const shuffled = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
+      setRandomizedChains(shuffled);
+      const shuffledRec = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
+      setRandomizedRecommended(shuffledRec);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTab]);
 
   // Mouse Scroll Wheel Page Swapper for Featured Chains
   useEffect(() => {
@@ -194,7 +230,7 @@ export default function HomePage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold text-[16px] text-gray-900 dark:text-gray-100 truncate">
-                    {profile.name}
+                    {profile.name || "Invitado"}
                   </h3>
                   <button
                     type="button"
@@ -205,12 +241,23 @@ export default function HomePage() {
                     <span>Cambiar foto</span>
                   </button>
                 </div>
-                <p className="text-[12px] text-gray-400 truncate mt-0.5">{profile.email}</p>
+                <p className="text-[12px] text-gray-400 truncate mt-0.5">
+                  {profile.email || "Sin sesión"}
+                </p>
                 <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#9a0002]/10 text-[#9a0002] dark:bg-[#9a0002]/20 dark:text-red-300">
-                    <MaterialSymbol icon="verified" size={11} fill />
-                    <span>Cliente Activo</span>
-                  </span>
+                  {isAuthenticated ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#9a0002]/10 text-[#9a0002] dark:bg-[#9a0002]/20 dark:text-red-300">
+                      <MaterialSymbol icon="verified" size={11} fill />
+                      <span>Cliente Activo</span>
+                    </span>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-200 text-stone-700 hover:bg-[#9a0002]/10 hover:text-[#9a0002]"
+                    >
+                      Iniciar sesión
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -299,7 +346,9 @@ export default function HomePage() {
                 <div>
                   <h4 className="text-[11px] font-medium text-gray-400">Dirección principal</h4>
                   <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mt-0.5">
-                    {savedAddresses.find((a) => a.id === selectedAddressId)?.name || savedAddresses[0].name}
+                    {savedAddresses.find((a) => a.id === selectedAddressId)?.name ||
+                      savedAddresses[0]?.name ||
+                      "Agregar dirección"}
                   </p>
                 </div>
                 <MaterialSymbol icon="location_on" size={18} className="text-[#9a0002]" />
@@ -312,7 +361,7 @@ export default function HomePage() {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Link
-                    href={isBusinessOwner ? "/negocio/dashboard" : "/negocio/registro"}
+                    href={isBusinessOwner ? "/negocio" : "/negocio/registro"}
                     className="flex items-center justify-between p-3 rounded-2xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group active:scale-98"
                   >
                     <div className="flex items-center gap-2.5">
@@ -503,7 +552,10 @@ export default function HomePage() {
     );
   };
 
-  const currentAddressName = savedAddresses.find(a => a.id === selectedAddressId)?.name || savedAddresses[0].name;
+  const currentAddressName =
+    savedAddresses.find((a) => a.id === selectedAddressId)?.name ||
+    savedAddresses[0]?.name ||
+    "Agregar dirección";
 
 
   return (

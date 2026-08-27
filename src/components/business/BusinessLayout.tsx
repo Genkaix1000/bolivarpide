@@ -8,7 +8,13 @@ import { BusinessTopbar } from "./BusinessTopbar";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
 
-export function BusinessLayout({ children }: { children: React.ReactNode }) {
+export function BusinessLayout({
+  children,
+  businessId,
+}: {
+  children: React.ReactNode;
+  businessId: string;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
@@ -19,6 +25,7 @@ export function BusinessLayout({ children }: { children: React.ReactNode }) {
       <BrandSplash show={showSplash} onSkip={skipSplash} />
 
       <BusinessSidebar
+        businessId={businessId}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
