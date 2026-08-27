@@ -24,6 +24,19 @@ export interface SpecialtyCategory {
   image?: string;
 }
 
+export interface ProductOptionChoice {
+  id: string;
+  label: string;
+  priceDelta?: number;
+}
+
+export interface ProductOption {
+  id: string;
+  name: string;
+  required: boolean;
+  choices: ProductOptionChoice[];
+}
+
 export interface FeaturedChain {
   id: string;
   name: string;
@@ -34,7 +47,12 @@ export interface FeaturedChain {
   logoImage?: string;
   timeEstimate: string;
   deliveryFee: number;
+  /** Monto mínimo de pedido (subtotal productos, sin envío) */
+  minOrder: number;
   rating: number;
+  address: string;
+  lat: number;
+  lng: number;
 }
 
 export interface TrendingItem {
@@ -45,6 +63,9 @@ export interface TrendingItem {
   price: number;
   emoji: string;
   image?: string;
+  description?: string;
+  /** Si hay alguna required:true, el + no hace quick-add */
+  options?: ProductOption[];
 }
 
 export interface PopularChain {
@@ -66,6 +87,8 @@ export interface PanelProduct {
   price: number;
   available: boolean;
   image?: string;
+  /** Mock ventas — ordena carta rápida del dashboard */
+  soldCount?: number;
   timePlaced?: string;
   lastUpdated?: string;
 }
@@ -138,6 +161,14 @@ export interface BusinessInfo {
   reviewsCount: number;
   isOpen: boolean;
   prepTimeMinutes: number;
+  /** Public hub slug when previewing as customer */
+  chainId?: string;
+  address: string;
+  lat: number;
+  lng: number;
+  deliveryFee: number;
+  minOrder: number;
+  followersLabel: string;
 }
 
 export const CATEGORIES: Category[] = [
@@ -242,7 +273,11 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     logoImage: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80",
     timeEstimate: "12 min",
     deliveryFee: 790.00,
-    rating: 4.8
+    minOrder: 3500,
+    rating: 4.8,
+    address: "San Martín 845, Bolívar, Buenos Aires",
+    lat: -36.2308,
+    lng: -61.1145,
   },
   {
     id: "burgerboz",
@@ -254,7 +289,11 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     logoImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80",
     timeEstimate: "15 min",
     deliveryFee: 650.00,
-    rating: 4.6
+    minOrder: 8000,
+    rating: 4.6,
+    address: "Av. 25 de Mayo 312, Bolívar, Buenos Aires",
+    lat: -36.2324,
+    lng: -61.1121,
   },
   {
     id: "pizzastore",
@@ -266,7 +305,11 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     logoImage: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=200&q=80",
     timeEstimate: "20 min",
     deliveryFee: 550.00,
-    rating: 4.7
+    minOrder: 7000,
+    rating: 4.7,
+    address: "Alsina 520, Bolívar, Buenos Aires",
+    lat: -36.2295,
+    lng: -61.1168,
   },
   {
     id: "sushiworld",
@@ -278,7 +321,11 @@ export const FEATURED_CHAINS: FeaturedChain[] = [
     logoImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=200&q=80",
     timeEstimate: "25 min",
     deliveryFee: 890.00,
-    rating: 4.9
+    minOrder: 12000,
+    rating: 4.9,
+    address: "Rivadavia 190, Bolívar, Buenos Aires",
+    lat: -36.2341,
+    lng: -61.1098,
   }
 ];
 
@@ -291,6 +338,28 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 5900.00,
     emoji: "🍔",
     image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+    description: "Smash beef, cheddar ahumado y salsa Anjaz.",
+    options: [
+      {
+        id: "punto",
+        name: "Punto de cocción",
+        required: true,
+        choices: [
+          { id: "jugoso", label: "Jugoso" },
+          { id: "medio", label: "A punto" },
+          { id: "cocido", label: "Bien cocido" },
+        ],
+      },
+      {
+        id: "extra",
+        name: "Extra",
+        required: false,
+        choices: [
+          { id: "bacon", label: "Bacon", priceDelta: 800 },
+          { id: "huevo", label: "Huevo", priceDelta: 500 },
+        ],
+      },
+    ],
   },
   {
     id: "cheese-meat-pizza",
@@ -300,6 +369,18 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 6800.00,
     emoji: "🍕",
     image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=600&q=80",
+    description: "Muzzarella, pepperoni y bondiola a la leña.",
+    options: [
+      {
+        id: "tamano",
+        name: "Tamaño",
+        required: true,
+        choices: [
+          { id: "m", label: "Mediana" },
+          { id: "g", label: "Grande", priceDelta: 1500 },
+        ],
+      },
+    ],
   },
   {
     id: "cappuccino-media",
@@ -309,6 +390,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 3400.00,
     emoji: "☕",
     image: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80",
+    description: "Combo clásico de la mañana.",
   },
   {
     id: "salmon-combo",
@@ -318,6 +400,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 12500.00,
     emoji: "🍣",
     image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80",
+    description: "8 piezas + miso + edamame.",
   },
   {
     id: "double-cheddar",
@@ -327,6 +410,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 6400.00,
     emoji: "🍔",
     image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80",
+    description: "Doble medallón y doble cheddar.",
   },
   {
     id: "garlic-bread",
@@ -336,6 +420,7 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 2900.00,
     emoji: "🥖",
     image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=600&q=80",
+    description: "Para compartir o acompañar la pizza.",
   },
   {
     id: "muffin-chocolate",
@@ -363,8 +448,21 @@ export const TRENDING_ITEMS: TrendingItem[] = [
     price: 4500.00,
     emoji: "🍟",
     image: "https://images.unsplash.com/photo-1585109649139-366815a0d713?auto=format&fit=crop&w=600&q=80",
+    description: "Papas fritas con cheddar y bacon crocante.",
   }
 ];
+
+export function productsForChain(chainId: string): TrendingItem[] {
+  return TRENDING_ITEMS.filter((i) => i.chainId === chainId);
+}
+
+export function suggestionsForChain(chainId: string, excludeId: string, limit = 4): TrendingItem[] {
+  return productsForChain(chainId).filter((i) => i.id !== excludeId).slice(0, limit);
+}
+
+export function itemNeedsSheet(item: TrendingItem): boolean {
+  return Boolean(item.options?.some((o) => o.required));
+}
 
 export const POPULAR_CHAINS: PopularChain[] = [
   { id: "mc", name: "McDonald's", initials: "MC", color: "bg-yellow-400 text-black font-bold", logoImage: "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=300&q=80", timeEstimate: "15 min", rating: 4.8 },
@@ -375,18 +473,25 @@ export const POPULAR_CHAINS: PopularChain[] = [
 ];
 
 /** Panel de Negocio — mock data */
-/** Simulated panel business — reuses Pizza Store assets from FEATURED_CHAINS */
+/** Simulated panel business — mirrors Pizza Store public hub */
 export const MOCK_BUSINESS: BusinessInfo = {
-  name: "Pizzería & Café Don Luis",
-  initials: "DL",
+  name: "Pizza Store",
+  initials: "PS",
   logoBg: "bg-gradient-to-br from-[#9a0002] to-[#6b0001]",
   logoImage: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=200&q=80",
   bannerImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80",
   tagline: "Pizzas de Masa Madre a la Leña",
-  rating: 4.9,
+  rating: 4.7,
   reviewsCount: 128,
   isOpen: true,
-  prepTimeMinutes: 25,
+  prepTimeMinutes: 20,
+  chainId: "pizzastore",
+  address: "Alsina 520, Bolívar, Buenos Aires",
+  lat: -36.2295,
+  lng: -61.1168,
+  deliveryFee: 550,
+  minOrder: 7000,
+  followersLabel: "31.5K",
 };
 
 export const MOCK_BUSINESS_STATS: BusinessStats = {
@@ -531,14 +636,14 @@ export const MOCK_DETAILED_ORDERS: DetailedOrder[] = [
 ];
 
 export const MOCK_PRODUCTS: PanelProduct[] = [
-  { id: "prod-1",  codeId: "3457283094", name: "Pizza Muzzarella Gigante",          category: "Pizzas",       price: 6800,  available: true,  image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
-  { id: "prod-2",  codeId: "1234509876", name: "Pizza Especial Don Luis",            category: "Pizzas",       price: 8200,  available: true,  image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=600&q=80", timePlaced: "02/28/2025 05:30 PM", lastUpdated: "02/28/2026 05:30 PM" },
-  { id: "prod-3",  codeId: "9876543210", name: "Pizza Napolitana con Aceitunas",     category: "Pizzas",       price: 7400,  available: false, image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
-  { id: "prod-4",  codeId: "3457283095", name: "Empanada Carne Cuchillo",            category: "Empanadas",    price: 1500,  available: true,  image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
-  { id: "prod-5",  codeId: "4567891230", name: "Empanada Pollo y Verdura",           category: "Empanadas",    price: 1400,  available: true,  image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80", timePlaced: "11/04/2025 01:15 PM", lastUpdated: "02/01/2026 10:20 AM" },
-  { id: "prod-6",  codeId: "7891234560", name: "Hamburguesa Doble Cheddar",          category: "Hamburguesas", price: 5200,  available: true,  image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
-  { id: "prod-7",  codeId: "3457283096", name: "Hamburguesa Crispy Chicken",         category: "Hamburguesas", price: 4800,  available: true,  image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
-  { id: "prod-8",  codeId: "1234509877", name: "Lomito Completo",                    category: "Sándwiches",   price: 5500,  available: false, image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-1",  codeId: "3457283094", name: "Pizza Muzzarella Gigante",          category: "Pizzas",       price: 6800,  available: true,  soldCount: 142, image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-2",  codeId: "1234509876", name: "Pizza Especial Don Luis",            category: "Pizzas",       price: 8200,  available: true,  soldCount: 98,  image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=600&q=80", timePlaced: "02/28/2025 05:30 PM", lastUpdated: "02/28/2026 05:30 PM" },
+  { id: "prod-3",  codeId: "9876543210", name: "Pizza Napolitana con Aceitunas",     category: "Pizzas",       price: 7400,  available: false, soldCount: 54,  image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-4",  codeId: "3457283095", name: "Empanada Carne Cuchillo",            category: "Empanadas",    price: 1500,  available: true,  soldCount: 87,  image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-5",  codeId: "4567891230", name: "Empanada Pollo y Verdura",           category: "Empanadas",    price: 1400,  available: true,  soldCount: 65,  image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80", timePlaced: "11/04/2025 01:15 PM", lastUpdated: "02/01/2026 10:20 AM" },
+  { id: "prod-6",  codeId: "7891234560", name: "Hamburguesa Doble Cheddar",          category: "Hamburguesas", price: 5200,  available: true,  soldCount: 76,  image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
+  { id: "prod-7",  codeId: "3457283096", name: "Hamburguesa Crispy Chicken",         category: "Hamburguesas", price: 4800,  available: true,  soldCount: 48,  image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
+  { id: "prod-8",  codeId: "1234509877", name: "Lomito Completo",                    category: "Sándwiches",   price: 5500,  available: false, soldCount: 41,  image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80", timePlaced: "01/16/2025 11:30 AM", lastUpdated: "03/10/2026 09:30 AM" },
   { id: "prod-9",  codeId: "5678901234", name: "Sándwich Caprese con Rúcula",        category: "Sándwiches",   price: 4100,  available: true,  image: "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
   { id: "prod-10", codeId: "3457283097", name: "Torta Oreo",                         category: "Postres",      price: 3800,  available: true,  image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80", timePlaced: "10/15/2025 02:40 PM", lastUpdated: "01/16/2026 11:30 AM" },
   { id: "prod-11", codeId: "1234509878", name: "Tiramisú Casero",                    category: "Postres",      price: 4200,  available: true,  image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=600&q=80", timePlaced: "02/28/2025 05:30 PM", lastUpdated: "02/28/2026 05:30 PM" },
@@ -550,3 +655,28 @@ export const MOCK_PRODUCTS: PanelProduct[] = [
 
 export const MOCK_DAYS: string[] = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 export const MOCK_WEEKLY_SALES: number[] = [12, 19, 15, 22, 28, 35, 24];
+
+/** Ingresos mock para el area chart del dashboard (ARS) */
+export const MOCK_SALES_CHART = {
+  today: {
+    labels: ["9h", "11h", "13h", "15h", "17h", "19h", "21h"],
+    delivery: [4200, 8500, 15200, 9800, 12400, 18600, 11200],
+    takeaway: [800, 2100, 3200, 1800, 2400, 4100, 2200],
+    orders: [3, 5, 9, 6, 7, 11, 8],
+    ticket: [8200, 8400, 8100, 8600, 8800, 9000, 8750],
+  },
+  week: {
+    labels: MOCK_DAYS,
+    delivery: [52000, 68000, 61000, 84000, 102000, 128000, 115000],
+    takeaway: [12000, 15000, 13000, 18000, 22000, 28000, 24000],
+    orders: [12, 19, 15, 22, 28, 35, 24],
+    ticket: [8200, 8400, 8100, 8600, 8800, 9000, 8750],
+  },
+  month: {
+    labels: ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
+    delivery: [320000, 380000, 410000, 450000],
+    takeaway: [65000, 72000, 80000, 88000],
+    orders: [85, 92, 98, 105],
+    ticket: [8300, 8500, 8700, 8900],
+  },
+} as const;

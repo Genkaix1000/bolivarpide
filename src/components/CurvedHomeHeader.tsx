@@ -10,7 +10,6 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
@@ -25,14 +24,6 @@ interface CurvedHomeHeaderProps {
   onCategoryChange: (id: string | null) => void;
   activeSpecialty: string | null;
   onSpecialtyChange: (id: string | null) => void;
-  locationLabel: string;
-  savedAddresses: Array<{ id: string; name: string }>;
-  selectedAddressId: string;
-  onSelectAddress: (id: string) => void;
-  showLocationDropdown: boolean;
-  onLocationClick: () => void;
-  /** Reports the location button's bottom Y (viewport) while the dropdown is open. */
-  onLocationAnchorChange?: (bottomY: number | null) => void;
   className?: string;
 }
 
@@ -68,8 +59,6 @@ const SAGITTA_MAX = 150;
 const OVAL_OVERSCAN_RATIO = 0.07;
 /** Vertical pad at the left/right ends so the promo carousel & controls sit comfortably inside the red. */
 const MIN_EDGE_HEIGHT = 165;
-/** Moves the location control down toward the oval edge. Adjust this manually. */
-const LOCATION_OFFSET_Y = 10;
 
 function HeaderFullBleedPromoCarousel() {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -668,24 +657,12 @@ export default function CurvedHomeHeader({
   onCategoryChange,
   activeSpecialty,
   onSpecialtyChange,
-  locationLabel,
-  savedAddresses,
-  selectedAddressId,
-  onSelectAddress,
-  showLocationDropdown,
-  onLocationClick,
-  onLocationAnchorChange,
   className,
 }: CurvedHomeHeaderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
-  const locationBtnRef = useRef<HTMLButtonElement>(null);
-  const anchorCbRef = useRef(onLocationAnchorChange);
   const reactId = useId();
   const [headerWidth, setHeaderWidth] = useState(0);
   const [showSpecialties, setShowSpecialties] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
-
-  anchorCbRef.current = onLocationAnchorChange;
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -696,40 +673,6 @@ export default function CurvedHomeHeader({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  // Anchor location dropdown + expose button bottom for the page backdrop
-  useLayoutEffect(() => {
-    if (!showLocationDropdown) {
-      setDropdownPos(null);
-      anchorCbRef.current?.(null);
-      return;
-    }
-    const update = () => {
-      const btn = locationBtnRef.current;
-      if (!btn) {
-        const fallbackTop = Math.max(headerRef.current?.getBoundingClientRect().bottom ?? 160, 120);
-        setDropdownPos({
-          top: fallbackTop + 8,
-          left: typeof window !== "undefined" ? window.innerWidth / 2 : 0,
-        });
-        anchorCbRef.current?.(fallbackTop);
-        return;
-      }
-      const r = btn.getBoundingClientRect();
-      setDropdownPos({
-        top: r.bottom + 8,
-        left: r.left + r.width / 2,
-      });
-      anchorCbRef.current?.(r.bottom);
-    };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [showLocationDropdown]);
 
   const headerCurveDepth = computeCurveDepth(headerWidth);
   const headerHeight = useMemo(
@@ -803,74 +746,6 @@ export default function CurvedHomeHeader({
           <HeaderFullBleedPromoCarousel />
         </div>
       </div>
-
-      {/* Portals escape the category/header stacking contexts. */}
-      {typeof document !== "undefined" &&
-        createPortal(
-          <>
-            {/* Location dropdown — fixed to button coordinates */}
-            <AnimatePresence>
-              {showLocationDropdown && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, x: "-50%" }}
-                  animate={{ opacity: 1, y: 0, x: "-50%" }}
-                  exit={{ opacity: 0, y: -4, x: "-50%" }}
-                  transition={{ duration: 0.2 }}
-                  style={{
-                    position: "fixed",
-                    top: dropdownPos?.top ?? 160,
-                    left: dropdownPos?.left ?? "50%",
-                  }}
-                  className="z-50 w-[min(290px,calc(100vw-2rem))] rounded-[20px] border border-white/40 bg-[#faf6f1]/96 p-3.5 shadow-2xl backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/96"
-                >
-                  <div className="space-y-1.5">
-                    {savedAddresses.map((addr) => {
-                      const isSelected = addr.id === selectedAddressId;
-                      return (
-                        <div
-                          key={addr.id}
-                          onClick={() => onSelectAddress(addr.id)}
-                          className={cn(
-                            "flex cursor-pointer items-center justify-between rounded-xl p-2.5 transition-all duration-200",
-                            isSelected
-                              ? "border-[1.5px] border-[#9a0002] bg-[#9a0002]/5 font-bold text-[#9a0002]"
-                              : "border border-[#ddd4c8] text-gray-700 hover:bg-[#ede4d9]/50 dark:border-[#3d3732]/60 dark:text-gray-300 dark:hover:bg-[#302c28]/40",
-                          )}
-                        >
-                          <span className="max-w-[80%] truncate text-[11px]">
-                            {addr.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert(`Editar: ${addr.name}`);
-                            }}
-                            className="cursor-pointer rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-[#d4cfc9]"
-                          >
-                            <MaterialSymbol icon="edit" size={11} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alert("Agregar dirección");
-                      onLocationClick();
-                    }}
-                    className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#ddd4c8] bg-[#ede4d9] py-2.5 text-[10px] font-bold transition-all hover:bg-[#9a0002]/5 hover:text-[#9a0002] dark:border-[#3d3732] dark:bg-[#2a2623]"
-                  >
-                    <MaterialSymbol icon="add" size={12} />
-                    <span>Agregar nueva dirección</span>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>,
-          document.body,
-        )}
 
       {/* Categories sit on the bottom oval curve.
           The wrapper overlaps the header, so it must let clicks pass through

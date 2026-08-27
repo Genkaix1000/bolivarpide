@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
@@ -14,21 +14,27 @@ import {
   FeaturedChain,
   TrendingItem
 } from "@/lib/mockData";
+import { useCart } from "@/components/CartProvider";
+import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
+import { SPLASH_HOME } from "@/lib/firstVisit";
+import { useUserProfile } from "@/components/UserProfileProvider";
+import { UserAvatarView } from "@/components/UserAvatarView";
+import { AvatarPickerModal } from "@/components/AvatarPickerModal";
+import { BadgeDetailModal } from "@/components/BadgeDetailModal";
+import { UserAwardBadge, getRarityColor, AVATAR_FRAMES } from "@/lib/userProfile";
 
 export default function HomePage() {
+  const { profile, updateAvatar } = useUserProfile();
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
   const [currentTab, setCurrentTab] = useState("home");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeSpecialty, setActiveSpecialty] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { show: showSplash, skip: skipSplash } = useBrandSplash(SPLASH_HOME);
+  const isLoading = showSplash;
 
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  /** Viewport Y where the location backdrop should start (below the location control). */
-  const [locationBackdropTop, setLocationBackdropTop] = useState<number | null>(null);
-
-  const handleLocationAnchorChange = useCallback((bottomY: number | null) => {
-    setLocationBackdropTop(bottomY);
-  }, []);
 
   // Mocked business ownership flag (hardcoded per spec — no auth yet)
   const [isBusinessOwner] = useState(true);
@@ -50,9 +56,6 @@ export default function HomePage() {
   // Carousels State
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
   const [currentChainPage, setCurrentChainPage] = useState(0);
-  const [activePopularIndex, setActivePopularIndex] = useState(4);
-  const [isPopularTransitionEnabled, setIsPopularTransitionEnabled] = useState(true);
-  const virtualChains = [...FEATURED_CHAINS, ...FEATURED_CHAINS, ...FEATURED_CHAINS];
 
   // Menús del Momento Dynamic Scroll Mask State
   const [trendingScrollState, setTrendingScrollState] = useState({ isAtStart: true, isAtEnd: false });
@@ -60,40 +63,11 @@ export default function HomePage() {
   // Container Refs for Mouse Wheel Scroll Paging
   const chainContainerRef = useRef<HTMLDivElement>(null);
   const trendingContainerRef = useRef<HTMLDivElement>(null);
-  const popularContainerRef = useRef<HTMLDivElement>(null);
-  const lastPopularWheelTimeRef = useRef<number>(0);
 
   // Touch Swipe Gesture Tracking
   const [chainTouchStart, setChainTouchStart] = useState<number | null>(null);
   const [chainTouchEnd, setChainTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
-
-  // Simulate loading on entry
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2800);
-    return () => clearTimeout(timer);
-  }, []);
-
-
-  // Boundary Checks for Popular Chains Spotlight Loop
-  useEffect(() => {
-    if (activePopularIndex >= 8) {
-      const timeout = setTimeout(() => {
-        setIsPopularTransitionEnabled(false);
-        setActivePopularIndex(4);
-      }, 500); // 500ms matches transition duration-500
-      return () => clearTimeout(timeout);
-    }
-    if (activePopularIndex <= 3) {
-      const timeout = setTimeout(() => {
-        setIsPopularTransitionEnabled(false);
-        setActivePopularIndex(7);
-      }, 500);
-      return () => clearTimeout(timeout);
-    }
-  }, [activePopularIndex]);
 
   // Shuffling Featured Chains & Recommended on Mount
   useEffect(() => {
@@ -171,36 +145,6 @@ export default function HomePage() {
     };
   }, [isLoading]);
 
-  // Mouse Scroll Wheel Page Swapper for Cadenas más populares (spotlight index)
-  useEffect(() => {
-    const container = popularContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        const now = Date.now();
-        if (now - lastPopularWheelTimeRef.current > 250) {
-          e.preventDefault();
-          setIsPopularTransitionEnabled(true);
-          if (e.deltaY > 0) {
-            setActivePopularIndex((prev) => prev + 1);
-          } else {
-            setActivePopularIndex((prev) => prev - 1);
-          }
-          lastPopularWheelTimeRef.current = now;
-        } else {
-          e.preventDefault();
-        }
-      }
-    };
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
-
-
   // Touch handlers for Featured Chains Carousel
   const handleChainTouchStart = (e: React.TouchEvent) => {
     setChainTouchEnd(null);
@@ -226,242 +170,313 @@ export default function HomePage() {
     setCurrentTab(tabId);
   };
 
-  // Render different views based on Tab
   const renderTabContent = () => {
-    switch (currentTab) {
-      case "discover":
-        return (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center max-w-md mx-auto bg-[#faf6f1] dark:bg-[#1c1917] rounded-[24px] border border-gray-100 dark:border-[#3d3732] penpot-shadow mt-6 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-yellow-50 dark:bg-yellow-950/40 text-yellow-600 flex items-center justify-center mb-4 text-2xl shadow-inner border border-yellow-100 dark:border-yellow-900/30">
-              🔍
-            </div>
-            <h3 className="font-extrabold text-base mb-1 text-gray-800 dark:text-gray-200">Explora Nuevos Sabores</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[280px]">
-              El buscador avanzado con Supabase Full-Text Search e IA estará listo en la siguiente fase.
-            </p>
-            <button
-              onClick={() => setCurrentTab("home")}
-              className="mt-6 px-6 py-2 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-bold rounded-full hover:opacity-95 transition-all shadow-md shadow-red-500/20 cursor-pointer"
-            >
-              Volver al Inicio
-            </button>
-          </div>
-        );
-      case "cart":
-        return (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center max-w-md mx-auto bg-[#faf6f1] dark:bg-[#1c1917] rounded-[24px] border border-gray-100 dark:border-[#3d3732] penpot-shadow mt-6 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/40 text-[#9a0002] flex items-center justify-center mb-4 text-2xl shadow-inner border border-red-100 dark:border-red-900/30">
-              🛒
-            </div>
-            <h3 className="font-extrabold text-base mb-1 text-gray-800 dark:text-gray-200">Tu Carrito está Vacío</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[280px]">
-              Los productos que agregues a tu pedido aparecerán en esta pestaña para continuar al pago.
-            </p>
-            <button
-              onClick={() => setCurrentTab("home")}
-              className="mt-6 px-6 py-2 bg-gradient-to-r from-[#9a0002] to-[#6b0001] text-white text-xs font-bold rounded-full hover:opacity-95 transition-all shadow-md shadow-red-500/20 cursor-pointer"
-            >
-              Ver menú de locales
-            </button>
-          </div>
-        );
-      case "profile":
-        return (
-          <div className="max-w-md mx-auto bg-[#faf6f1] dark:bg-[#1c1917] rounded-[24px] border border-gray-100 dark:border-[#3d3732] penpot-shadow mt-6 p-6 animate-fade-in">
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-[#3d3732]">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white font-extrabold text-lg shadow-sm">
-                SA
+    if (currentTab === "profile") {
+      return (
+        <>
+          <div className="max-w-md mx-auto bg-white dark:bg-[#1c1917] rounded-[24px] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] mt-6 p-6 animate-fade-in space-y-5">
+            {/* User Profile Header Card with interactive Avatar */}
+            <div className="flex items-center gap-4 pb-5 border-b border-[#f0ebe4] dark:border-[#2a2623]">
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  aria-label="Cambiar foto de perfil"
+                  className="cursor-pointer relative block transition-transform duration-200 active:scale-95 group-hover:opacity-95"
+                >
+                  <UserAvatarView avatar={profile.avatar} size="lg" showBorder />
+                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#9a0002] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#1c1917] group-hover:scale-110 transition-transform">
+                    <MaterialSymbol icon="edit" size={13} />
+                  </span>
+                </button>
               </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-gray-800 dark:text-gray-100">St. Abigail User</h3>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">client.abigail@delivery.com</p>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-bold text-[16px] text-gray-900 dark:text-gray-100 truncate">
+                    {profile.name}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="text-[11px] font-bold text-[#9a0002] hover:text-[#6b0001] dark:text-[#f87171] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <MaterialSymbol icon="palette" size={13} />
+                    <span>Cambiar foto</span>
+                  </button>
+                </div>
+                <p className="text-[12px] text-gray-400 truncate mt-0.5">{profile.email}</p>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#9a0002]/10 text-[#9a0002] dark:bg-[#9a0002]/20 dark:text-red-300">
+                    <MaterialSymbol icon="verified" size={11} fill />
+                    <span>Cliente Activo</span>
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#ede4d9] dark:bg-[#231f1c]/50 border border-gray-100 dark:border-[#3d3732]/80">
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dirección Principal</h4>
-                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200 mt-0.5">{savedAddresses.find(a => a.id === selectedAddressId)?.name || savedAddresses[0].name}</p>
+            {/* Quick avatar edit card banner */}
+            <div
+              onClick={() => setIsAvatarModalOpen(true)}
+              className="p-3.5 rounded-2xl bg-gradient-to-r from-[#9a0002]/8 via-[#9a0002]/4 to-transparent border border-[#9a0002]/15 flex items-center justify-between cursor-pointer hover:border-[#9a0002]/30 hover:bg-[#9a0002]/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#9a0002]/15 flex items-center justify-center text-[#9a0002] flex-shrink-0">
+                  <MaterialSymbol icon="auto_awesome" size={18} fill />
                 </div>
-                <MaterialSymbol icon="location_on" size={16} className="text-[#9a0002]" />
+                <div>
+                  <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
+                    Taller de Personaje & Avatar
+                  </h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Edita peinados, accesorios, gafas y marcos VIP
+                  </p>
+                </div>
+              </div>
+              <MaterialSymbol
+                icon="arrow_forward_ios"
+                size={13}
+                className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-[#9a0002] transition-all"
+              />
+            </div>
+
+            {/* Vitrina de Premios & Distinciones */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <MaterialSymbol icon="military_tech" size={18} className="text-[#9a0002]" fill />
+                  <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
+                    Premios & Distinciones
+                  </h4>
+                </div>
+                <span className="text-[11px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-2 py-0.5 rounded-full">
+                  {profile.awardedBadges?.length || 0} insignias
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {profile.awardedBadges?.map((badge) => {
+                  const style = getRarityColor(badge.rarity);
+                  return (
+                    <div
+                      key={badge.id}
+                      onClick={() => setSelectedBadge(badge)}
+                      className={cn(
+                        "p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-98 flex items-center gap-3 hover:shadow-md group",
+                        "bg-[#faf6f1] dark:bg-[#231f1c]",
+                        style.border,
+                        "hover:border-[#9a0002]/40"
+                      )}
+                    >
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border shadow-xs", style.bg, style.border)}>
+                        {badge.emoji ? (
+                          <span className="text-xl leading-none">{badge.emoji}</span>
+                        ) : (
+                          <MaterialSymbol icon={badge.icon} size={20} className={style.text} fill />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <h5 className="font-bold text-[12px] text-gray-900 dark:text-gray-100 truncate group-hover:text-[#9a0002] transition-colors">
+                            {badge.title}
+                          </h5>
+                          <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.2 rounded border", style.bg, style.text, style.border)}>
+                            {badge.rarity}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                          {badge.awardedBy || "BolivarPide Oficial"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#f5f1eb] dark:bg-[#231f1c]">
+                <div>
+                  <h4 className="text-[11px] font-medium text-gray-400">Dirección principal</h4>
+                  <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mt-0.5">
+                    {savedAddresses.find((a) => a.id === selectedAddressId)?.name || savedAddresses[0].name}
+                  </p>
+                </div>
+                <MaterialSymbol icon="location_on" size={18} className="text-[#9a0002]" />
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Accesos Rápidos</h4>
+                <h4 className="text-[11px] font-medium text-gray-400">Accesos rápidos</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {isBusinessOwner ? (
-                    <Link href="/negocio/dashboard" className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer block text-center">
-                      🏪 Ir a mi negocio
+                    <Link
+                      href="/negocio/dashboard"
+                      className="py-2.5 px-3 bg-[#9a0002]/10 text-[#9a0002] text-[12px] font-semibold rounded-xl transition-all active:scale-95 cursor-pointer block text-center"
+                    >
+                      Ir a mi negocio
                     </Link>
                   ) : (
-                    <Link href="/negocio/registro" className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer block text-center">
-                      🏪 Abrir mi negocio
+                    <Link
+                      href="/negocio/registro"
+                      className="py-2.5 px-3 bg-[#9a0002]/10 text-[#9a0002] text-[12px] font-semibold rounded-xl transition-all active:scale-95 cursor-pointer block text-center"
+                    >
+                      Abrir mi negocio
                     </Link>
                   )}
-                  <button className="py-2.5 px-3 bg-red-50 dark:bg-red-950/20 text-[#9a0002] text-[11px] font-bold rounded-xl border border-red-100 dark:border-red-900/30 transition-all active:scale-95 cursor-pointer">
-                    🛵 Ser repartidor
+                  <button className="py-2.5 px-3 bg-[#f5f1eb] dark:bg-[#231f1c] text-gray-700 dark:text-gray-300 text-[12px] font-semibold rounded-xl transition-all active:scale-95 cursor-pointer">
+                    Ser repartidor
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        );
-      case "home":
-      default:
-        return (
-          <div className="space-y-8 text-gray-800 dark:text-gray-200">
-            <div className="animate-fade-in flex flex-col gap-8">
-                {/* 1. Featured Chains */}
-                <div className="order-2 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Cadenas destacadas</h3>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setCurrentChainPage(0)}
-                        className={`w-4 h-1.5 rounded-full transition-all cursor-pointer ${currentChainPage === 0 ? "bg-[#9a0002]" : "bg-gray-300 dark:bg-[#302c28]"
-                          }`}
-                      />
-                      <button
-                        onClick={() => setCurrentChainPage(1)}
-                        className={`w-4 h-1.5 rounded-full transition-all cursor-pointer ${currentChainPage === 1 ? "bg-[#9a0002]" : "bg-gray-300 dark:bg-[#302c28]"
-                          }`}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Viewport */}
-                  <div
-                    ref={chainContainerRef}
-                    className="relative overflow-hidden w-full min-h-[425px] md:min-h-[220px] px-2 md:px-3 -mx-2 md:-mx-3 pb-6 pt-2"
-                    onTouchStart={handleChainTouchStart}
-                    onTouchMove={handleChainTouchMove}
-                    onTouchEnd={handleChainTouchEnd}
-                  >
-                    <div
-                      className="flex w-full transition-transform duration-500 ease-in-out gap-8"
-                      style={{ transform: `translateX(calc(-${currentChainPage} * (100% + 32px)))` }}
-                    >
-                      {/* Page 1 */}
-                      <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-6 px-2 md:px-3 py-1">
-                        {randomizedChains.slice(0, 2).map((chain) => (
-                          <FeaturedCard key={chain.id} chain={chain} />
-                        ))}
-                      </div>
-                      {/* Page 2 */}
-                      <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-6 px-2 md:px-3 py-1">
-                        {randomizedChains.slice(2, 4).map((chain) => (
-                          <FeaturedCard key={chain.id} chain={chain} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <AvatarPickerModal
+            isOpen={isAvatarModalOpen}
+            currentAvatar={profile.avatar}
+            onClose={() => setIsAvatarModalOpen(false)}
+            onSave={(newAvatar) => {
+              updateAvatar(newAvatar);
+            }}
+          />
 
-                {/* 3. Menús del Momento */}
-                <div className="order-1 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Menús del momento</h3>
-                  </div>
+          <BadgeDetailModal
+            badge={selectedBadge}
+            onClose={() => setSelectedBadge(null)}
+          />
+        </>
+      );
+    }
 
-                  {/* Relative wrapper for absolute scroll fade overlays (same pattern as negocio stock) */}
-                  <div className="relative w-full">
-                    <div
-                      className={cn(
-                        "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                        trendingScrollState.isAtStart ? "opacity-0" : "opacity-100"
-                      )}
-                    />
-                    <div
-                      className={cn(
-                        "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#faf6f1] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                        trendingScrollState.isAtEnd ? "opacity-0" : "opacity-100"
-                      )}
-                    />
-
-                    <div
-                      ref={trendingContainerRef}
-                      className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-3 pt-2 pb-4"
-                    >
-                      {TRENDING_ITEMS.map((item) => {
-                        const ownerChain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
-                        return (
-                          <TrendingMenuCard
-                            key={item.id}
-                            item={item}
-                            ownerChain={ownerChain}
-                            className="w-[220px] flex-shrink-0"
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Cadenas más populares */}
-                <div className="order-3 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-base tracking-tight text-gray-800 dark:text-gray-200">Cadenas más populares</h3>
-                  </div>
-
-                  {/* Carousel container centering spotlights with custom wheel listener and scroll-fade-middle */}
-                  <div
-                    ref={popularContainerRef}
-                    className="relative overflow-hidden w-full h-[95px] flex items-center justify-center scroll-fade-middle"
-                  >
-                    <div
-                      className={`flex items-center gap-4 ${isPopularTransitionEnabled ? "transition-transform duration-500 ease-in-out" : ""
-                        }`}
-                      style={{ transform: `translateX(calc(50% - 120px - ${activePopularIndex * (240 + 16)}px))` }}
-                    >
-                      {virtualChains.map((chain, index) => {
-                        const isActive = index === activePopularIndex;
-                        return (
-                          <div
-                            key={index}
-                            onClick={() => {
-                              setIsPopularTransitionEnabled(true);
-                              setActivePopularIndex(index);
-                            }}
-                            className={`w-[240px] flex-shrink-0 p-3.5 bg-[#faf6f1] dark:bg-[#1c1917] border rounded-[16px] flex items-center justify-between cursor-pointer transition-all duration-555 ${isActive
-                              ? "scale-108 border-[#9a0002] shadow-lg shadow-red-500/10 opacity-100 z-10"
-                              : "scale-90 border-[#ddd4c8] dark:border-[#3d3732]/80 opacity-50"
-                              }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-[38px] h-[38px] rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-[#3d3732] shadow-xs">
-                                {chain.logoImage ? (
-                                  <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xs font-bold">
-                                    {chain.logoEmoji || chain.name[0]}
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <h5 className="font-extrabold text-[11px] text-gray-800 dark:text-gray-100">{chain.name}</h5>
-                                <div className="flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-0.5">
-                                  <MaterialSymbol icon="schedule" size={10} className="text-gray-400" />
-                                  <span>{chain.timeEstimate}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
-                              <MaterialSymbol icon="star" size={9} fill className="text-[#9a0002]" />
-                              <span>{chain.rating}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+    return (
+          <div className="space-y-8 text-gray-800 dark:text-gray-200 animate-fade-in">
+            {/* Menús del momento */}
+            <section className="space-y-4">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Menús del momento</h3>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Lo que más se pide ahora</p>
                 </div>
               </div>
 
+              <div className="relative w-full">
+                <div
+                  className={cn(
+                    "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    trendingScrollState.isAtStart ? "opacity-0" : "opacity-100"
+                  )}
+                />
+                <div
+                  className={cn(
+                    "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    trendingScrollState.isAtEnd ? "opacity-0" : "opacity-100"
+                  )}
+                />
+
+                <div
+                  ref={trendingContainerRef}
+                  className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-1 pt-1 pb-3"
+                >
+                  {TRENDING_ITEMS.map((item) => {
+                    const ownerChain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
+                    return (
+                      <TrendingMenuCard
+                        key={item.id}
+                        item={item}
+                        ownerChain={ownerChain}
+                        className="w-[220px] flex-shrink-0"
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+
+            {/* Cadenas destacadas */}
+            <section className="space-y-4">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Cadenas destacadas</h3>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Locales recomendados cerca tuyo</p>
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setCurrentChainPage(0)}
+                    className={cn(
+                      "w-5 h-1.5 rounded-full transition-all cursor-pointer",
+                      currentChainPage === 0 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
+                    )}
+                  />
+                  <button
+                    onClick={() => setCurrentChainPage(1)}
+                    className={cn(
+                      "w-5 h-1.5 rounded-full transition-all cursor-pointer",
+                      currentChainPage === 1 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div
+                ref={chainContainerRef}
+                className="relative overflow-hidden w-full min-h-[400px] md:min-h-[210px]"
+                onTouchStart={handleChainTouchStart}
+                onTouchMove={handleChainTouchMove}
+                onTouchEnd={handleChainTouchEnd}
+              >
+                <div
+                  className="flex w-full transition-transform duration-500 ease-in-out gap-6"
+                  style={{ transform: `translateX(calc(-${currentChainPage} * (100% + 24px)))` }}
+                >
+                  <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
+                    {randomizedChains.slice(0, 2).map((chain) => (
+                      <FeaturedCard key={chain.id} chain={chain} />
+                    ))}
+                  </div>
+                  <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
+                    {randomizedChains.slice(2, 4).map((chain) => (
+                      <FeaturedCard key={chain.id} chain={chain} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Populares — quiet strip */}
+            <section className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Más populares</h3>
+                <p className="text-[12px] text-gray-400 mt-0.5">Los favoritos de la zona</p>
+              </div>
+              <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1">
+                {FEATURED_CHAINS.map((chain) => (
+                  <Link
+                    key={chain.id}
+                    href={`/c/${chain.id}`}
+                    className="min-w-[200px] flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.12)] cursor-pointer hover:border-[#9a0002]/25 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f5f1eb] dark:bg-[#2a2623]">
+                      {chain.logoImage ? (
+                        <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm font-bold">
+                          {chain.logoEmoji || chain.name[0]}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">{chain.name}</p>
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                        <MaterialSymbol icon="star" size={12} fill className="text-[#9a0002]" />
+                        {chain.rating} · {chain.timeEstimate}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
           </div>
-        );
-    }
+    );
   };
 
   const currentAddressName = savedAddresses.find(a => a.id === selectedAddressId)?.name || savedAddresses[0].name;
@@ -469,26 +484,11 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Full-screen page loader — rendered at root level so it truly covers everything */}
-      <AnimatePresence>
-        {isLoading && <AwwwardsPageLoader key="page-loader" />}
-      </AnimatePresence>
+      <BrandSplash show={showSplash} onSkip={skipSplash} />
 
-      <div className="min-h-screen flex flex-col bg-[#faf6f1] pb-8 pt-[72px] dark:bg-[#1c1917] md:pt-0 relative">
+      <div className="min-h-screen flex flex-col bg-[#f3efe8] pb-10 pt-[64px] dark:bg-[#1c1917] md:pt-0 relative">
 
-      {/* Backdrop starts below the location control so the header/location stay sharp */}
-      {showLocationDropdown && (
-        <div
-          className="fixed inset-x-0 bottom-0 z-45 bg-black/15 dark:bg-black/45 backdrop-blur-[2.5px]"
-          style={{ top: locationBackdropTop ?? 0 }}
-          onClick={() => {
-            setShowLocationDropdown(false);
-            setLocationBackdropTop(null);
-          }}
-        />
-      )}
-
-      {/* Background Dimmer Backdrop for search focus */}
+      {/* Search overlay dimmer only — location/notifications use a transparent dismiss hit-area */}
       {isSearchFocused && (
         <div
           className="fixed inset-0 bg-black/10 dark:bg-black/40 backdrop-blur-[2px] z-30 transition-all duration-300"
@@ -522,9 +522,8 @@ export default function HomePage() {
             <div className="relative w-full animate-pulse">
               <div className="relative overflow-hidden bg-gradient-to-b from-[#9a0002] to-[#6b0001] px-4 pb-14 pt-4">
                 <div className="mx-auto flex max-w-[1040px] gap-2">
-                  <div className="h-[42px] flex-1 rounded-full bg-white/20" />
-                  <div className="h-[42px] w-[42px] rounded-full bg-white/20" />
-                  <div className="h-[42px] w-[42px] rounded-full bg-white/20" />
+                  <div className="h-10 flex-1 rounded-xl bg-white/20" />
+                  <div className="h-10 w-10 rounded-full bg-white/20" />
                 </div>
                 <div className="mx-auto mt-2 flex flex-col items-center space-y-1">
                   <div className="h-2 w-20 rounded bg-white/15" />
@@ -538,7 +537,7 @@ export default function HomePage() {
                 >
                   <path
                     d="M0 0 A 340 340 0 0 1 375 0 L 375 56 L 0 56 Z"
-                    className="fill-[#faf6f1] dark:fill-[#1c1917]"
+                    className="fill-[#f3efe8] dark:fill-[#1c1917]"
                   />
                 </svg>
               </div>
@@ -573,18 +572,6 @@ export default function HomePage() {
               onCategoryChange={setActiveCategory}
               activeSpecialty={activeSpecialty}
               onSpecialtyChange={setActiveSpecialty}
-              locationLabel={currentAddressName}
-              savedAddresses={savedAddresses}
-              selectedAddressId={selectedAddressId}
-              onSelectAddress={(id) => {
-                setSelectedAddressId(id);
-                setShowLocationDropdown(false);
-              }}
-              onLocationClick={() => {
-                setShowLocationDropdown(!showLocationDropdown);
-              }}
-              onLocationAnchorChange={handleLocationAnchorChange}
-              showLocationDropdown={showLocationDropdown}
             />
           )}
         </div>
@@ -611,18 +598,18 @@ export default function HomePage() {
 
             {/* Input Capsule Box */}
             <div
-              className={`flex-1 h-[48px] bg-[#ede4d9] dark:bg-[#1c1917] border-[1.5px] rounded-[24px] flex items-center px-4 gap-2 transition-all duration-300 relative ${searchQuery !== ""
-                ? "animate-typing-glow border-[#9a0002] shadow-[0_0_20px_rgba(154,0,2,0.3)]"
-                : "border-[#9a0002] shadow-[0_0_15px_rgba(154,0,2,0.2)]"
+              className={`flex-1 h-10 bg-white dark:bg-[#2a2623] border rounded-xl flex items-center px-3.5 gap-2.5 transition-all duration-300 relative ${searchQuery !== ""
+                ? "border-[#9a0002] shadow-[0_0_16px_rgba(154,0,2,0.22)]"
+                : "border-[#9a0002]/50 shadow-[0_0_12px_rgba(154,0,2,0.12)]"
                 }`}
             >
-              <MaterialSymbol icon="search" size={16} className="text-[#9a0002]" />
+              <MaterialSymbol icon="search" size={17} className="shrink-0 text-[#9a0002]" />
               <SmoothInput
                 autoFocus
                 placeholder="Buscar comida, locales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-bold"
+                className="w-full text-[13px] font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
 
               {searchQuery !== "" && (
@@ -657,84 +644,6 @@ export default function HomePage() {
   );
 }
 
-const LOADING_WORDS = [
-  { text: "BUSCAS.", isOutline: true },
-  { text: "PEDIS.", isOutline: false },
-  { text: "TENES.", isOutline: true },
-  { text: "BOLIVARPIDE.", isOutline: false },
-];
-
-// Ultra-minimalist Accent Page Loader (Simultaneous Mechanical Letter-Drop Roller)
-function AwwwardsPageLoader() {
-  const [wordIndex, setWordIndex] = useState(0);
-
-  useEffect(() => {
-    const wordTimer = setInterval(() => {
-      setWordIndex((prev) => {
-        if (prev >= LOADING_WORDS.length - 1) {
-          clearInterval(wordTimer);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 550);
-    return () => clearInterval(wordTimer);
-  }, []);
-
-  const currentWord = LOADING_WORDS[wordIndex];
-  const characters = currentWord.text.split("");
-
-  const outlineStyle: React.CSSProperties = {
-    WebkitTextStrokeWidth: "2.5px",
-    WebkitTextStrokeColor: "#ffffff",
-    WebkitTextFillColor: "#9a0002",
-    color: "#9a0002",
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
-      className="fixed inset-0 z-[9999] bg-[#9a0002] flex items-center justify-center select-none overflow-hidden"
-    >
-      <div
-        className="relative w-full flex items-center justify-center overflow-hidden"
-        style={{ height: "clamp(3.5rem, 14vw, 8rem)" }}
-      >
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={wordIndex}
-            className="absolute inset-0 flex items-center justify-center tracking-tight font-black uppercase leading-none"
-            style={{ fontSize: "clamp(2.5rem, 11vw, 7rem)" }}
-          >
-            {characters.map((char, charIdx) => (
-              <div key={charIdx} className="overflow-hidden inline-block" style={{ lineHeight: 1.2 }}>
-                <motion.span
-                  initial={{ y: "-100%" }}
-                  animate={{ y: "0%" }}
-                  exit={{ y: "100%" }}
-                  transition={{
-                    duration: 0.32,
-                    delay: charIdx * 0.022,
-                    ease: [0.33, 1, 0.68, 1],
-                  }}
-                  style={{
-                    display: "inline-block",
-                    ...(currentWord.isOutline ? outlineStyle : { color: "#ffffff" }),
-                  }}
-                  className="font-black"
-                >
-                  {char}
-                </motion.span>
-              </div>
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
-}
-
 // Inner helper component for Search Results contents
 interface SearchContentProps {
   recentSearches: string[];
@@ -761,7 +670,7 @@ function SearchOverlayContent({
             {recentSearches.map((term, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-2.5 pl-3.5 pr-2 py-2 bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 rounded-full text-xs font-bold whitespace-nowrap shadow-sm hover:border-[#9a0002]/30 transition-all cursor-pointer group"
+                className="flex items-center gap-2.5 pl-3.5 pr-2 py-2 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-full text-[13px] font-medium whitespace-nowrap hover:border-[#9a0002]/30 transition-all cursor-pointer group"
                 onClick={() => onSelect(term)}
               >
                 <span>{term}</span>
@@ -788,7 +697,7 @@ function SearchOverlayContent({
             <button
               key={idx}
               onClick={() => onSelect(term)}
-              className="px-4 py-2 bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 rounded-full text-xs font-bold whitespace-nowrap shadow-sm hover:border-[#9a0002]/30 hover:text-[#9a0002] transition-all cursor-pointer"
+              className="px-4 py-2 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-full text-[13px] font-medium whitespace-nowrap hover:border-[#9a0002]/30 hover:text-[#9a0002] transition-all cursor-pointer"
             >
               {term}
             </button>
@@ -804,7 +713,7 @@ function SearchOverlayContent({
             <div
               key={chain.id}
               onClick={() => onSelect(chain.name)}
-              className="w-[240px] flex-shrink-0 p-3.5 bg-[#faf6f1] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 rounded-[16px] penpot-shadow flex items-center justify-between cursor-pointer hover:border-[#9a0002]/30 active:scale-98 transition-all duration-300"
+              className="w-[220px] flex-shrink-0 p-3 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-2xl shadow-[0_8px_30px_-12px_rgba(61,43,31,0.12)] flex items-center justify-between cursor-pointer hover:border-[#9a0002]/25 transition-all"
             >
               <div className="flex items-center gap-3">
                 <div className="w-[38px] h-[38px] rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-[#3d3732] shadow-xs">
@@ -817,16 +726,16 @@ function SearchOverlayContent({
                   )}
                 </div>
                 <div>
-                  <h5 className="font-extrabold text-[11px] text-gray-800 dark:text-gray-100">{chain.name}</h5>
-                  <div className="flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-0.5">
-                    <MaterialSymbol icon="schedule" size={10} className="text-gray-400" />
+                  <h5 className="font-semibold text-[13px] text-gray-900 dark:text-gray-100">{chain.name}</h5>
+                  <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium mt-0.5">
+                    <MaterialSymbol icon="schedule" size={11} className="text-gray-400" />
                     <span>{chain.timeEstimate}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-lg flex items-center gap-0.5 font-extrabold text-[10px]">
-                <MaterialSymbol icon="star" size={9} fill className="text-[#9a0002]" />
+              <div className="bg-[#f5f1eb] dark:bg-[#231f1c] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-full flex items-center gap-0.5 font-semibold text-[11px]">
+                <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
                 <span>{chain.rating}</span>
               </div>
             </div>
@@ -837,11 +746,12 @@ function SearchOverlayContent({
   );
 }
 
-// Reusable Featured Chain Card Component with hover styles
 function FeaturedCard({ chain }: { chain: FeaturedChain }) {
   return (
-    <div className="group rounded-[16px] bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/50 penpot-shadow overflow-hidden transition-all duration-300 cursor-pointer">
-      {/* Banner */}
+    <Link
+      href={`/c/${chain.id}`}
+      className="group rounded-[20px] bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] overflow-hidden transition-all duration-300 cursor-pointer block"
+    >
       <div className={`h-[130px] ${chain.bannerBg} relative flex items-center justify-center p-6 text-white overflow-hidden`}>
         {chain.bannerImage && (
           <img
@@ -850,49 +760,47 @@ function FeaturedCard({ chain }: { chain: FeaturedChain }) {
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
         <div className="relative z-10 text-center">
-          <span className="text-[10px] bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full font-bold uppercase tracking-wider text-white border border-white/30">
+          <span className="text-[10px] bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider text-white border border-white/25">
             Destacado
           </span>
-          <h4 className="text-lg font-black mt-1.5 drop-shadow-md text-white">{chain.name}</h4>
-          <p className="text-xs text-white/95 font-medium drop-shadow-sm">{chain.bannerText}</p>
+          <h4 className="text-lg font-bold mt-1.5 drop-shadow-md text-white">{chain.name}</h4>
+          <p className="text-[12px] text-white/90 font-medium drop-shadow-sm">{chain.bannerText}</p>
         </div>
       </div>
 
-      {/* Details */}
-      <div className="h-[70px] px-4 flex items-center justify-between bg-white dark:bg-[#1c1917]">
-        <div className="flex items-center gap-3">
-          <div className="w-[42px] h-[42px] rounded-full overflow-hidden border-2 border-white dark:border-[#3d3732] shadow-md flex-shrink-0">
+      <div className="h-[72px] px-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white dark:ring-[#3d3732] shadow-sm flex-shrink-0 bg-[#f5f1eb]">
             {chain.logoImage ? (
               <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xl">
+              <div className="w-full h-full bg-[#f5f1eb] dark:bg-[#2a2623] flex items-center justify-center text-lg">
                 {chain.logoEmoji}
               </div>
             )}
           </div>
-          <div>
-            <h5 className="font-extrabold text-xs text-gray-800 dark:text-gray-100">{chain.name}</h5>
-            <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-bold mt-0.5">
-              <MaterialSymbol icon="schedule" size={11} className="text-gray-400" />
+          <div className="min-w-0">
+            <h5 className="font-semibold text-[13px] text-gray-900 dark:text-gray-100 truncate">{chain.name}</h5>
+            <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium mt-0.5">
+              <MaterialSymbol icon="schedule" size={12} className="text-gray-400" />
               <span>{chain.timeEstimate}</span>
-              <span className="text-gray-300 dark:text-gray-700">•</span>
-              <span>Envío: ${chain.deliveryFee.toLocaleString("es-AR")}</span>
+              <span className="text-gray-300">·</span>
+              <span>Envío ${chain.deliveryFee.toLocaleString("es-AR")}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#faf6f1] dark:bg-[#2a2623] border border-gray-200 dark:border-[#3d3732] text-gray-800 dark:text-gray-200 py-1 px-2.5 rounded-xl flex items-center gap-1 font-extrabold text-xs">
-          <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
+        <div className="bg-[#f5f1eb] dark:bg-[#231f1c] text-gray-800 dark:text-gray-200 py-1 px-2.5 rounded-full flex items-center gap-1 font-semibold text-[12px] flex-shrink-0">
+          <MaterialSymbol icon="star" size={12} fill className="text-[#9a0002]" />
           <span>{chain.rating}</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
-// Reusable Trending Menu Card
 function TrendingMenuCard({
   item,
   ownerChain,
@@ -902,61 +810,75 @@ function TrendingMenuCard({
   ownerChain: FeaturedChain | undefined;
   className?: string;
 }) {
+  const { openProduct, quickAdd } = useCart();
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => openProduct(item)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openProduct(item);
+        }
+      }}
       className={cn(
-        "bg-white dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 penpot-shadow rounded-[16px] p-0 flex flex-col overflow-hidden hover:shadow-xl hover:-translate-y-1 hover:border-[#9a0002]/40 transition-all duration-300 group cursor-pointer",
+        "bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] rounded-[20px] flex flex-col overflow-hidden hover:border-[#9a0002]/25 transition-all duration-300 group cursor-pointer text-left",
         className
       )}
     >
-      {/* Product Image Box */}
-      <div className="h-[125px] w-full relative overflow-hidden bg-[#ede4d9]/50 dark:bg-[#231f1c]">
+      <div className="h-[125px] w-full relative overflow-hidden bg-[#f5f1eb] dark:bg-[#231f1c]">
         {item.image ? (
           <img
             src={item.image}
             alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl">
             {item.emoji}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-20 transition-opacity" />
       </div>
 
-      {/* Product details with owner brand headers */}
-      <div className="p-3 flex flex-col">
-        {/* Owner Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3d3732]/60 pb-2 mb-2">
+      <div className="p-3.5 flex flex-col">
+        <div className="flex items-center justify-between border-b border-[#f0ebe4] dark:border-[#2a2623] pb-2 mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-[22px] h-[22px] rounded-full overflow-hidden border border-gray-100 dark:border-[#3d3732] flex-shrink-0">
+            <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 bg-[#f5f1eb]">
               {ownerChain?.logoImage ? (
                 <img src={ownerChain.logoImage} alt={ownerChain.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-[10px]">
-                  {ownerChain?.logoEmoji || '🍔'}
+                <div className="w-full h-full flex items-center justify-center text-[9px]">
+                  {ownerChain?.logoEmoji || "🍔"}
                 </div>
               )}
             </div>
-            <span className="font-extrabold text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-[85px]">
+            <span className="font-semibold text-[11px] text-gray-600 dark:text-gray-300 truncate max-w-[90px]">
               {ownerChain?.name || item.storeName}
             </span>
           </div>
-          <div className="flex items-center gap-0.5 text-[9px] text-gray-400 font-bold flex-shrink-0">
-            <MaterialSymbol icon="star" size={9} fill className="text-[#9a0002]" />
-            <span>{ownerChain?.rating || '4.5'}</span>
+          <div className="flex items-center gap-0.5 text-[11px] text-gray-400 font-medium flex-shrink-0">
+            <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
+            <span>{ownerChain?.rating || "4.5"}</span>
           </div>
         </div>
 
-        {/* Item Name & Pricing */}
-        <div className="flex flex-col justify-between h-[48px] mt-0.5">
-          <h4 className="font-extrabold text-xs text-gray-800 dark:text-gray-100 leading-tight truncate group-hover:text-[#9a0002] transition-colors">
+        <div className="flex flex-col justify-between min-h-[48px]">
+          <h4 className="font-semibold text-[13px] text-gray-900 dark:text-gray-100 leading-tight truncate group-hover:text-[#9a0002] transition-colors">
             {item.name}
           </h4>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-[#9a0002]">${item.price.toLocaleString("es-AR")}</span>
-            <button className="w-6 h-6 rounded-full bg-[#9a0002] text-white hover:bg-[#850002] shadow-xs flex items-center justify-center font-black text-xs cursor-pointer active:scale-95 transition-all">
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[13px] font-bold text-[#9a0002]">${item.price.toLocaleString("es-AR")}</span>
+            <button
+              type="button"
+              aria-label={`Agregar ${item.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                quickAdd(item);
+              }}
+              className="w-7 h-7 rounded-full bg-[#9a0002] text-white hover:bg-[#6b0001] flex items-center justify-center text-sm font-bold cursor-pointer active:scale-95 transition-all"
+            >
               +
             </button>
           </div>

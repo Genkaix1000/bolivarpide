@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { CartProvider } from "@/components/CartProvider";
+import { CartFlow } from "@/components/CartFlow";
+import { UserProfileProvider } from "@/components/UserProfileProvider";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -47,9 +50,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-        <main className="flex-1 flex flex-col w-full mx-auto">
-          {children}
-        </main>
+        <UserProfileProvider>
+          <CartProvider>
+            <main className="flex-1 flex flex-col w-full mx-auto">
+              {children}
+            </main>
+            <CartFlow />
+          </CartProvider>
+        </UserProfileProvider>
       </body>
     </html>
   );

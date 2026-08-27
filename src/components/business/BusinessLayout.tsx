@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { BusinessSidebar } from "./BusinessSidebar";
 import { BusinessTopbar } from "./BusinessTopbar";
+import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
+import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
 
 export function BusinessLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { show: showSplash, skip: skipSplash } = useBrandSplash(SPLASH_NEGOCIO);
 
   return (
     <div className="flex min-h-screen bg-[#f3efe8] dark:bg-[#1c1917]">
+      <BrandSplash show={showSplash} onSkip={skipSplash} />
+
       <BusinessSidebar
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
@@ -24,17 +29,15 @@ export function BusinessLayout({ children }: { children: React.ReactNode }) {
         <BusinessTopbar onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-7">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.15 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/* Solo fade-in: exit+enter se sentía como doble parpadeo */}
+          <motion.div
+            key={pathname}
+            initial={showSplash ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
     </div>

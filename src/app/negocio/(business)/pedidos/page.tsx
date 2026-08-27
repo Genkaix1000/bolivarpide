@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { StatCard } from "@/components/business/StatCard";
 import { cn } from "@/lib/utils";
-import { MOCK_DETAILED_ORDERS, MOCK_DRIVERS, DetailedOrder } from "@/lib/mockData";
+import { MOCK_DETAILED_ORDERS, MOCK_DRIVERS, MOCK_SALES_CHART, DetailedOrder } from "@/lib/mockData";
 
 type BoardStatus = "pending" | "preparing" | "delivering" | "delivered";
 type OrderFilter = "all" | BoardStatus;
@@ -349,11 +349,39 @@ export default function PedidosPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <StatCard icon="receipt_long" value={String(orders.filter((o) => o.status !== "cancelled").length)} label="Pedidos de hoy" />
-        <StatCard icon="pending_actions" value={String(openCount)} label="Abiertos ahora" />
-        <StatCard icon="timer" value="3.2 min" label="T. respuesta prom." />
-        <StatCard icon="payments" value={formatCurrency(orders.reduce((acc, o) => acc + o.total, 0))} label="Facturado hoy" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          large
+          icon="receipt_long"
+          value={String(orders.filter((o) => o.status !== "cancelled").length)}
+          label="Pedidos de hoy"
+          sparkline={[...MOCK_SALES_CHART.week.orders]}
+          sparkColor="#059669"
+        />
+        <StatCard
+          large
+          icon="pending_actions"
+          value={String(openCount)}
+          label="Abiertos ahora"
+          sparkline={[3, 5, 4, 6, 8, 5, 7]}
+          sparkColor="#9a0002"
+        />
+        <StatCard
+          large
+          icon="timer"
+          value="3.2 min"
+          label="T. respuesta prom."
+          sparkline={[4.2, 3.8, 3.5, 3.2, 3.0, 3.2, 3.1]}
+          sparkColor="#6366f1"
+        />
+        <StatCard
+          large
+          icon="payments"
+          value={formatCurrency(orders.reduce((acc, o) => acc + o.total, 0))}
+          label="Facturado hoy"
+          sparkline={[...MOCK_SALES_CHART.week.delivery]}
+          sparkColor="#d97706"
+        />
       </div>
 
       <div className={cn(CARD, "p-2 sm:p-2.5 flex flex-col sm:flex-row sm:items-center gap-2")}>
