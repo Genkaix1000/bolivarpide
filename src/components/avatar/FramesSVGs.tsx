@@ -10,17 +10,17 @@ export function FrameGoldLegend({ className = "w-full h-full" }: { className?: s
   return (
     <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={{ overflow: "visible" }}>
       <defs>
-        <linearGradient id="gold-main" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="frame-gold-main" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFF2B2" />
           <stop offset="30%" stopColor="#F5A623" />
           <stop offset="70%" stopColor="#D97706" />
           <stop offset="100%" stopColor="#78350F" />
         </linearGradient>
-        <linearGradient id="gold-bright" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id="frame-gold-bright" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFFBEB" />
           <stop offset="100%" stopColor="#FBBF24" />
         </linearGradient>
-        <linearGradient id="gem-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="frame-gem-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#E0F2FE" />
           <stop offset="50%" stopColor="#38BDF8" />
           <stop offset="100%" stopColor="#0369A1" />
@@ -31,18 +31,18 @@ export function FrameGoldLegend({ className = "w-full h-full" }: { className?: s
       <circle cx="80" cy="88" r="59" stroke="#F59E0B" strokeWidth="1.5" opacity="0.35" />
 
       {/* Main Dual Gold Ring */}
-      <circle cx="80" cy="88" r="57" stroke="url(#gold-main)" strokeWidth="4.5" />
-      <circle cx="80" cy="88" r="53" stroke="url(#gold-bright)" strokeWidth="1.2" opacity="0.9" />
+      <circle cx="80" cy="88" r="57" stroke="url(#frame-gold-main)" strokeWidth="4.5" />
+      <circle cx="80" cy="88" r="53" stroke="url(#frame-gold-bright)" strokeWidth="1.2" opacity="0.9" />
 
       {/* Left Wing Accent */}
       <g transform="translate(14, 52)">
         <path
           d="M12 28C6 20 6 8 16 0C14 10 16 18 20 24C16 26 14 27 12 28Z"
-          fill="url(#gold-main)"
+          fill="url(#frame-gold-main)"
         />
         <path
           d="M10 38C4 30 6 18 14 12C12 20 14 28 18 34L10 38Z"
-          fill="url(#gold-main)"
+          fill="url(#frame-gold-main)"
           opacity="0.8"
         />
       </g>
@@ -51,18 +51,18 @@ export function FrameGoldLegend({ className = "w-full h-full" }: { className?: s
       <g transform="translate(118, 52)">
         <path
           d="M16 28C22 20 22 8 12 0C14 10 12 18 8 24C12 26 14 27 16 28Z"
-          fill="url(#gold-main)"
+          fill="url(#frame-gold-main)"
         />
         <path
           d="M18 38C24 30 22 18 14 12C16 20 14 28 10 34L18 38Z"
-          fill="url(#gold-main)"
+          fill="url(#frame-gold-main)"
           opacity="0.8"
         />
       </g>
 
       {/* Top Apex Crown Pip */}
       <g transform="translate(74, 24)">
-        <polygon points="6,0 12,5 6,10 0,5" fill="url(#gem-cyan)" stroke="#FFFFFF" strokeWidth="0.8" />
+        <polygon points="6,0 12,5 6,10 0,5" fill="url(#frame-gem-cyan)" stroke="#FFFFFF" strokeWidth="0.8" />
         <circle cx="6" cy="5" r="1" fill="#FFFFFF" />
       </g>
 
@@ -71,12 +71,12 @@ export function FrameGoldLegend({ className = "w-full h-full" }: { className?: s
         {/* Golden Bracket */}
         <path
           d="M0 4C8 14 18 18 24 20C30 18 40 14 48 4C42 10 32 14 24 14C16 14 6 10 0 4Z"
-          fill="url(#gold-main)"
+          fill="url(#frame-gold-main)"
         />
         {/* Center Golden Shield */}
-        <polygon points="24,2 32,8 24,18 16,8" fill="url(#gold-bright)" stroke="#78350F" strokeWidth="1" />
+        <polygon points="24,2 32,8 24,18 16,8" fill="url(#frame-gold-bright)" stroke="#78350F" strokeWidth="1" />
         {/* Cyan Diamond Gem */}
-        <polygon points="24,4 30,8 24,15 18,8" fill="url(#gem-cyan)" />
+        <polygon points="24,4 30,8 24,15 18,8" fill="url(#frame-gem-cyan)" />
         <circle cx="24" cy="8" r="1.5" fill="#FFFFFF" />
       </g>
     </svg>

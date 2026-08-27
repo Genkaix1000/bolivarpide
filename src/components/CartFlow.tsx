@@ -41,7 +41,6 @@ function Backdrop({ onClose }: { onClose: () => void }) {
 
 function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
   const { confirmAdd } = useCart();
-  const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
   const [selected, setSelected] = useState<SelectedOptions>({});
   const chain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
@@ -50,8 +49,6 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
     if (!item.options) return false;
     return item.options.some((o) => o.required && !selected[o.id]);
   }, [item.options, selected]);
-
-  const price = unitPrice(item, selected) * qty;
 
   return (
     <>
@@ -143,34 +140,14 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
           </label>
         </div>
 
-        <div className="flex items-center gap-3 border-t border-black/[0.06] dark:border-[#2a2623] px-5 py-4">
-          <div className="flex items-center gap-2 rounded-full border border-black/10 dark:border-[#3d3732] px-2 py-1">
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full cursor-pointer disabled:opacity-40"
-              disabled={qty <= 1}
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              aria-label="Menos"
-            >
-              −
-            </button>
-            <span className="w-5 text-center text-sm font-semibold">{qty}</span>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full cursor-pointer"
-              onClick={() => setQty((q) => q + 1)}
-              aria-label="Más"
-            >
-              +
-            </button>
-          </div>
+        <div className="border-t border-black/[0.06] dark:border-[#2a2623] px-5 py-4">
           <button
             type="button"
             disabled={missing}
-            onClick={() => confirmAdd(item, qty, selected, note.trim() || undefined)}
-            className="flex-1 rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition"
+            onClick={() => confirmAdd(item, 1, selected, note.trim() || undefined)}
+            className="w-full rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition"
           >
-            Agregar · {money(price)}
+            Agregar · {money(unitPrice(item, selected))}
           </button>
         </div>
       </motion.div>

@@ -456,41 +456,50 @@ function FitArcCarousel({
   selectedId,
   onSelect,
   geo,
+  backButton,
 }: {
   items: CarouselItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   geo: ArcGeometry;
+  backButton?: React.ReactNode;
 }) {
   const n = items.length;
   const edgePad = fitEdgePad(geo.width);
   const usable = Math.max(geo.width - edgePad * 2, 1);
 
   return (
-    <div
-      className="semicircle-stage pointer-events-none relative w-full overflow-visible"
-      style={{ height: arcStageHeight(geo) }}
-    >
-      {items.map((item, i) => {
-        const x = n === 1 ? geo.cx : edgePad + (i / (n - 1)) * usable;
-        // Icon circle center tracks the oval edge.
-        const y = arcY(x, geo) - ICON_CENTER;
-        return (
-          <CategoryButton
-            key={item.id}
-            item={item}
-            isActive={selectedId === item.id}
-            onSelect={onSelect}
-            className="absolute"
-            style={{
-              width: ITEM_BOX,
-              left: x - ITEM_BOX / 2,
-              top: 0,
-              transform: `translateY(${y}px)`,
-            }}
-          />
-        );
-      })}
+    <div className="pointer-events-none flex w-full flex-col items-center">
+      <div
+        className="semicircle-stage pointer-events-none relative w-full overflow-visible"
+        style={{ height: arcStageHeight(geo) }}
+      >
+        {items.map((item, i) => {
+          const x = n === 1 ? geo.cx : edgePad + (i / (n - 1)) * usable;
+          // Icon circle center tracks the oval edge.
+          const y = arcY(x, geo) - ICON_CENTER;
+          return (
+            <CategoryButton
+              key={item.id}
+              item={item}
+              isActive={selectedId === item.id}
+              onSelect={onSelect}
+              className="absolute"
+              style={{
+                width: ITEM_BOX,
+                left: x - ITEM_BOX / 2,
+                top: 0,
+                transform: `translateY(${y}px)`,
+              }}
+            />
+          );
+        })}
+      </div>
+      {backButton && (
+        <div className="pointer-events-none relative mt-1 flex w-full items-center justify-center px-4">
+          <div className="absolute left-4">{backButton}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -501,11 +510,13 @@ function DragArcCarousel({
   selectedId,
   onSelect,
   geo,
+  backButton,
 }: {
   items: CarouselItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   geo: ArcGeometry;
+  backButton?: React.ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -602,14 +613,17 @@ function DragArcCarousel({
         </div>
       </div>
 
-      <MiniScrollBar
-        scrollLeft={bar.scrollLeft}
-        scrollWidth={bar.scrollWidth}
-        clientWidth={bar.clientWidth}
-        onSeek={(left) => {
-          scrollRef.current?.scrollTo({ left, behavior: "smooth" });
-        }}
-      />
+      <div className="pointer-events-none relative mt-1 flex w-full items-center justify-center px-4">
+        {backButton && <div className="absolute left-4">{backButton}</div>}
+        <MiniScrollBar
+          scrollLeft={bar.scrollLeft}
+          scrollWidth={bar.scrollWidth}
+          clientWidth={bar.clientWidth}
+          onSeek={(left) => {
+            scrollRef.current?.scrollTo({ left, behavior: "smooth" });
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -619,11 +633,13 @@ function ArcCarousel({
   selectedId,
   onSelect,
   geo,
+  backButton,
 }: {
   items: CarouselItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   geo: ArcGeometry;
+  backButton?: React.ReactNode;
 }) {
   // Fit when items can be evenly spaced across the centered arc without overlapping.
   const edgePad = fitEdgePad(geo.width);
@@ -638,6 +654,7 @@ function ArcCarousel({
         selectedId={selectedId}
         onSelect={onSelect}
         geo={geo}
+        backButton={backButton}
       />
     );
   }
@@ -648,6 +665,7 @@ function ArcCarousel({
       selectedId={selectedId}
       onSelect={onSelect}
       geo={geo}
+      backButton={backButton}
     />
   );
 }
@@ -713,6 +731,7 @@ export default function CurvedHomeHeader({
   const returnToCategories = () => {
     setShowSpecialties(false);
     onSpecialtyChange(null);
+    onCategoryChange(null);
   };
 
   const svgW = headerWidth || 375;
@@ -747,30 +766,11 @@ export default function CurvedHomeHeader({
         </div>
       </div>
 
-      {/* Categories sit on the bottom oval curve.
-          The wrapper overlaps the header, so it must let clicks pass through
-          its empty areas to the search / theme / notifications / location controls. */}
+      {/* Categories sit on the bottom oval curve. */}
       <div
         className="pointer-events-none relative z-20 px-0 pb-0.5"
         style={{ marginTop: -geo.sagitta }}
       >
-        <AnimatePresence>
-          {showSpecialties && (
-            <motion.button
-              key="back"
-              type="button"
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8, transition: { duration: 0.18 } }}
-              onClick={returnToCategories}
-              className="pointer-events-auto absolute left-3 top-1 z-30 flex cursor-pointer items-center gap-1 rounded-full border border-[#9a0002]/15 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[#9a0002] shadow-sm backdrop-blur-sm dark:border-[#3d3732] dark:bg-[#1c1917]/90"
-            >
-              <MaterialSymbol icon="arrow_back" size={13} />
-              Categorías
-            </motion.button>
-          )}
-        </AnimatePresence>
-
         <AnimatePresence mode="wait">
           <motion.div
             key={showSpecialties ? "specialties" : "categories"}
@@ -785,6 +785,18 @@ export default function CurvedHomeHeader({
               selectedId={showSpecialties ? activeSpecialty : activeCategory}
               onSelect={showSpecialties ? onSpecialtyChange : selectCategory}
               geo={geo}
+              backButton={
+                showSpecialties ? (
+                  <button
+                    type="button"
+                    onClick={returnToCategories}
+                    className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-black/10 dark:border-white/10 bg-white/95 dark:bg-[#1c1917]/95 px-3 py-1 text-[11px] font-bold text-gray-800 dark:text-gray-100 shadow-md backdrop-blur-md hover:bg-white hover:text-[#9a0002] dark:hover:text-red-400 transition-all active:scale-95 shrink-0"
+                  >
+                    <MaterialSymbol icon="arrow_back" size={14} />
+                    <span>Volver</span>
+                  </button>
+                ) : undefined
+              }
             />
           </motion.div>
         </AnimatePresence>

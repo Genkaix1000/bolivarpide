@@ -138,27 +138,38 @@ export function StoreLocationBlock({
   stretchMap?: boolean;
 }) {
   return (
-    <div className={cn(stretchMap ? "flex flex-1 flex-col min-h-0 gap-2.5" : "space-y-2.5")}>
-      <p className="flex items-start gap-1.5 text-[12px] leading-snug text-gray-500 shrink-0">
+    <a
+      href={googleMapsUrl(profile)}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Abrir ${profile.name} en Google Maps`}
+      className={cn(
+        "group block cursor-pointer outline-none",
+        stretchMap ? "flex flex-1 flex-col min-h-0 gap-2.5" : "space-y-2.5"
+      )}
+    >
+      <p className="flex items-start gap-1.5 text-[12px] leading-snug text-gray-500 shrink-0 transition-colors group-hover:text-[#9a0002]">
         <MaterialSymbol icon="location_on" size={16} className="mt-0.5 shrink-0 text-[#9a0002]" />
-        <span>{profile.address}</span>
+        <span className="underline-offset-2 group-hover:underline">{profile.address}</span>
       </p>
-      <StoreMap
-        lat={profile.lat}
-        lng={profile.lng}
-        name={profile.name}
-        className={cn(stretchMap ? "flex-1 min-h-[120px] w-full" : "h-40 w-full", mapClassName)}
-      />
-      <a
-        href={googleMapsUrl(profile)}
-        target="_blank"
-        rel="noreferrer"
-        className="flex w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#9a0002]/25 bg-[#9a0002]/8 py-2.5 text-[13px] font-semibold text-[#9a0002] hover:bg-[#9a0002]/14 transition-colors"
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-2xl transition-shadow group-hover:ring-2 group-hover:ring-[#9a0002]/25",
+          stretchMap ? "flex-1 min-h-[120px] w-full" : "w-full"
+        )}
       >
-        <MaterialSymbol icon="map" size={18} />
-        Abrir en Google Maps
-      </a>
-    </div>
+        <StoreMap
+          lat={profile.lat}
+          lng={profile.lng}
+          name={profile.name}
+          className={cn(stretchMap ? "h-full min-h-[120px] w-full" : "h-40 w-full", mapClassName)}
+        />
+        <span className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <MaterialSymbol icon="open_in_new" size={12} />
+          Abrir en Maps
+        </span>
+      </div>
+    </a>
   );
 }
 

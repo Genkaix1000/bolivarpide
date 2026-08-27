@@ -72,12 +72,11 @@ export function AvatarPickerModal({
 
   if (!isOpen) return null;
 
-  const handleSelectCharacter = (characterId: string, defaultColorId?: string) => {
+  const handleSelectCharacter = (characterId: string) => {
     setSelectedAvatar((prev) => ({
       ...prev,
       type: "character",
       value: characterId,
-      gradientId: defaultColorId || prev.gradientId,
     }));
   };
 
@@ -183,7 +182,7 @@ export function AvatarPickerModal({
                 onClick={() => {
                   setActiveTab("personajes");
                   if (selectedAvatar.type !== "character") {
-                    handleSelectCharacter("char-sushi-boy", "mustard");
+                    handleSelectCharacter("char-cat-michi");
                   }
                 }}
                 className={cn(
@@ -245,39 +244,39 @@ export function AvatarPickerModal({
               <div className="space-y-3 animate-fade-in">
                 <div className="flex items-center justify-between px-1">
                   <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Elige tu personaje foodie
+                    Elige tu personaje
                   </label>
-                  <span className="text-[11px] text-[#9a0002] font-semibold">7 ilustraciones vectoriales</span>
+                  <span className="text-[11px] text-[#9a0002] font-semibold">8 ilustraciones</span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {CHARACTER_PRESETS.map((char) => {
                     const isSelected = selectedAvatar.type === "character" && selectedAvatar.value === char.id;
                     return (
                       <button
                         key={char.id}
                         type="button"
-                        onClick={() => handleSelectCharacter(char.id, char.defaultColorId)}
+                        onClick={() => handleSelectCharacter(char.id)}
                         className={cn(
-                          "p-3 rounded-2xl flex flex-col items-center text-center transition-all duration-200 cursor-pointer active:scale-95 group relative",
+                          "p-2.5 rounded-2xl flex flex-col items-center text-center transition-all duration-200 cursor-pointer active:scale-95 group relative",
                           isSelected
                             ? "bg-white dark:bg-[#231f1c] border-2 border-[#9a0002] shadow-md ring-2 ring-[#9a0002]/20 scale-102"
                             : "bg-white/80 dark:bg-[#231f1c]/70 border border-[#ede4d9] dark:border-[#302c28] hover:border-gray-400"
                         )}
                       >
-                        <div className="w-16 h-16 mb-2 overflow-visible flex items-center justify-center">
-                          <CharacterRenderer characterId={char.id} gradientId={char.defaultColorId} className="w-full h-full" />
+                        <div className="w-14 h-14 mb-1.5 overflow-visible flex items-center justify-center">
+                          <CharacterRenderer characterId={char.id} gradientId={selectedAvatar.gradientId} className="w-full h-full" />
                         </div>
-                        <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#9a0002]/10 text-[#9a0002] mb-1">
+                        <span className="inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-[#9a0002]/10 text-[#9a0002] mb-0.5">
                           {char.foodTag}
                         </span>
                         <h5 className="font-bold text-[12px] text-gray-900 dark:text-gray-100 leading-tight">
                           {char.name}
                         </h5>
-                        <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{char.description}</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5 line-clamp-1">{char.description}</p>
                         {isSelected && (
-                          <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#9a0002] text-white flex items-center justify-center shadow-sm">
-                            <MaterialSymbol icon="check" size={12} />
+                          <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-[#9a0002] text-white flex items-center justify-center shadow-sm text-[10px]">
+                            <MaterialSymbol icon="check" size={11} />
                           </span>
                         )}
                       </button>
