@@ -16,6 +16,7 @@ export default async function NegocioLoginPage({
       altHref="/login"
       altPrefix="¿Sos cliente?"
       altLabel="Iniciar sesión"
+      lema={["Tu local,", "siempre listo"]}
     />
   );
 }

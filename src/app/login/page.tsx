@@ -16,6 +16,7 @@ export default async function LoginPage({
       altHref="/negocio/login"
       altPrefix="¿Tenés un local?"
       altLabel="Acceso negocio"
+      lema={["Pedí lo mejor", "de Bolívar"]}
     />
   );
 }

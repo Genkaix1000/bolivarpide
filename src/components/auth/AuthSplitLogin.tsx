@@ -1,12 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { signInWithGoogle } from "@/lib/auth/actions";
-import { passwordIsValid, unmetPasswordRules } from "@/lib/auth/password";
+import { PASSWORD_RULES, passwordIsValid } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/client";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+
+type Field = "name" | "email" | "password" | "confirm";
+type FieldErrors = Partial<Record<Field, string>>;
+type Touched = Partial<Record<Field, boolean>>;
+
+function emailError(value: string) {
+  if (!value.trim()) return "Ingresá tu email.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Email inválido.";
+  return null;
+}
 
 type Props = {
   next: string;
@@ -17,6 +28,8 @@ type Props = {
   altHref: string;
   altPrefix: string;
   altLabel: string;
+  /** Lema del panel visual (2 líneas recomendadas) */
+  lema: [string, string];
 };
 
 type Mode = "login" | "signup";
@@ -32,6 +45,7 @@ export function AuthSplitLogin({
   altHref,
   altPrefix,
   altLabel,
+  lema,
 }: Props) {
   const router = useRouter();
   const formFirst = formSide === "left";
@@ -48,30 +62,55 @@ export function AuthSplitLogin({
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Touched>({});
+  const [attempted, setAttempted] = useState(false);
 
-  const pendingRules = useMemo(() => unmetPasswordRules(password), [password]);
   const isSignUp = mode === "signup";
-  const showHint = isSignUp && passwordFocused && password.length > 0;
+  const showHint = isSignUp && passwordFocused;
+
+  const fieldErrors = useMemo((): FieldErrors => {
+    const errors: FieldErrors = {};
+    if (isSignUp && !name.trim()) errors.name = "Ingresá tu nombre.";
+    const mail = emailError(email);
+    if (mail) errors.email = mail;
+    if (!password) errors.password = "Ingresá tu contraseña.";
+    else if (isSignUp && !passwordIsValid(password)) {
+      errors.password = "La contraseña no cumple los requisitos.";
+    }
+    if (isSignUp) {
+      if (!confirm) errors.confirm = "Confirmá tu contraseña.";
+      else if (password !== confirm) errors.confirm = "Las contraseñas no coinciden.";
+    }
+    return errors;
+  }, [isSignUp, name, email, password, confirm]);
+
+  function fieldMsg(field: Field) {
+    return (touched[field] || attempted) ? fieldErrors[field] : undefined;
+  }
+
+  function markTouched(field: Field) {
+    setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
+  }
+
+  function resetFieldState() {
+    setTouched({});
+    setAttempted(false);
+    setFormError(null);
+    setInfo(null);
+  }
+
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
+    resetFieldState();
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     setInfo(null);
+    setAttempted(true);
 
-    if (isSignUp) {
-      if (!name.trim()) {
-        setFormError("Ingresá tu nombre.");
-        return;
-      }
-      if (!passwordIsValid(password)) {
-        setFormError("La contraseña no cumple los requisitos.");
-        return;
-      }
-      if (password !== confirm) {
-        setFormError("Las contraseñas no coinciden.");
-        return;
-      }
-    }
+    if (Object.keys(fieldErrors).length > 0) return;
 
     setPending(true);
     try {
@@ -99,6 +138,7 @@ export function AuthSplitLogin({
           setMode("login");
           setPassword("");
           setConfirm("");
+          resetFieldState();
           return;
         }
       }
@@ -112,8 +152,13 @@ export function AuthSplitLogin({
     }
   }
 
-  const inputClass =
-    "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-400";
+  function inputClass(invalid?: boolean) {
+    return `w-full rounded-lg border bg-white px-3 py-2 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 ${
+      invalid
+        ? "border-red-400 focus:border-red-500"
+        : "border-stone-200 focus:border-stone-400"
+    }`;
+  }
 
   function EyeToggle({
     shown,
@@ -166,11 +211,7 @@ export function AuthSplitLogin({
         <div className="mt-4 flex gap-4 text-[13px]">
           <button
             type="button"
-            onClick={() => {
-              setMode("login");
-              setFormError(null);
-              setInfo(null);
-            }}
+            onClick={() => switchMode("login")}
             className={`cursor-pointer pb-1 font-medium ${
               !isSignUp
                 ? "border-b-2 border-[#9a0002] text-stone-900"
@@ -181,11 +222,7 @@ export function AuthSplitLogin({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setMode("signup");
-              setFormError(null);
-              setInfo(null);
-            }}
+            onClick={() => switchMode("signup")}
             className={`cursor-pointer pb-1 font-medium ${
               isSignUp
                 ? "border-b-2 border-[#9a0002] text-stone-900"
@@ -206,68 +243,101 @@ export function AuthSplitLogin({
           </p>
         )}
 
-        <form onSubmit={onSubmit} className="mt-4 space-y-2.5">
+        <form onSubmit={onSubmit} noValidate className="mt-4 space-y-2.5">
           <label className={`block ${isSignUp ? "" : "invisible pointer-events-none"}`}>
             <span className="mb-1 block text-[12px] font-medium text-stone-700">Nombre</span>
             <input
-              required={isSignUp}
               tabIndex={isSignUp ? 0 : -1}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => markTouched("name")}
               autoComplete="name"
               placeholder="Tu nombre"
-              className={inputClass}
+              aria-invalid={!!fieldMsg("name")}
+              className={inputClass(!!fieldMsg("name"))}
             />
+            {fieldMsg("name") && (
+              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("name")}</span>
+            )}
           </label>
 
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium text-stone-700">Email</span>
             <input
-              required
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => markTouched("email")}
               autoComplete="email"
               placeholder="Ingresá tu email"
-              className={inputClass}
+              aria-invalid={!!fieldMsg("email")}
+              className={inputClass(!!fieldMsg("email"))}
             />
+            {fieldMsg("email") && (
+              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("email")}</span>
+            )}
           </label>
 
           <div>
             <span className="mb-1 block text-[12px] font-medium text-stone-700">Contraseña</span>
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <input
-                  required
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
-                  className={`${inputClass} pr-9`}
-                />
-                <EyeToggle
-                  shown={showPassword}
-                  onToggle={() => setShowPassword((v) => !v)}
-                  hideLabel="Ocultar contraseña"
-                  showLabel="Ver contraseña"
-                />
-              </div>
-              {isSignUp && (
-                <div className="flex w-[128px] shrink-0 flex-wrap content-center gap-1">
-                  {showHint &&
-                    pendingRules.map((r) => (
-                      <span
-                        key={r.id}
-                        className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] leading-none text-stone-500"
-                      >
-                        {r.short}
-                      </span>
-                    ))}
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => {
+                  setPasswordFocused(false);
+                  markTouched("password");
+                }}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                aria-invalid={!!fieldMsg("password")}
+                className={`${inputClass(!!fieldMsg("password"))} pr-9`}
+              />
+              <EyeToggle
+                shown={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+                hideLabel="Ocultar contraseña"
+                showLabel="Ver contraseña"
+              />
+              {showHint && (
+                <div
+                  role="status"
+                  className="absolute top-[calc(100%+8px)] left-0 z-20 w-full min-w-[240px] rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 shadow-lg"
+                >
+                  <p className="mb-1.5 text-[12px] text-stone-600">
+                    La contraseña tiene que tener al menos:
+                  </p>
+                  <ul className="space-y-0.5">
+                    {PASSWORD_RULES.map((rule) => {
+                      const ok = rule.test(password);
+                      return (
+                        <li
+                          key={rule.id}
+                          className={`flex items-center gap-2 rounded px-1.5 py-1 text-[12px] ${
+                            ok ? "bg-emerald-100/80 text-emerald-800" : "text-stone-500"
+                          }`}
+                        >
+                          <span className="flex w-4 shrink-0 justify-center">
+                            {ok ? (
+                              <MaterialSymbol
+                                icon="check"
+                                size={14}
+                                className="leading-none text-emerald-700"
+                              />
+                            ) : null}
+                          </span>
+                          {rule.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
             </div>
+            {fieldMsg("password") && (
+              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("password")}</span>
+            )}
           </div>
 
           <label className={`block ${isSignUp ? "" : "invisible pointer-events-none"}`}>
@@ -276,13 +346,14 @@ export function AuthSplitLogin({
             </span>
             <div className="relative">
               <input
-                required={isSignUp}
                 tabIndex={isSignUp ? 0 : -1}
                 type={showConfirm ? "text" : "password"}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+                onBlur={() => markTouched("confirm")}
                 autoComplete="new-password"
-                className={`${inputClass} pr-9`}
+                aria-invalid={!!fieldMsg("confirm")}
+                className={`${inputClass(!!fieldMsg("confirm"))} pr-9`}
               />
               <EyeToggle
                 shown={showConfirm}
@@ -291,6 +362,9 @@ export function AuthSplitLogin({
                 showLabel="Ver contraseña"
               />
             </div>
+            {fieldMsg("confirm") && (
+              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("confirm")}</span>
+            )}
           </label>
 
           <label
@@ -351,14 +425,65 @@ export function AuthSplitLogin({
   );
 
   const brandPane = (
-    <div className="hidden md:flex h-full items-center justify-center bg-[#fbf9f6] dark:bg-[#1c1917] p-6 lg:p-10 select-none overflow-hidden">
-      <img
-        src="/images/login_illustration.jpg"
-        alt="BolivarPide"
-        className="w-full max-w-[420px] max-h-[520px] object-contain rounded-2xl drop-shadow-xs"
-        draggable={false}
+    <section className="relative hidden h-full min-h-[620px] overflow-hidden bg-[#9a0002] md:flex md:flex-col">
+      {/* Soft wave / mesh pattern */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: [
+            "radial-gradient(ellipse 80% 60% at 10% 0%, rgba(255,255,255,0.22) 0%, transparent 55%)",
+            "radial-gradient(ellipse 70% 50% at 95% 85%, rgba(0,0,0,0.22) 0%, transparent 50%)",
+            "radial-gradient(ellipse 55% 40% at 70% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)",
+          ].join(", "),
+        }}
       />
-    </div>
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.14]"
+        viewBox="0 0 400 700"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path
+          d="M0 180 C80 120 160 240 240 180 C320 120 360 200 400 160 L400 0 L0 0 Z"
+          fill="white"
+        />
+        <path
+          d="M0 420 C90 360 150 480 250 410 C330 360 370 450 400 400 L400 700 L0 700 Z"
+          fill="black"
+        />
+        <path
+          d="M0 520 C110 480 180 580 280 530 C350 500 380 560 400 540 L400 700 L0 700 Z"
+          fill="white"
+        />
+      </svg>
+
+      {/* Logo + lema */}
+      <div className="relative z-10 px-8 pt-8 lg:px-10 lg:pt-10">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[14px] font-black text-[#9a0002] shadow-sm">
+            B
+          </span>
+          <span className="text-[16px] font-bold tracking-tight text-white">BolivarPide</span>
+        </div>
+        <h2 className="mt-5 max-w-[280px] text-[28px] font-bold leading-[1.15] tracking-tight text-white lg:text-[32px]">
+          {lema[0]}
+          <br />
+          {lema[1]}
+        </h2>
+      </div>
+
+      {/* Illustration */}
+      <div className="relative z-10 mt-auto flex flex-1 items-end justify-center px-4 pb-6 pt-4">
+        <Image
+          src="/images/login_illustration.png"
+          alt="BolivarPide"
+          width={520}
+          height={420}
+          className="h-auto w-full max-w-[420px] object-contain object-bottom drop-shadow-xl"
+          priority
+        />
+      </div>
+    </section>
   );
 
   return (
