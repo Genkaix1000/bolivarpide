@@ -155,6 +155,7 @@ export function AddressFormModal({
     <AnimatePresence>
       {open && (
         <>
+          {/* Backdrop on desktop */}
           <motion.button
             type="button"
             aria-label="Cerrar"
@@ -162,52 +163,89 @@ export function AddressFormModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[70] hidden bg-black/45 backdrop-blur-[2px] md:block"
           />
+
+          {/* Fullscreen on mobile, centered modal on desktop */}
           <motion.div
             role="dialog"
             aria-modal
-            initial={{ opacity: 0, y: 24, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed inset-x-3 top-[max(1rem,env(safe-area-inset-top))] z-[71] mx-auto max-h-[min(92vh,720px)] w-full max-w-lg overflow-y-auto rounded-[28px] border border-white/20 bg-white shadow-2xl custom-scrollbar dark:bg-[#231f1c] md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[71] flex flex-col bg-[#faf6f1] overflow-y-auto custom-scrollbar dark:bg-[#161412] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-h-[min(92vh,740px)] md:w-full md:max-w-lg md:rounded-[28px] md:border md:border-[#e8e0d6] md:bg-white md:shadow-2xl md:dark:border-[#3d3732] md:dark:bg-[#231f1c]"
           >
-            <form onSubmit={handleSubmit} className="flex flex-col p-6 md:p-8">
+            {/* Mobile Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8e0d6] bg-[#faf6f1]/90 px-4 py-3.5 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#161412]/90 md:hidden">
               <button
                 type="button"
                 onClick={onClose}
-                className="mb-4 inline-flex w-fit items-center gap-1 text-xs font-semibold text-gray-500 hover:text-[#9a0002]"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 hover:text-[#9a0002] dark:text-gray-300 dark:hover:text-red-400"
               >
-                <MaterialSymbol icon="arrow_back" size={14} />
-                Volver
+                <MaterialSymbol icon="arrow_back" size={18} />
+                <span>Volver</span>
               </button>
-
-              <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+              <span className="text-[14px] font-bold text-gray-900 dark:text-white">
                 {editing ? "Editar dirección" : "Nueva dirección"}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                {editing
-                  ? "Actualizá los datos de entrega."
-                  : `Podés guardar hasta ${MAX_USER_ADDRESSES} direcciones en Bolívar.`}
-              </p>
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-[#ede4d9] dark:hover:bg-[#2a2623]"
+              >
+                <MaterialSymbol icon="close" size={18} />
+              </button>
+            </div>
 
-              <div className="mt-6 space-y-5">
+            <form onSubmit={handleSubmit} className="flex flex-1 flex-col p-5 pb-10 md:p-8">
+              {/* Desktop Header button */}
+              <div className="hidden md:block">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mb-3 inline-flex w-fit items-center gap-1 text-xs font-semibold text-gray-500 hover:text-[#9a0002] dark:text-gray-400"
+                >
+                  <MaterialSymbol icon="arrow_back" size={14} />
+                  Volver
+                </button>
+
+                <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                  {editing ? "Editar dirección" : "Nueva dirección"}
+                </h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {editing
+                    ? "Actualizá los datos de entrega."
+                    : `Podés guardar hasta ${MAX_USER_ADDRESSES} direcciones en Bolívar.`}
+                </p>
+              </div>
+
+              {/* Mobile subheader */}
+              <div className="mb-2 md:hidden">
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">
+                  {editing
+                    ? "Actualizá los datos de entrega."
+                    : `Podés guardar hasta ${MAX_USER_ADDRESSES} direcciones en Bolívar.`}
+                </p>
+              </div>
+
+              <div className="mt-4 space-y-4 md:mt-6 md:space-y-5">
                 <button
                   type="button"
                   onClick={handleUseLocation}
                   disabled={geoPending}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#9a0002]/25 bg-[#9a0002]/5 py-3 text-sm font-bold text-[#9a0002] transition hover:bg-[#9a0002]/10 disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#9a0002]/25 bg-[#9a0002]/8 py-3 text-sm font-bold text-[#9a0002] transition hover:bg-[#9a0002]/15 active:scale-[0.99] disabled:opacity-60 dark:bg-[#9a0002]/15 dark:text-red-300"
                 >
                   <MaterialSymbol icon="my_location" size={18} />
-                  {geoPending ? "Obteniendo ubicación…" : "Usar mi ubicación"}
+                  {geoPending ? "Obteniendo ubicación…" : "Usar mi ubicación actual"}
                 </button>
 
                 <Field label="Calle">
                   <input
                     value={form.street}
                     onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
-                    placeholder="Av. San Martín"
+                    placeholder="Ej. Av. San Martín"
                     className={inputClass}
                     required
                   />
@@ -222,7 +260,7 @@ export function AddressFormModal({
                       disabled={form.noNumber}
                       className={cn(inputClass, form.noNumber && "opacity-50")}
                     />
-                    <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[12px] font-semibold text-gray-600">
+                    <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[12px] font-semibold text-gray-700 dark:text-gray-300">
                       <input
                         type="checkbox"
                         checked={form.noNumber}
@@ -233,14 +271,14 @@ export function AddressFormModal({
                             streetNumber: e.target.checked ? "" : f.streetNumber,
                           }))
                         }
-                        className="h-4 w-4 rounded border-stone-300 text-[#9a0002] focus:ring-[#9a0002]"
+                        className="h-4 w-4 rounded border-stone-300 text-[#9a0002] focus:ring-[#9a0002] dark:border-stone-600"
                       />
                       Sin número
                     </label>
                   </div>
                 </Field>
 
-                <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-[12px] text-stone-500">
+                <div className="rounded-xl border border-[#e8e0d6] bg-white px-3.5 py-2.5 text-[12px] text-stone-600 dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-300">
                   {BOLIVAR_DEFAULTS.city} · {BOLIVAR_DEFAULTS.province} · CP{" "}
                   {BOLIVAR_DEFAULTS.postalCode}
                 </div>
@@ -255,8 +293,8 @@ export function AddressFormModal({
                   />
                 </Field>
 
-                <div className="border-t border-stone-100 pt-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                <div className="border-t border-[#e8e0d6] pt-4 dark:border-[#3d3732]">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Datos de contacto
                   </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -284,7 +322,7 @@ export function AddressFormModal({
                   <div className="mt-3">
                     <Field label="Teléfono">
                       <div className={phoneWrapClass}>
-                        <span className="flex shrink-0 items-center border-r border-stone-200 bg-stone-50 px-3.5 text-[13px] font-bold text-stone-500">
+                        <span className="flex shrink-0 items-center border-r border-[#e8e0d6] bg-[#f5f1eb] px-3.5 text-[13px] font-bold text-stone-600 dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-stone-300">
                           +54 9
                         </span>
                         <input
@@ -297,7 +335,7 @@ export function AddressFormModal({
                           }
                           placeholder="2314 443322"
                           inputMode="numeric"
-                          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[13px] text-stone-900 outline-none placeholder:text-stone-400"
+                          className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 dark:text-white dark:placeholder:text-stone-500"
                           required
                         />
                       </div>
@@ -307,7 +345,7 @@ export function AddressFormModal({
               </div>
 
               {error && (
-                <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700">
+                <p className="mt-4 rounded-xl bg-red-50 p-3 text-[12px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
                   {error}
                 </p>
               )}
@@ -315,7 +353,7 @@ export function AddressFormModal({
               <button
                 type="submit"
                 disabled={pending}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#9a0002] py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#850002] disabled:opacity-60"
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#9a0002] py-3.5 text-sm font-bold text-white shadow-md shadow-[#9a0002]/25 transition hover:brightness-110 active:brightness-90 disabled:opacity-60 cursor-pointer"
               >
                 {pending ? "Guardando…" : editing ? "Guardar cambios" : "Guardar dirección"}
               </button>
@@ -326,10 +364,10 @@ export function AddressFormModal({
                   onClick={handleDelete}
                   disabled={deletePending}
                   className={cn(
-                    "mt-3 w-full rounded-full border py-3 text-sm font-bold transition",
+                    "mt-3 w-full rounded-full border py-3 text-sm font-bold transition cursor-pointer",
                     deleteConfirm
                       ? "border-red-600 bg-red-600 text-white hover:bg-red-700"
-                      : "border-red-200 text-red-600 hover:bg-red-50",
+                      : "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30",
                   )}
                 >
                   {deletePending
@@ -358,15 +396,15 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</label>
-      {hint && <p className="mt-0.5 text-[11px] text-gray-400">{hint}</p>}
-      <div className="mt-2">{children}</div>
+      <label className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</label>
+      {hint && <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{hint}</p>}
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
 
 const inputClass =
-  "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-[13px] text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-stone-400 dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-white";
+  "w-full rounded-xl border border-[#e8e0d6] bg-white px-3.5 py-2.5 text-[13px] text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#9a0002]/60 focus:ring-2 focus:ring-[#9a0002]/10 dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-white dark:placeholder:text-stone-500";
 
 const phoneWrapClass =
-  "flex overflow-hidden rounded-lg border border-stone-200 bg-white transition focus-within:border-stone-400 dark:border-[#3d3732] dark:bg-[#2a2623]";
+  "flex overflow-hidden rounded-xl border border-[#e8e0d6] bg-white transition focus-within:border-[#9a0002]/60 focus-within:ring-2 focus-within:ring-[#9a0002]/10 dark:border-[#3d3732] dark:bg-[#2a2623]";
