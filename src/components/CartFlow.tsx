@@ -156,11 +156,19 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
 }
 
 function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
-  const { cart, openProduct, quickAdd } = useCart();
+  const { cart, openProduct, quickAdd, openDrawer } = useCart();
   const chain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
   const suggestions = suggestionsForChain(item.chainId, item.id, 4);
   const sub = cartSubtotal(cart.lines);
-  const missing = chain ? amountToMinOrder(sub, chain.minOrder) : 0;
+  const fee = chain?.deliveryFee ?? 0;
+  const min = chain?.minOrder ?? 0;
+  const missing = chain ? amountToMinOrder(sub, min) : 0;
+  const ok = canCheckout(sub, min);
+
+  const goToPay = () => {
+    onClose();
+    openDrawer();
+  };
 
   return (
     <>
@@ -245,22 +253,23 @@ function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => voi
           )}
 
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-full border border-black/10 dark:border-[#3d3732] py-3 text-[13px] font-semibold text-gray-800 dark:text-gray-200 cursor-pointer"
-            >
-              No, gracias
-            </button>
             {chain && (
               <Link
                 href={`/c/${chain.id}`}
                 onClick={onClose}
-                className="flex-1 rounded-full bg-[#9a0002] py-3 text-center text-[13px] font-semibold text-white"
+                className="flex-1 rounded-full border border-black/10 py-3 text-center text-[13px] font-semibold text-gray-800 dark:border-[#3d3732] dark:text-gray-200"
               >
                 Ver menú
               </Link>
             )}
+            <button
+              type="button"
+              disabled={!ok}
+              onClick={goToPay}
+              className="flex-1 rounded-full bg-[#9a0002] py-3 text-[13px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition"
+            >
+              Ir a pagar · {money(sub + fee)}
+            </button>
           </div>
         </div>
       </motion.div>

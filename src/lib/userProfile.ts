@@ -1,9 +1,8 @@
-export type AvatarType = "character" | "initials" | "symbol" | "emoji";
+export type AvatarType = "initials" | "symbol" | "emoji";
 
 export interface UserAvatar {
   type: AvatarType;
   value: string;
-  frameId?: string;
   gradientId: string;
 }
 
@@ -28,7 +27,6 @@ export interface UserProfile {
   avatar: UserAvatar;
   primaryAddress: string;
   awardedBadges: UserAwardBadge[];
-  unlockedFrameIds: string[];
 }
 
 export interface ColorOption {
@@ -36,23 +34,6 @@ export interface ColorOption {
   label: string;
   color: string;
   secondaryColor?: string;
-}
-
-export interface CharacterPreset {
-  id: string;
-  name: string;
-  description: string;
-  foodTag: string;
-  defaultColorId: string;
-}
-
-export interface AvatarFramePreset {
-  id: string;
-  name: string;
-  description: string;
-  rarity: BadgeRarity;
-  borderClass: string;
-  icon: string;
 }
 
 export interface PlaceholderIcon {
@@ -111,58 +92,6 @@ export const COLOR_PALETTES: ColorOption[] = [
     label: "Vainilla Crema",
     color: "#FDE68A",
     secondaryColor: "#F59E0B",
-  },
-];
-
-export const CHARACTER_PRESETS: CharacterPreset[] = [
-  {
-    id: "char-cat-michi",
-    name: "Michi Sushi",
-    description: "Gatito foodie disfrutando un roll de salmón y sésamo",
-    foodTag: "🍣 Michi & Sushi",
-    defaultColorId: "mint",
-  },
-  {
-    id: "char-lucas",
-    name: "Lucas Burger",
-    description: "Saboreando una hamburguesa doble con queso y sésamo",
-    foodTag: "🍔 Lucas Burger",
-    defaultColorId: "mustard",
-  },
-];
-
-export const AVATAR_FRAMES: AvatarFramePreset[] = [
-  {
-    id: "none",
-    name: "Sin marco",
-    description: "Fondo circular limpio",
-    rarity: "bronce",
-    borderClass: "",
-    icon: "circle",
-  },
-  {
-    id: "frame-gold-legend",
-    name: "Aura Dorada Honor",
-    description: "Alas doradas con pedestal de diamante (Otorgado por fidelidad y tiempo en la app)",
-    rarity: "oro",
-    borderClass: "ring-4 ring-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.55)]",
-    icon: "workspace_premium",
-  },
-  {
-    id: "frame-ruby-royale",
-    name: "Aura Carmesí Gourmet",
-    description: "Cresta carmesí con rubí facetado (Otorgado a grandes compradores)",
-    rarity: "rubi",
-    borderClass: "ring-4 ring-[#9a0002] shadow-[0_0_20px_rgba(154,0,2,0.6)]",
-    icon: "military_tech",
-  },
-  {
-    id: "frame-sapphire-explorer",
-    name: "Aura Zafiro Cósmico",
-    description: "Alas celestiales con brújula estelar (Otorgado a exploradores y navegantes)",
-    rarity: "diamante",
-    borderClass: "ring-4 ring-cyan-400 shadow-[0_0_22px_rgba(34,211,238,0.6)]",
-    icon: "explore",
   },
 ];
 
@@ -271,12 +200,10 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   avatar: {
     type: "initials",
     value: "?",
-    frameId: "none",
     gradientId: "cherry",
   },
   primaryAddress: "",
   awardedBadges: [],
-  unlockedFrameIds: ["none"],
 };
 
 export function getColorPalette(colorId?: string): ColorOption {

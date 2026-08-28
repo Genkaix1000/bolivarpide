@@ -21,10 +21,11 @@ import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAvatarView } from "@/components/UserAvatarView";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { BadgeDetailModal } from "@/components/BadgeDetailModal";
-import { UserAwardBadge, getRarityColor, AVATAR_FRAMES } from "@/lib/userProfile";
+import { flashToast } from "@/components/FlashToast";
+import { UserAwardBadge, getRarityColor } from "@/lib/userProfile";
 
 export default function HomePage() {
-  const { profile, updateAvatar, isAuthenticated } = useUserProfile();
+  const { profile, updateAvatar, isAuthenticated, logout, persistProfile } = useUserProfile();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
   const [currentTab, setCurrentTab] = useState("home");
@@ -273,10 +274,10 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
-                    Taller de Personaje & Avatar
+                    Personalizar avatar
                   </h4>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Edita peinados, accesorios, gafas y marcos VIP
+                    Iconos, emojis, iniciales y color de fondo
                   </p>
                 </div>
               </div>
@@ -401,6 +402,17 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
+
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+                >
+                  <MaterialSymbol icon="logout" size={18} />
+                  Cerrar sesión
+                </button>
+              )}
             </div>
           </div>
 
@@ -408,8 +420,15 @@ export default function HomePage() {
             isOpen={isAvatarModalOpen}
             currentAvatar={profile.avatar}
             onClose={() => setIsAvatarModalOpen(false)}
-            onSave={(newAvatar) => {
+            onSave={async (newAvatar) => {
+              const next = { ...profile, avatar: newAvatar };
               updateAvatar(newAvatar);
+              try {
+                await persistProfile(next);
+                flashToast("Avatar guardado.");
+              } catch {
+                flashToast("No se pudo guardar el avatar.");
+              }
             }}
           />
 

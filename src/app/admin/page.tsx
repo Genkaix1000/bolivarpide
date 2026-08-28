@@ -158,13 +158,16 @@ export default async function AdminPage() {
                     <input
                       type="hidden"
                       name="plan"
-                      value={b.plan === "premium" ? "free" : "premium"}
+                      value={
+                        b.plan === "free" ? "impulso" : b.plan === "impulso" ? "lider" : "free"
+                      }
                     />
                     <button
                       type="submit"
                       className="rounded-full border px-3 py-1.5 text-xs cursor-pointer"
                     >
-                      Plan → {b.plan === "premium" ? "free" : "premium"}
+                      Plan →{" "}
+                      {b.plan === "free" ? "impulso" : b.plan === "impulso" ? "lider" : "free"}
                     </button>
                   </form>
                   <Link

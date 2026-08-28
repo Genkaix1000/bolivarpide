@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { signInWithGoogle } from "@/lib/auth/actions";
+import { authErrorEs } from "@/lib/auth/errors";
 import { PASSWORD_RULES, passwordIsValid } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/client";
+import { flashToast } from "@/components/FlashToast";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 
 type Field = "name" | "email" | "password" | "confirm";
@@ -61,7 +63,6 @@ export function AuthSplitLogin({
   const [remember, setRemember] = useState(true);
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [touched, setTouched] = useState<Touched>({});
   const [attempted, setAttempted] = useState(false);
 
@@ -96,7 +97,6 @@ export function AuthSplitLogin({
     setTouched({});
     setAttempted(false);
     setFormError(null);
-    setInfo(null);
   }
 
   function switchMode(nextMode: Mode) {
@@ -107,7 +107,6 @@ export function AuthSplitLogin({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    setInfo(null);
     setAttempted(true);
 
     if (Object.keys(fieldErrors).length > 0) return;
@@ -120,33 +119,49 @@ export function AuthSplitLogin({
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          setFormError(error.message);
+          setFormError(authErrorEs(error));
           return;
         }
+        flashToast("Sesión iniciada.");
       } else {
+        const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name.trim(), name: name.trim() } },
+          options: {
+            data: { full_name: name.trim(), name: name.trim() },
+            emailRedirectTo,
+          },
         });
         if (error) {
-          setFormError(error.message);
+          setFormError(authErrorEs(error));
           return;
         }
-        if (data.user && !data.session) {
-          setInfo("Revisá tu email para confirmar la cuenta, después iniciá sesión.");
-          setMode("login");
-          setPassword("");
-          setConfirm("");
-          resetFieldState();
-          return;
+        if (!data.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError) {
+            const needsConfirm = /confirm|not confirmed/i.test(signInError.message);
+            if (needsConfirm) {
+              flashToast("Te enviamos un email para confirmar tu cuenta.");
+              router.push(
+                `/auth/confirmar?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`,
+              );
+              return;
+            }
+            setFormError(authErrorEs(signInError));
+            return;
+          }
         }
+        flashToast("Tu cuenta se creó correctamente.");
       }
 
       router.push(next);
       router.refresh();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error inesperado");
+      setFormError(authErrorEs(err instanceof Error ? err.message : "Error inesperado"));
     } finally {
       setPending(false);
     }
@@ -189,26 +204,25 @@ export function AuthSplitLogin({
   }
 
   const formPane = (
-    <section className="flex h-full flex-col justify-center bg-white px-7 py-7 sm:px-10 lg:px-12">
-      <div className="mx-auto w-full max-w-[400px]">
-        {/* Logo */}
-        <Link href="/" className="mb-5 inline-flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-[14px] font-black text-white shadow-sm">
+    <section className="flex h-full flex-col justify-center bg-white px-6 py-5 sm:px-8 lg:px-10">
+      <div className="mx-auto w-full max-w-[380px]">
+        <Link href="/" className="mb-3 inline-flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-[13px] font-black text-white shadow-sm">
             B
           </span>
-          <span className="text-[17px] font-bold tracking-tight text-stone-900">
+          <span className="text-[16px] font-bold tracking-tight text-stone-900">
             BolivarPide
           </span>
         </Link>
 
-        <h1 className="text-[22px] font-bold tracking-tight text-stone-900 leading-tight">
+        <h1 className="text-[20px] font-bold tracking-tight text-stone-900 leading-tight">
           {isSignUp ? "Creá tu cuenta" : title}
         </h1>
-        <p className="mt-1 text-[13px] text-stone-500">
+        <p className="mt-0.5 text-[12px] text-stone-500">
           {isSignUp ? "Completá tus datos" : subtitle}
         </p>
 
-        <div className="mt-4 flex gap-4 text-[13px]">
+        <div className="mt-3 flex gap-4 text-[13px]">
           <button
             type="button"
             onClick={() => switchMode("login")}
@@ -233,36 +247,36 @@ export function AuthSplitLogin({
           </button>
         </div>
 
-        {(urlError === "auth" || urlError === "forbidden" || formError || info) && (
-          <p className={`mt-3 text-[12px] ${info ? "text-emerald-700" : "text-red-700"}`}>
-            {info ||
-              formError ||
+        {(urlError === "auth" || urlError === "forbidden" || formError) && (
+          <p className="mt-2 text-[12px] text-red-700">
+            {formError ||
               (urlError === "forbidden"
                 ? "No tenés permiso para esa sección."
                 : "No se pudo completar el inicio de sesión.")}
           </p>
         )}
 
-        <form onSubmit={onSubmit} noValidate className="mt-4 space-y-2.5">
-          <label className={`block ${isSignUp ? "" : "invisible pointer-events-none"}`}>
-            <span className="mb-1 block text-[12px] font-medium text-stone-700">Nombre</span>
-            <input
-              tabIndex={isSignUp ? 0 : -1}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => markTouched("name")}
-              autoComplete="name"
-              placeholder="Tu nombre"
-              aria-invalid={!!fieldMsg("name")}
-              className={inputClass(!!fieldMsg("name"))}
-            />
-            {fieldMsg("name") && (
-              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("name")}</span>
-            )}
-          </label>
+        <form onSubmit={onSubmit} noValidate className="mt-3 space-y-2">
+          {isSignUp && (
+            <label className="block">
+              <span className="mb-0.5 block text-[12px] font-medium text-stone-700">Nombre</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => markTouched("name")}
+                autoComplete="name"
+                placeholder="Tu nombre"
+                aria-invalid={!!fieldMsg("name")}
+                className={inputClass(!!fieldMsg("name"))}
+              />
+              {fieldMsg("name") && (
+                <span className="mt-0.5 block text-[11px] text-red-600">{fieldMsg("name")}</span>
+              )}
+            </label>
+          )}
 
           <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-stone-700">Email</span>
+            <span className="mb-0.5 block text-[12px] font-medium text-stone-700">Email</span>
             <input
               type="email"
               value={email}
@@ -274,12 +288,12 @@ export function AuthSplitLogin({
               className={inputClass(!!fieldMsg("email"))}
             />
             {fieldMsg("email") && (
-              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("email")}</span>
+              <span className="mt-0.5 block text-[11px] text-red-600">{fieldMsg("email")}</span>
             )}
           </label>
 
           <div>
-            <span className="mb-1 block text-[12px] font-medium text-stone-700">Contraseña</span>
+            <span className="mb-0.5 block text-[12px] font-medium text-stone-700">Contraseña</span>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -336,62 +350,60 @@ export function AuthSplitLogin({
               )}
             </div>
             {fieldMsg("password") && (
-              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("password")}</span>
+              <span className="mt-0.5 block text-[11px] text-red-600">{fieldMsg("password")}</span>
             )}
           </div>
 
-          <label className={`block ${isSignUp ? "" : "invisible pointer-events-none"}`}>
-            <span className="mb-1 block text-[12px] font-medium text-stone-700">
-              Confirmar contraseña
-            </span>
-            <div className="relative">
-              <input
-                tabIndex={isSignUp ? 0 : -1}
-                type={showConfirm ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                onBlur={() => markTouched("confirm")}
-                autoComplete="new-password"
-                aria-invalid={!!fieldMsg("confirm")}
-                className={`${inputClass(!!fieldMsg("confirm"))} pr-9`}
-              />
-              <EyeToggle
-                shown={showConfirm}
-                onToggle={() => setShowConfirm((v) => !v)}
-                hideLabel="Ocultar contraseña"
-                showLabel="Ver contraseña"
-              />
-            </div>
-            {fieldMsg("confirm") && (
-              <span className="mt-1 block text-[11px] text-red-600">{fieldMsg("confirm")}</span>
-            )}
-          </label>
+          {isSignUp && (
+            <label className="block">
+              <span className="mb-0.5 block text-[12px] font-medium text-stone-700">
+                Confirmar contraseña
+              </span>
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  onBlur={() => markTouched("confirm")}
+                  autoComplete="new-password"
+                  aria-invalid={!!fieldMsg("confirm")}
+                  className={`${inputClass(!!fieldMsg("confirm"))} pr-9`}
+                />
+                <EyeToggle
+                  shown={showConfirm}
+                  onToggle={() => setShowConfirm((v) => !v)}
+                  hideLabel="Ocultar contraseña"
+                  showLabel="Ver contraseña"
+                />
+              </div>
+              {fieldMsg("confirm") && (
+                <span className="mt-0.5 block text-[11px] text-red-600">{fieldMsg("confirm")}</span>
+              )}
+            </label>
+          )}
 
-          <label
-            className={`flex items-center gap-2 text-[12px] text-stone-600 select-none ${
-              isSignUp ? "invisible pointer-events-none" : "cursor-pointer"
-            }`}
-          >
-            <input
-              type="checkbox"
-              tabIndex={isSignUp ? -1 : 0}
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-stone-300 accent-[#9a0002]"
-            />
-            Guardar sesión
-          </label>
+          {!isSignUp && (
+            <label className="flex cursor-pointer items-center gap-2 text-[12px] text-stone-600 select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-stone-300 accent-[#9a0002]"
+              />
+              Guardar sesión
+            </label>
+          )}
 
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-[#9a0002] py-2.5 text-[13px] font-semibold text-white hover:bg-[#6b0001] cursor-pointer disabled:opacity-60"
+            className="w-full rounded-lg bg-[#9a0002] py-2 text-[13px] font-semibold text-white hover:bg-[#6b0001] cursor-pointer disabled:opacity-60"
           >
             {pending ? "Esperá…" : isSignUp ? "Crear cuenta" : "Iniciar sesión"}
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-3">
+        <div className="my-3 flex items-center gap-3">
           <div className="h-px flex-1 bg-stone-200" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
             o
@@ -403,18 +415,18 @@ export function AuthSplitLogin({
           <input type="hidden" name="next" value={next} />
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white py-2.5 text-[13px] font-medium text-stone-800 hover:bg-stone-50 cursor-pointer"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white py-2 text-[13px] font-medium text-stone-800 hover:bg-stone-50 cursor-pointer"
           >
             <GoogleGlyph />
             Continuar con Google
           </button>
         </form>
 
-        <p className="mt-4 text-center text-[11px] text-stone-400">
+        <p className="mt-3 text-center text-[11px] text-stone-400">
           Al continuar aceptás nuestros{" "}
           <span className="underline decoration-stone-300">Términos de uso</span>.
         </p>
-        <p className="mt-2 text-center text-[12px] text-stone-500">
+        <p className="mt-1.5 text-center text-[12px] text-stone-500">
           {altPrefix}{" "}
           <Link href={altHref} className="font-medium text-[#9a0002] hover:underline">
             {altLabel}
@@ -425,70 +437,72 @@ export function AuthSplitLogin({
   );
 
   const brandPane = (
-    <section className="relative hidden h-full min-h-[620px] overflow-hidden bg-[#9a0002] md:flex md:flex-col">
-      {/* Soft wave / mesh pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          backgroundImage: [
-            "radial-gradient(ellipse 80% 60% at 10% 0%, rgba(255,255,255,0.22) 0%, transparent 55%)",
-            "radial-gradient(ellipse 70% 50% at 95% 85%, rgba(0,0,0,0.22) 0%, transparent 50%)",
-            "radial-gradient(ellipse 55% 40% at 70% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)",
-          ].join(", "),
-        }}
-      />
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.14]"
-        viewBox="0 0 400 700"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <path
-          d="M0 180 C80 120 160 240 240 180 C320 120 360 200 400 160 L400 0 L0 0 Z"
-          fill="white"
+    <div className={`hidden h-full md:block ${formFirst ? "p-3 pl-2" : "p-3 pr-2"}`}>
+      <section className="relative flex h-full min-h-[596px] flex-col overflow-hidden rounded-xl bg-[#9a0002]">
+        {/* Soft wave / mesh pattern */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: [
+              "radial-gradient(ellipse 80% 60% at 10% 0%, rgba(255,255,255,0.22) 0%, transparent 55%)",
+              "radial-gradient(ellipse 70% 50% at 95% 85%, rgba(0,0,0,0.22) 0%, transparent 50%)",
+              "radial-gradient(ellipse 55% 40% at 70% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)",
+            ].join(", "),
+          }}
         />
-        <path
-          d="M0 420 C90 360 150 480 250 410 C330 360 370 450 400 400 L400 700 L0 700 Z"
-          fill="black"
-        />
-        <path
-          d="M0 520 C110 480 180 580 280 530 C350 500 380 560 400 540 L400 700 L0 700 Z"
-          fill="white"
-        />
-      </svg>
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.14]"
+          viewBox="0 0 400 700"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          <path
+            d="M0 180 C80 120 160 240 240 180 C320 120 360 200 400 160 L400 0 L0 0 Z"
+            fill="white"
+          />
+          <path
+            d="M0 420 C90 360 150 480 250 410 C330 360 370 450 400 400 L400 700 L0 700 Z"
+            fill="black"
+          />
+          <path
+            d="M0 520 C110 480 180 580 280 530 C350 500 380 560 400 540 L400 700 L0 700 Z"
+            fill="white"
+          />
+        </svg>
 
-      {/* Logo + lema */}
-      <div className="relative z-10 px-8 pt-8 lg:px-10 lg:pt-10">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[14px] font-black text-[#9a0002] shadow-sm">
-            B
-          </span>
-          <span className="text-[16px] font-bold tracking-tight text-white">BolivarPide</span>
+        {/* Logo + lema */}
+        <div className="relative z-10 px-8 pt-8 lg:px-10 lg:pt-10">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[14px] font-black text-[#9a0002] shadow-sm">
+              B
+            </span>
+            <span className="text-[16px] font-bold tracking-tight text-white">BolivarPide</span>
+          </div>
+          <h2 className="mt-5 max-w-[280px] text-[28px] font-bold leading-[1.15] tracking-tight text-white lg:text-[32px]">
+            {lema[0]}
+            <br />
+            {lema[1]}
+          </h2>
         </div>
-        <h2 className="mt-5 max-w-[280px] text-[28px] font-bold leading-[1.15] tracking-tight text-white lg:text-[32px]">
-          {lema[0]}
-          <br />
-          {lema[1]}
-        </h2>
-      </div>
 
-      {/* Illustration */}
-      <div className="relative z-10 mt-auto flex flex-1 items-end justify-center px-4 pb-6 pt-4">
-        <Image
-          src="/images/login_illustration.png"
-          alt="BolivarPide"
-          width={520}
-          height={420}
-          className="h-auto w-full max-w-[420px] object-contain object-bottom drop-shadow-xl"
-          priority
-        />
-      </div>
-    </section>
+        {/* Illustration */}
+        <div className="relative z-10 mt-auto flex flex-1 items-end justify-center px-4 pb-6 pt-4">
+          <Image
+            src="/images/login_illustration.png"
+            alt="BolivarPide"
+            width={520}
+            height={420}
+            className="h-auto w-full max-w-[420px] object-contain object-bottom drop-shadow-xl"
+            priority
+          />
+        </div>
+      </section>
+    </div>
   );
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#e8e4de] p-4 sm:p-6">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_-24px_rgba(40,30,20,0.25)] md:grid-cols-2 md:min-h-[620px]">
+    <main className="flex min-h-dvh items-center justify-center bg-[#9a0002] p-4 sm:p-6 md:bg-[#e8e4de]">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-[0_20px_60px_-24px_rgba(40,30,20,0.35)] md:grid-cols-2 md:min-h-[620px]">
         {formFirst ? (
           <>
             {formPane}

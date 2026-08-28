@@ -112,7 +112,7 @@ export function BusinessTopbar({ onMenuClick }: BusinessTopbarProps) {
             <CherryBtn onClick={handleToggleNotif} aria-label="Notificaciones">
               <MaterialSymbol icon="notifications" size={17} className="text-white" />
               {unreadCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ffeb3b] px-[4px] text-[9px] font-black text-[#6b0001] ring-[1.5px] ring-[#9a0002]">
+                <span className="absolute top-0 right-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ffeb3b] px-[4px] text-[9px] font-black text-[#6b0001] ring-[1.5px] ring-[#9a0002]">
                   {unreadCount}
                 </span>
               )}

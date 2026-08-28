@@ -157,46 +157,38 @@ export function BusinessSidebar({
         <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>
           {renderNavItem({ id: "configuracion", label: "Configuración", icon: "settings", href: `${base}/configuracion` }, isMobile)}
           {renderNavItem({ id: "hub", label: "Mis locales", icon: "storefront", href: "/negocio" }, isMobile)}
+          {renderNavItem({ id: "home", label: "Ir al inicio", icon: "home", href: "/" }, isMobile)}
 
-          {/* Free plan → Premium upgrade (hardcoded free) */}
+          {/* Plan upgrade — próximamente */}
           <div className={cn("mt-3 mb-1", isIconOnly ? "flex justify-center" : "")}>
             {isIconOnly ? (
               <button
                 type="button"
-                title="Upgrade a Premium"
-                onClick={onMobileClose}
-                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] flex items-center justify-center text-white cursor-pointer shadow-sm"
+                title="Planes Impulso y Líder — próximamente"
+                disabled
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9a0002]/40 to-[#6b0001]/40 flex items-center justify-center text-white/70 cursor-not-allowed shadow-sm"
               >
                 <MaterialSymbol icon="workspace_premium" size={20} />
               </button>
             ) : (
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002] via-[#8a0002] to-[#4a0001] p-3.5 text-white shadow-[0_12px_28px_-12px_rgba(154,0,2,0.55)]">
-                <div
-                  className="pointer-events-none absolute top-2 right-2 w-16 h-16 opacity-25"
-                  style={{
-                    backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px)",
-                    backgroundSize: "6px 6px",
-                    maskImage: "radial-gradient(circle at top right, black 30%, transparent 75%)",
-                    WebkitMaskImage: "radial-gradient(circle at top right, black 30%, transparent 75%)",
-                  }}
-                />
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#9a0002]/80 via-[#8a0002]/70 to-[#4a0001]/80 p-3.5 text-white shadow-sm">
                 <div className="relative z-10 space-y-3">
                   <div className="w-8 h-8 rounded-lg bg-white/95 flex items-center justify-center text-[#9a0002]">
                     <MaterialSymbol icon="emoji_events" size={18} fill />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-white/65">Plan actual · Free</p>
-                    <p className="text-[14px] font-bold tracking-tight mt-0.5">Upgrade a Premium</p>
+                    <p className="text-[11px] font-medium text-white/65">Plan Inicial · 7% comisión</p>
+                    <p className="text-[14px] font-bold tracking-tight mt-0.5">Impulso y Líder</p>
                     <p className="text-[11px] text-white/70 mt-1 leading-snug">
-                      Desbloqueá reportes, más equipo y prioridad en el ranking.
+                      Planes con 3,5% y 0% de comisión — disponibles próximamente.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={onMobileClose}
-                    className="w-full py-2.5 rounded-full bg-[#c62828] hover:bg-[#d32f2f] text-white text-[12px] font-bold transition-colors cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                    disabled
+                    className="w-full py-2.5 rounded-full border border-white/30 bg-white/10 text-white/70 text-[12px] font-bold cursor-not-allowed"
                   >
-                    Upgrade premium
+                    Próximamente
                   </button>
                 </div>
               </div>

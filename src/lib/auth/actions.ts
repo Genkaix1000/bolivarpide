@@ -31,5 +31,6 @@ export async function signOut(formData: FormData) {
   const next = safeNextPath(String(formData.get("next") || "/"));
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect(next);
+  const sep = next.includes("?") ? "&" : "?";
+  redirect(`${next}${sep}toast=logout`);
 }

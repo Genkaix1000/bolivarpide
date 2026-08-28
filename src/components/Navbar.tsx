@@ -136,9 +136,28 @@ export default function Navbar({
     onTabChange(id);
   }, [onTabChange]);
 
-  const { profile, resetProfile } = useUserProfile();
+  const { profile, isAuthenticated, hasActiveBusiness, logout } = useUserProfile();
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const onPointer = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointer);
+    return () => document.removeEventListener("mousedown", onPointer);
+  }, [showUserMenu]);
+
+  async function handleLogout() {
+    setShowUserMenu(false);
+    setShowDashboard(false);
+    await logout();
+  }
 
   const shortLocation = locationLabel
     ? locationLabel.split(",")[0] || locationLabel
@@ -169,14 +188,14 @@ export default function Navbar({
   return (
     <div className="fixed inset-x-0 top-0 z-50 md:sticky">
       <header className="relative h-[64px] border-b border-[#e8e0d6] bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:px-8">
-        <div className="mx-auto flex h-full w-full max-w-[1040px] items-center gap-3">
-          {/* Left cluster: brand · location · search · (mobile bell) */}
-          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
+        <div className="mx-auto flex h-full w-full max-w-[1040px] items-center gap-3 md:gap-5">
+          {/* ── Left: menu (mobile) + brand + location ── */}
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <button
               type="button"
               onClick={() => setShowDashboard(true)}
               aria-label="Abrir menú"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
             >
               <MaterialSymbol icon="menu" size={20} />
             </button>
@@ -185,31 +204,41 @@ export default function Navbar({
               type="button"
               onClick={() => handleTabChange("home")}
               aria-label="Ir al inicio"
-              className="hidden shrink-0 items-center gap-2 rounded-xl transition-transform active:scale-95 md:flex"
+              className="flex shrink-0 items-center gap-2 rounded-xl transition-transform active:scale-95"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-sm font-bold text-white shadow-sm">B</span>
-              <span className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-gray-100">BolivarPide</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-sm font-bold text-white shadow-sm md:h-10 md:w-10">B</span>
+              <span
+                className={cn(
+                  "hidden text-[15px] font-bold tracking-tight text-gray-900 dark:text-gray-100 md:inline",
+                  isAuthenticated && locationLabel && "md:hidden lg:inline",
+                )}
+              >
+                BolivarPide
+              </span>
             </button>
 
-            {/* Location selector — popover under the button, no blur scrim */}
-            {locationLabel && (
-              <div className="relative shrink-0">
+            {isAuthenticated && locationLabel && (
+              <div className="relative hidden shrink-0 md:block">
                 <button
                   type="button"
                   onClick={onLocationClick}
                   className={cn(
-                    "flex h-10 items-center gap-1.5 rounded-xl border border-[#e8e0d6] dark:border-[#3d3732] bg-white dark:bg-[#2a2623] px-3 transition-all hover:border-[#9a0002]/35 text-left cursor-pointer",
-                    showLocationDropdown && "ring-2 ring-[#9a0002]/25 border-[#9a0002]"
+                    "flex h-10 items-center gap-2 rounded-xl border border-[#e8e0d6] bg-white px-3.5 transition-all hover:border-[#9a0002]/35 text-left cursor-pointer dark:border-[#3d3732] dark:bg-[#2a2623]",
+                    showLocationDropdown && "ring-2 ring-[#9a0002]/25 border-[#9a0002]",
                   )}
                 >
-                  <MaterialSymbol icon="near_me" size={14} className="text-[#9a0002] shrink-0" fill={showLocationDropdown} />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 leading-none">Ubicación</span>
-                    <span className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[95px] sm:max-w-[140px] leading-tight">
+                  <MaterialSymbol icon="near_me" size={15} className="shrink-0 text-[#9a0002]" fill={showLocationDropdown} />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500">Ubicación</span>
+                    <span className="max-w-[100px] truncate text-[12px] font-semibold leading-tight text-gray-800 dark:text-gray-200 lg:max-w-[140px]">
                       {shortLocation}
                     </span>
                   </div>
-                  <MaterialSymbol icon="expand_more" size={14} className={cn("text-gray-400 shrink-0 transition-transform duration-200", showLocationDropdown && "rotate-180")} />
+                  <MaterialSymbol
+                    icon="expand_more"
+                    size={15}
+                    className={cn("shrink-0 text-gray-400 transition-transform duration-200", showLocationDropdown && "rotate-180")}
+                  />
                 </button>
 
                 <AnimatePresence>
@@ -255,70 +284,116 @@ export default function Navbar({
                 </AnimatePresence>
               </div>
             )}
+          </div>
 
+          {/* ── Center: search ── */}
+          <div className="flex min-w-0 flex-1 justify-center px-1 md:px-4">
             <button
               type="button"
               onClick={onSearchFocus}
-              className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3.5 text-left transition-colors hover:border-[#9a0002]/35 dark:border-[#3d3732] dark:bg-[#2a2623] md:max-w-sm"
+              className="flex h-10 w-full max-w-none items-center gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3.5 text-left transition-colors hover:border-[#9a0002]/35 dark:border-[#3d3732] dark:bg-[#2a2623] md:max-w-md"
             >
               <MaterialSymbol icon="search" size={17} className="shrink-0 text-gray-400" />
               <span className="truncate text-[13px] font-medium text-gray-400">
                 {searchQuery || "Buscar comida..."}
               </span>
-              <kbd className="ml-auto hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#f5f1eb] dark:bg-[#1c1917] text-[10px] font-semibold text-gray-400 border border-[#e8e0d6] dark:border-[#3d3732]">
+              <kbd className="ml-auto hidden shrink-0 items-center rounded-md border border-[#e8e0d6] bg-[#f5f1eb] px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:border-[#3d3732] dark:bg-[#1c1917] md:inline-flex">
                 ⌘F
               </kbd>
             </button>
-
-            {/* Mobile: notifications only — profile lives in the drawer */}
-            <div className="relative shrink-0 md:hidden">
-              <CherryBtn
-                onClick={() => setShowNotifications((o) => !o)}
-                aria-label="Notificaciones"
-                className="h-10 w-10"
-              >
-                <MaterialSymbol icon="notifications" size={17} className="text-white" />
-                {!showNotifications && (
-                  <span className="absolute -top-1.5 -right-1.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
-                )}
-              </CherryBtn>
-              <AnimatePresence>{showNotifications && notificationPanel}</AnimatePresence>
-            </div>
           </div>
 
-          {/* Desktop right cluster */}
-          <div className="relative z-50 hidden shrink-0 items-center gap-2.5 md:flex">
-            <ThemeToggleNavBtn clipId="nav-theme-desk" />
+          {/* ── Right: auth actions ── */}
+          <div className="relative z-50 flex shrink-0 items-center gap-2.5 md:gap-3">
+            {isAuthenticated ? (
+              <>
+                <div className="relative">
+                  <CherryBtn
+                    onClick={() => setShowNotifications((o) => !o)}
+                    aria-label="Notificaciones"
+                  >
+                    <MaterialSymbol icon="notifications" size={17} className="text-white" />
+                    {!showNotifications && (
+                      <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
+                    )}
+                  </CherryBtn>
+                  <AnimatePresence>{showNotifications && notificationPanel}</AnimatePresence>
+                </div>
 
-            <div className="relative">
-              <CherryBtn
-                onClick={() => setShowNotifications((o) => !o)}
-                aria-label="Notificaciones"
+                <div className="relative hidden md:block" ref={userMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserMenu((v) => !v);
+                      setShowNotifications(false);
+                    }}
+                    aria-label="Mi perfil"
+                    aria-expanded={showUserMenu}
+                    aria-haspopup="menu"
+                    className={cn(
+                      "relative shrink-0 rounded-full shadow-md shadow-[#9a0002]/30 transition-transform duration-200 cursor-pointer active:scale-95 hover:scale-105",
+                      (currentTab === "profile" || showUserMenu) &&
+                        "outline outline-2 outline-[#9a0002] outline-offset-2",
+                    )}
+                  >
+                    <UserAvatarView avatar={profile.avatar} variant="button" />
+                  </button>
+
+                  <AnimatePresence>
+                    {showUserMenu && (
+                      <motion.div
+                        {...NOTIFICATION_POPOVER_MOTION}
+                        role="menu"
+                        className="absolute top-[52px] right-0 z-50 w-[220px] rounded-2xl border border-[#e8e0d6] bg-white p-2 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
+                      >
+                        <div className="mb-1 border-b border-[#f0ebe4] px-2.5 py-2 dark:border-[#2a2623]">
+                          <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+                            {profile.name}
+                          </p>
+                          <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            handleTabChange("profile");
+                            setShowUserMenu(false);
+                          }}
+                          className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                        >
+                          <MaterialSymbol icon="badge" size={18} />
+                          Mi perfil
+                        </button>
+                        <div className="flex items-center justify-between rounded-xl px-2.5 py-2">
+                          <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">Apariencia</span>
+                          <ThemeToggleNavBtn className="h-8 w-8" clipId="nav-theme-desk" />
+                        </div>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void handleLogout()}
+                          className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-[#9a0002] hover:bg-red-50 dark:hover:bg-red-950/30"
+                        >
+                          <MaterialSymbol icon="logout" size={18} />
+                          Cerrar sesión
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#9a0002] px-4 text-[13px] font-semibold text-white shadow-md shadow-[#9a0002]/25 transition-all hover:brightness-110 active:brightness-90"
               >
-                <MaterialSymbol icon="notifications" size={17} className="text-white" />
-                {!showNotifications && (
-                  <span className="absolute -top-1.5 -right-1.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
-                )}
-              </CherryBtn>
-              <AnimatePresence>{showNotifications && notificationPanel}</AnimatePresence>
-            </div>
-
-            <div className="mx-0.5 h-7 w-px bg-[#e8e0d6] dark:bg-[#3d3732]" />
-
-            <button
-              type="button"
-              onClick={() => handleTabChange("profile")}
-              aria-label="Mi perfil"
-              className={cn(
-                "relative flex items-center justify-center rounded-full transition-transform duration-200 cursor-pointer active:scale-95 hover:scale-108 p-0.5",
-                currentTab === "profile" && "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-[#faf6f1] dark:ring-offset-[#1c1917]",
-              )}
-            >
-              <UserAvatarView avatar={profile.avatar} size="md" showFrame />
-            </button>
+                <MaterialSymbol icon="login" size={16} />
+                <span>Iniciar sesión</span>
+              </Link>
+            )}
           </div>
 
-          {(showNotifications || showLocationDropdown) && (
+          {isAuthenticated && (showNotifications || showLocationDropdown) && (
             <button
               type="button"
               aria-label="Cerrar panel"
@@ -352,22 +427,35 @@ export default function Navbar({
                   className="fixed inset-y-0 left-0 z-[60] flex w-[275px] flex-col overflow-y-auto bg-[#f5f1eb] p-3 shadow-2xl dark:bg-[#161412] md:hidden custom-scrollbar"
                 >
                   <div className="mb-2 flex items-center justify-between border-b border-[#e8e0d6] px-1 pb-3 dark:border-[#3d3732]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleTabChange("profile");
-                        setShowDashboard(false);
-                      }}
-                      className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] p-1"
-                    >
-                      <UserAvatarView avatar={profile.avatar} size="md" showFrame />
-                      <div className="min-w-0 text-left">
-                        <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">
-                          {profile.name || "Invitado"}
-                        </p>
-                        <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
-                      </div>
-                    </button>
+                    {isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleTabChange("profile");
+                          setShowDashboard(false);
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl p-1 text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
+                      >
+                        <UserAvatarView avatar={profile.avatar} size="md" />
+                        <div className="min-w-0 text-left">
+                          <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">
+                            {profile.name}
+                          </p>
+                          <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
+                        </div>
+                      </button>
+                    ) : (
+                      <Link
+                        href="/login"
+                        onClick={() => setShowDashboard(false)}
+                        className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl p-1 text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
+                      >
+                        <div className="min-w-0 text-left">
+                          <p className="text-[14px] font-bold text-gray-900 dark:text-gray-100">Iniciá sesión</p>
+                          <p className="text-[11px] text-gray-400">Pedí más rápido</p>
+                        </div>
+                      </Link>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShowDashboard(false)}
@@ -407,17 +495,19 @@ export default function Navbar({
                   {/* Drawer Footer con botones compactos al fondo a la izquierda */}
                   <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
                     <div className="space-y-1.5">
-                      <Link
-                        href="/negocio"
-                        onClick={() => setShowDashboard(false)}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group"
-                      >
-                        <div className="flex items-center gap-2">
-                          <MaterialSymbol icon="storefront" size={16} fill />
-                          <span className="text-[12px] font-bold">Ir a mi negocio</span>
-                        </div>
-                        <MaterialSymbol icon="arrow_forward" size={15} className="text-[#9a0002]/60 dark:text-red-400/60 group-hover:translate-x-0.5 transition-transform" />
-                      </Link>
+                      {hasActiveBusiness && (
+                        <Link
+                          href="/negocio"
+                          onClick={() => setShowDashboard(false)}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <MaterialSymbol icon="storefront" size={16} fill />
+                            <span className="text-[12px] font-bold">Ir a mi negocio</span>
+                          </div>
+                          <MaterialSymbol icon="arrow_forward" size={15} className="text-[#9a0002]/60 dark:text-red-400/60 group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                      )}
                       <Link
                         href="/negocio/registro"
                         onClick={() => setShowDashboard(false)}
@@ -452,29 +542,39 @@ export default function Navbar({
                         <ThemeToggleNavBtn className="h-7 w-7" clipId="nav-theme-drawer" />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleTabChange("profile");
-                          setShowDashboard(false);
-                        }}
-                        className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
-                      >
-                        <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
-                        <span>Configuración de cuenta</span>
-                      </button>
+                      {isAuthenticated && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleTabChange("profile");
+                            setShowDashboard(false);
+                          }}
+                          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
+                        >
+                          <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
+                          <span>Configuración de cuenta</span>
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resetProfile();
-                          setShowDashboard(false);
-                        }}
-                        className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
-                      >
-                        <MaterialSymbol icon="logout" size={16} />
-                        <span>Cerrar sesión</span>
-                      </button>
+                      {isAuthenticated ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleLogout()}
+                          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
+                        >
+                          <MaterialSymbol icon="logout" size={16} />
+                          <span>Cerrar sesión</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href="/login"
+                          onClick={() => setShowDashboard(false)}
+                          className="flex h-9 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-[#9a0002] hover:bg-[#9a0002]/10"
+                        >
+                          <MaterialSymbol icon="login" size={16} />
+                          <span>Iniciar sesión</span>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </motion.aside>

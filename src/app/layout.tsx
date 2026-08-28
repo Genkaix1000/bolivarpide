@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { CartProvider } from "@/components/CartProvider";
 import { CartFlow } from "@/components/CartFlow";
+import { FlashToast } from "@/components/FlashToast";
 import { UserProfileProvider } from "@/components/UserProfileProvider";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -56,6 +57,7 @@ export default function RootLayout({
               {children}
             </main>
             <CartFlow />
+            <FlashToast />
           </CartProvider>
         </UserProfileProvider>
       </body>

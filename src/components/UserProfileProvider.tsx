@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   UserProfile,
   UserAvatar,
@@ -8,19 +9,22 @@ import {
   DEFAULT_USER_PROFILE,
 } from "@/lib/userProfile";
 import { createClient } from "@/lib/supabase/client";
+import { fetchUserProfile, rowToProfile } from "@/lib/userProfileDb";
+import { saveUserProfileAction } from "@/lib/userProfileActions";
+import { flashToast } from "@/components/FlashToast";
 
 interface UserProfileContextValue {
   profile: UserProfile;
   isAuthenticated: boolean;
+  hasActiveBusiness: boolean;
   updateAvatar: (avatar: UserAvatar) => void;
   updateName: (name: string) => void;
   awardBadge: (badge: UserAwardBadge) => void;
   removeBadge: (badgeId: string) => void;
-  unlockFrame: (frameId: string) => void;
   resetProfile: () => void;
+  logout: () => Promise<void>;
+  persistProfile: (next: UserProfile) => Promise<void>;
 }
-
-const STORAGE_KEY = "bp_user_profile_v3";
 
 const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
@@ -31,39 +35,21 @@ function initialsFrom(name: string, email: string) {
   return base.slice(0, 2).toUpperCase() || "?";
 }
 
-function getInitialProfile(): UserProfile {
-  if (typeof window === "undefined") return DEFAULT_USER_PROFILE;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && parsed.avatar) {
-        return {
-          ...DEFAULT_USER_PROFILE,
-          ...parsed,
-          avatar: { ...DEFAULT_USER_PROFILE.avatar, ...parsed.avatar },
-          awardedBadges: parsed.awardedBadges || [],
-          unlockedFrameIds: parsed.unlockedFrameIds || ["none"],
-        };
-      }
-    }
-  } catch {
-    // fallback
-  }
-  return DEFAULT_USER_PROFILE;
-}
-
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile>(getInitialProfile);
+  const pathname = usePathname();
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasActiveBusiness, setHasActiveBusiness] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const skipNextSave = useRef(true);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    } catch {
-      // ignore
-    }
-  }, [profile]);
+    setProfileReady(true);
+  }, []);
+
+  const persistProfile = useCallback(async (next: UserProfile) => {
+    await saveUserProfileAction(next);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -74,8 +60,12 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       } = await supabase.auth.getUser();
       if (!user) {
         setIsAuthenticated(false);
+        setHasActiveBusiness(false);
+        setProfile(DEFAULT_USER_PROFILE);
+        skipNextSave.current = true;
         return;
       }
+
       setIsAuthenticated(true);
       const name =
         (user.user_metadata?.full_name as string | undefined) ||
@@ -83,23 +73,45 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         user.email?.split("@")[0] ||
         "Usuario";
       const email = user.email ?? "";
-      setProfile((prev) => {
-        const keepCustomAvatar = prev.id === user.id && prev.avatar.value !== "?";
-        return {
-          ...prev,
+
+      const { count } = await supabase
+        .from("business_members")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      setHasActiveBusiness((count ?? 0) > 0);
+
+      try {
+        const row = await fetchUserProfile(user.id);
+        skipNextSave.current = true;
+        if (row) {
+          setProfile(rowToProfile(row, { name, email }));
+        } else {
+          setProfile({
+            ...DEFAULT_USER_PROFILE,
+            id: user.id,
+            name,
+            email,
+            avatar: {
+              type: "initials",
+              value: initialsFrom(name, email),
+              gradientId: "cherry",
+            },
+          });
+        }
+      } catch {
+        setProfile({
+          ...DEFAULT_USER_PROFILE,
           id: user.id,
-          name: prev.id === user.id && prev.name ? prev.name : name,
+          name,
           email,
-          avatar: keepCustomAvatar
-            ? prev.avatar
-            : {
-                type: "initials",
-                value: initialsFrom(name, email),
-                frameId: "none",
-                gradientId: prev.avatar.gradientId || "cherry",
-              },
-        };
-      });
+          avatar: {
+            type: "initials",
+            value: initialsFrom(name, email),
+            gradientId: "cherry",
+          },
+        });
+      }
     };
 
     void syncUser();
@@ -110,6 +122,33 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || profile.id === "guest") return;
+    const supabase = createClient();
+    void (async () => {
+      const { count } = await supabase
+        .from("business_members")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", profile.id)
+        .eq("status", "active");
+      setHasActiveBusiness((count ?? 0) > 0);
+    })();
+  }, [pathname, isAuthenticated, profile.id]);
+
+  useEffect(() => {
+    if (!profileReady || !isAuthenticated || profile.id === "guest") return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      void saveUserProfileAction(profile).catch(() => {
+        flashToast("No se pudo guardar tu perfil.");
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [profile, profileReady, isAuthenticated]);
 
   const updateAvatar = useCallback((avatar: UserAvatar) => {
     setProfile((prev) => ({ ...prev, avatar }));
@@ -133,20 +172,23 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     }));
   }, []);
 
-  const unlockFrame = useCallback((frameId: string) => {
-    setProfile((prev) => {
-      if (prev.unlockedFrameIds.includes(frameId)) return prev;
-      return { ...prev, unlockedFrameIds: [...prev.unlockedFrameIds, frameId] };
-    });
-  }, []);
-
   const resetProfile = useCallback(() => {
     setProfile(DEFAULT_USER_PROFILE);
     setIsAuthenticated(false);
+    setHasActiveBusiness(false);
+    skipNextSave.current = true;
+  }, []);
+
+  const logout = useCallback(async () => {
+    flashToast("Sesión cerrada.");
     try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } finally {
+      setProfile(DEFAULT_USER_PROFILE);
+      setIsAuthenticated(false);
+      setHasActiveBusiness(false);
+      skipNextSave.current = true;
     }
   }, []);
 
@@ -154,22 +196,26 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     () => ({
       profile,
       isAuthenticated,
+      hasActiveBusiness,
       updateAvatar,
       updateName,
       awardBadge,
       removeBadge,
-      unlockFrame,
       resetProfile,
+      logout,
+      persistProfile,
     }),
     [
       profile,
       isAuthenticated,
+      hasActiveBusiness,
       updateAvatar,
       updateName,
       awardBadge,
       removeBadge,
-      unlockFrame,
       resetProfile,
+      logout,
+      persistProfile,
     ],
   );
 

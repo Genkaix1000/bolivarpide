@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth/actions";
 import { listMyMemberships } from "@/lib/business/queries";
 import { respondInvite } from "@/lib/business/actions";
@@ -8,11 +9,22 @@ export default async function NegocioHubPage() {
   const active = memberships.filter((m) => m.status === "active");
   const invited = memberships.filter((m) => m.status === "invited");
 
+  if (active.length === 0 && invited.length === 0) {
+    redirect("/negocio/registro");
+  }
+
   return (
     <main className="min-h-dvh bg-[#f3efe8] px-4 py-10">
       <div className="mx-auto max-w-2xl space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
+            <Link
+              href="/"
+              className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-[#9a0002]"
+            >
+              <span>←</span>
+              Ir al inicio
+            </Link>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a0002]">
               Negocio
             </p>
@@ -22,10 +34,10 @@ export default async function NegocioHubPage() {
             </p>
           </div>
           <form action={signOut}>
-            <input type="hidden" name="next" value="/negocio/login" />
+            <input type="hidden" name="next" value="/" />
             <button
               type="submit"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 cursor-pointer"
+              className="cursor-pointer rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700"
             >
               Salir
             </button>
@@ -52,7 +64,7 @@ export default async function NegocioHubPage() {
                     <input type="hidden" name="accept" value="true" />
                     <button
                       type="submit"
-                      className="rounded-full bg-[#9a0002] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer"
+                      className="cursor-pointer rounded-full bg-[#9a0002] px-3 py-1.5 text-xs font-semibold text-white"
                     >
                       Aceptar
                     </button>
@@ -62,7 +74,7 @@ export default async function NegocioHubPage() {
                     <input type="hidden" name="accept" value="false" />
                     <button
                       type="submit"
-                      className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium cursor-pointer"
+                      className="cursor-pointer rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium"
                     >
                       Rechazar
                     </button>
@@ -73,19 +85,9 @@ export default async function NegocioHubPage() {
           </section>
         )}
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-stone-800">Activos</h2>
-          {active.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-stone-300 bg-white/70 px-4 py-8 text-center">
-              <p className="text-sm text-stone-600">Todavía no tenés un local vinculado.</p>
-              <Link
-                href="/negocio/registro"
-                className="mt-4 inline-block rounded-full bg-[#9a0002] px-5 py-2 text-sm font-semibold text-white"
-              >
-                Abrir / afiliar mi negocio
-              </Link>
-            </div>
-          ) : (
+        {active.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-stone-800">Activos</h2>
             <ul className="space-y-2">
               {active.map((m) => (
                 <li key={m.id}>
@@ -107,8 +109,8 @@ export default async function NegocioHubPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );

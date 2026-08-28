@@ -256,7 +256,7 @@ export async function setPublished(formData: FormData) {
 export async function setPlan(formData: FormData) {
   const businessId = String(formData.get("businessId") || "");
   const plan = String(formData.get("plan") || "free");
-  if (!["free", "premium"].includes(plan)) throw new Error("Plan inválido");
+  if (!["free", "impulso", "lider"].includes(plan)) throw new Error("Plan inválido");
   const { user, service } = await requireAdmin();
   await service.from("businesses").update({ plan }).eq("id", businessId);
   await service.from("admin_audit_log").insert({
