@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 import { formatLocalMobile } from "@/lib/business/phone";
-import { BOLIVAR_DEFAULTS, MAX_USER_ADDRESSES } from "@/lib/addresses/constants";
+import { BOLIVAR_CENTER, BOLIVAR_DEFAULTS, MAX_USER_ADDRESSES } from "@/lib/addresses/constants";
 import { getCurrentPosition, reverseGeocode } from "@/lib/addresses/geocode";
 import {
   deleteUserAddressAction,
@@ -13,6 +13,10 @@ import {
 } from "@/lib/addresses/actions";
 import type { UserAddress } from "@/lib/addresses/types";
 import { flashToast, flashToastUndo } from "@/components/FlashToast";
+
+import { StreetAutocomplete } from "./StreetAutocomplete";
+import { AddressMapPicker } from "./AddressMapPicker";
+import { isWithinBolivar } from "@/lib/addresses/bolivar";
 
 type Props = {
   open: boolean;
@@ -51,14 +55,17 @@ export function AddressFormModal({
 }: Props) {
   const [form, setForm] = useState(emptyForm(presetContact));
   const [error, setError] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [geoPending, setGeoPending] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setInfoNotice(null);
     setDeleteConfirm(false);
     if (editing) {
       setForm({
@@ -72,36 +79,54 @@ export function AddressFormModal({
         lat: editing.lat,
         lng: editing.lng,
       });
+      setShowMap(Boolean(editing.lat && editing.lng));
     } else {
       setForm(emptyForm(presetContact));
+      setShowMap(false);
     }
   }, [open, editing, presetContact]);
 
   async function handleUseLocation() {
     setError(null);
+    setInfoNotice(null);
     setGeoPending(true);
     try {
       const pos = await getCurrentPosition();
       const { latitude, longitude } = pos.coords;
-      const result = await reverseGeocode(latitude, longitude);
-      if (!result) {
-        setError("No pudimos obtener la dirección. Completala manualmente.");
-        return;
-      }
-      if (!result.withinBolivar) {
-        setError("Por ahora solo operamos en San Carlos de Bolívar");
-        return;
-      }
+
+      const within = isWithinBolivar(latitude, longitude);
+      const targetLat = within ? latitude : BOLIVAR_CENTER.lat;
+      const targetLng = within ? longitude : BOLIVAR_CENTER.lng;
+
       setForm((f) => ({
         ...f,
-        street: result.street,
-        streetNumber: result.streetNumber ?? "",
-        noNumber: !result.streetNumber,
-        lat: result.lat,
-        lng: result.lng,
+        lat: Number(targetLat.toFixed(6)),
+        lng: Number(targetLng.toFixed(6)),
       }));
-    } catch {
-      setError("No pudimos usar tu ubicación. Completá la dirección manualmente.");
+      setShowMap(true);
+
+      if (!within) {
+        setInfoNotice("Estás fuera del radio de Bolívar. Centramos el mapa en el casco urbano.");
+        return;
+      }
+
+      // Intentar reverse geocoding para autocompletar calle
+      const result = await reverseGeocode(latitude, longitude);
+      if (result && result.street) {
+        setForm((f) => ({
+          ...f,
+          street: result.street,
+          streetNumber: result.streetNumber || f.streetNumber,
+          noNumber: !result.streetNumber && f.noNumber,
+          lat: Number(result.lat.toFixed(6)),
+          lng: Number(result.lng.toFixed(6)),
+        }));
+        setInfoNotice(`Ubicación aproximada detectada: ${result.street}. Podés ajustar el número o el pin en el mapa.`);
+      } else {
+        setInfoNotice("Ubicación marcada en el mapa. Elegí tu calle en el buscador.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pudimos obtener la ubicación.");
     } finally {
       setGeoPending(false);
     }
@@ -235,18 +260,24 @@ export function AddressFormModal({
                   type="button"
                   onClick={handleUseLocation}
                   disabled={geoPending}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#9a0002]/25 bg-[#9a0002]/8 py-3 text-sm font-bold text-[#9a0002] transition hover:bg-[#9a0002]/15 active:scale-[0.99] disabled:opacity-60 dark:bg-[#9a0002]/15 dark:text-red-300"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#9a0002]/25 bg-[#9a0002]/8 py-3 text-sm font-bold text-[#9a0002] transition hover:bg-[#9a0002]/15 active:scale-[0.99] disabled:opacity-60 dark:bg-[#9a0002]/15 dark:text-red-300 cursor-pointer"
                 >
                   <MaterialSymbol icon="my_location" size={18} />
                   {geoPending ? "Obteniendo ubicación…" : "Usar mi ubicación actual"}
                 </button>
 
-                <Field label="Calle">
-                  <input
+                {infoNotice && (
+                  <div className="flex items-start gap-2 rounded-xl bg-blue-50/80 p-3 text-[12px] font-medium text-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+                    <MaterialSymbol icon="info" size={16} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                    <span>{infoNotice}</span>
+                  </div>
+                )}
+
+                <Field label="Calle" hint="Escribí para ver sugerencias de Bolívar">
+                  <StreetAutocomplete
                     value={form.street}
-                    onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
-                    placeholder="Ej. Av. San Martín"
-                    className={inputClass}
+                    onChange={(street) => setForm((f) => ({ ...f, street }))}
+                    placeholder="Ej. Av. San Martín, Colombia, Alsina..."
                     required
                   />
                 </Field>
@@ -271,24 +302,41 @@ export function AddressFormModal({
                             streetNumber: e.target.checked ? "" : f.streetNumber,
                           }))
                         }
-                        className="h-4 w-4 rounded border-stone-300 text-[#9a0002] focus:ring-[#9a0002] dark:border-stone-600"
+                        className="h-4 w-4 rounded border-stone-300 text-[#9a0002] focus:ring-[#9a0002] dark:border-stone-600 cursor-pointer"
                       />
                       Sin número
                     </label>
                   </div>
                 </Field>
 
-                <div className="rounded-xl border border-[#e8e0d6] bg-white px-3.5 py-2.5 text-[12px] text-stone-600 dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-300">
-                  {BOLIVAR_DEFAULTS.city} · {BOLIVAR_DEFAULTS.province} · CP{" "}
-                  {BOLIVAR_DEFAULTS.postalCode}
+                <div className="flex items-center justify-between rounded-xl border border-[#e8e0d6] bg-white px-3.5 py-2.5 text-[12px] text-stone-600 dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-300">
+                  <span>{BOLIVAR_DEFAULTS.city} · CP {BOLIVAR_DEFAULTS.postalCode} · {BOLIVAR_DEFAULTS.province}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMap((m) => !m)}
+                    className="flex items-center gap-1 font-bold text-[#9a0002] hover:underline cursor-pointer"
+                  >
+                    <MaterialSymbol icon={showMap ? "map" : "add_location_alt"} size={15} />
+                    <span>{showMap ? "Ocultar mapa" : "Ver mapa"}</span>
+                  </button>
                 </div>
 
-                <Field label="Indicaciones para la entrega" hint="Piso, timbre, referencias…">
+                {showMap && (
+                  <div className="pt-1">
+                    <AddressMapPicker
+                      lat={form.lat}
+                      lng={form.lng}
+                      onChangeCoords={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                    />
+                  </div>
+                )}
+
+                <Field label="Indicaciones para la entrega" hint="Piso, timbre, referencias, color de portón…">
                   <textarea
                     value={form.deliveryNotes}
                     onChange={(e) => setForm((f) => ({ ...f, deliveryNotes: e.target.value }))}
                     rows={2}
-                    placeholder="Ej. Timbre 3B, portón negro"
+                    placeholder="Ej. Timbre 3B, portón negro, entre calles..."
                     className={cn(inputClass, "resize-none")}
                   />
                 </Field>
