@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAvatarView } from "@/components/UserAvatarView";
+import type { UserAddressSummary } from "@/lib/addresses/types";
 
 interface NavbarProps {
   currentTab: string;
@@ -15,9 +16,12 @@ interface NavbarProps {
   onSearchFocus: () => void;
   searchQuery: string;
   locationLabel?: string;
-  savedAddresses?: Array<{ id: string; name: string }>;
+  savedAddresses?: UserAddressSummary[];
   selectedAddressId?: string;
   onSelectAddress?: (id: string) => void;
+  onEditAddress?: (id: string) => void;
+  onAddAddress?: () => void;
+  maxAddresses?: number;
   showLocationDropdown?: boolean;
   onLocationClick?: () => void;
 }
@@ -129,6 +133,9 @@ export default function Navbar({
   savedAddresses,
   selectedAddressId,
   onSelectAddress,
+  onEditAddress,
+  onAddAddress,
+  maxAddresses = 3,
   showLocationDropdown,
   onLocationClick,
 }: NavbarProps) {
@@ -245,40 +252,77 @@ export default function Navbar({
                   {showLocationDropdown && savedAddresses && savedAddresses.length > 0 && (
                     <motion.div
                       {...NOTIFICATION_POPOVER_MOTION}
-                      className="absolute left-0 top-[48px] z-50 w-[min(290px,calc(100vw-2rem))] rounded-xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
+                      className="absolute left-0 top-[48px] z-50 w-[min(310px,calc(100vw-2rem))] rounded-xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
                     >
+                      <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                        Mis direcciones
+                      </p>
                       <div className="space-y-1.5">
                         {savedAddresses.map((addr) => {
                           const isSelected = addr.id === selectedAddressId;
                           return (
-                            <button
+                            <div
                               key={addr.id}
-                              type="button"
-                              onClick={() => onSelectAddress?.(addr.id)}
                               className={cn(
-                                "flex w-full cursor-pointer items-center justify-between rounded-xl p-2.5 text-left transition-all duration-200",
+                                "flex items-center gap-2 rounded-xl border p-2 transition-all duration-200",
                                 isSelected
-                                  ? "border border-[#9a0002] bg-[#9a0002]/5 font-semibold text-[#9a0002]"
-                                  : "border border-[#e8e0d6] text-gray-700 hover:bg-[#f5f1eb] dark:border-[#3d3732] dark:text-gray-300 dark:hover:bg-[#2a2623]",
+                                  ? "border-[#9a0002] bg-[#9a0002]/5"
+                                  : "border-[#e8e0d6] dark:border-[#3d3732]",
                               )}
                             >
-                              <span className="truncate text-[12px]">{addr.name}</span>
-                              {isSelected && <MaterialSymbol icon="check" size={14} className="shrink-0 text-[#9a0002]" />}
-                            </button>
+                              <button
+                                type="button"
+                                aria-label={isSelected ? "Dirección seleccionada" : "Seleccionar dirección"}
+                                onClick={() => onSelectAddress?.(addr.id)}
+                                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition"
+                                style={{
+                                  borderColor: isSelected ? "#9a0002" : "#d6d3d1",
+                                  background: isSelected ? "#9a0002" : "transparent",
+                                }}
+                              >
+                                {isSelected && (
+                                  <MaterialSymbol icon="check" size={14} className="text-white" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onSelectAddress?.(addr.id)}
+                                className="min-w-0 flex-1 cursor-pointer truncate text-left text-[12px] font-semibold text-gray-800 dark:text-gray-200"
+                              >
+                                {addr.label}
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Editar dirección"
+                                onClick={() => {
+                                  onEditAddress?.(addr.id);
+                                  onLocationClick?.();
+                                }}
+                                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition hover:bg-[#f5f1eb] hover:text-[#9a0002] dark:hover:bg-[#2a2623]"
+                              >
+                                <MaterialSymbol icon="edit" size={15} />
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          alert("Agregar dirección");
-                          onLocationClick?.();
-                        }}
-                        className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#e8e0d6] bg-[#f5f1eb] py-2.5 text-[11px] font-semibold text-gray-600 transition-all hover:border-[#9a0002]/40 hover:text-[#9a0002] dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-gray-300"
-                      >
-                        <MaterialSymbol icon="add" size={14} />
-                        <span>Agregar nueva dirección</span>
-                      </button>
+                      {savedAddresses.length < maxAddresses ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onAddAddress?.();
+                            onLocationClick?.();
+                          }}
+                          className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#e8e0d6] bg-[#f5f1eb] py-2.5 text-[11px] font-semibold text-gray-600 transition-all hover:border-[#9a0002]/40 hover:text-[#9a0002] dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-gray-300"
+                        >
+                          <MaterialSymbol icon="add" size={14} />
+                          <span>Agregar nueva dirección</span>
+                        </button>
+                      ) : (
+                        <p className="mt-2 px-1 text-center text-[10px] text-gray-400">
+                          Máximo {maxAddresses} direcciones
+                        </p>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -465,6 +509,99 @@ export default function Navbar({
                       <MaterialSymbol icon="close" size={18} />
                     </button>
                   </div>
+
+                  {/* ── Location panel in mobile sidebar ── */}
+                  {isAuthenticated && (
+                    <div className="mx-1 mb-3 rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xs dark:border-[#3d3732] dark:bg-[#1c1917]">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          <MaterialSymbol icon="near_me" size={14} className="text-[#9a0002]" fill />
+                          <span>Ubicación de entrega</span>
+                        </div>
+                        {savedAddresses && savedAddresses.length < maxAddresses && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onAddAddress?.();
+                              setShowDashboard(false);
+                            }}
+                            className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-[#9a0002] hover:underline"
+                          >
+                            <MaterialSymbol icon="add" size={14} />
+                            <span>Nueva</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {savedAddresses && savedAddresses.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {savedAddresses.map((addr) => {
+                            const isSelected = addr.id === selectedAddressId;
+                            return (
+                              <div
+                                key={addr.id}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-xl border p-2 transition-all duration-200",
+                                  isSelected
+                                    ? "border-[#9a0002] bg-[#9a0002]/5 dark:bg-[#9a0002]/15"
+                                    : "border-[#e8e0d6] dark:border-[#3d3732] bg-[#faf6f1]/50 dark:bg-[#231f1c]",
+                                )}
+                              >
+                                <button
+                                  type="button"
+                                  aria-label={isSelected ? "Dirección seleccionada" : "Seleccionar dirección"}
+                                  onClick={() => {
+                                    onSelectAddress?.(addr.id);
+                                  }}
+                                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition"
+                                  style={{
+                                    borderColor: isSelected ? "#9a0002" : "#d6d3d1",
+                                    background: isSelected ? "#9a0002" : "transparent",
+                                  }}
+                                >
+                                  {isSelected && (
+                                    <MaterialSymbol icon="check" size={13} className="text-white" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onSelectAddress?.(addr.id);
+                                  }}
+                                  className="min-w-0 flex-1 cursor-pointer truncate text-left text-[12px] font-semibold text-gray-800 dark:text-gray-200"
+                                >
+                                  {addr.label}
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Editar dirección"
+                                  onClick={() => {
+                                    onEditAddress?.(addr.id);
+                                    setShowDashboard(false);
+                                  }}
+                                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-400 transition hover:bg-[#ede4d9] hover:text-[#9a0002] dark:hover:bg-[#2a2623]"
+                                >
+                                  <MaterialSymbol icon="edit" size={14} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onAddAddress?.();
+                            setShowDashboard(false);
+                          }}
+                          className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#e8e0d6] bg-[#faf6f1] py-2 text-[11px] font-semibold text-gray-600 transition-all hover:border-[#9a0002]/40 hover:text-[#9a0002] dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-gray-300"
+                        >
+                          <MaterialSymbol icon="add" size={14} />
+                          <span>Agregar dirección</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <nav className="flex flex-col gap-0.5 px-1">
                     <p className="px-3 mb-1 text-[11px] font-medium text-gray-400">General</p>

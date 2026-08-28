@@ -22,6 +22,15 @@ import { UserAvatarView } from "@/components/UserAvatarView";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 import { flashToast } from "@/components/FlashToast";
+import { AddressFormModal } from "@/components/addresses/AddressFormModal";
+import { addressToSummary } from "@/lib/addresses/db";
+import { formatLocalMobile } from "@/lib/business/phone";
+import {
+  listUserAddressesAction,
+  setDefaultAddressAction,
+} from "@/lib/addresses/actions";
+import { MAX_USER_ADDRESSES } from "@/lib/addresses/constants";
+import type { UserAddress } from "@/lib/addresses/types";
 import { UserAwardBadge, getRarityColor } from "@/lib/userProfile";
 
 export default function HomePage() {
@@ -36,15 +45,13 @@ export default function HomePage() {
   const isLoading = showSplash;
 
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
 
   // Membership real (OAuth + business_members)
   const [isBusinessOwner, setIsBusinessOwner] = useState(false);
-
-  // Saved Addresses Mock Data
-  const [selectedAddressId, setSelectedAddressId] = useState("");
-  const savedAddresses: Array<{ id: string; name: string }> = [];
-
-  // Searchbar States
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState(["Pizza", "Hamburguesa", "Café"]);
   const topSearches = ["Empanadas", "Sushi", "Desayuno", "Helado", "Envíos Gratis"];
@@ -114,6 +121,32 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [currentTab]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAddresses([]);
+      setSelectedAddressId("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listUserAddressesAction();
+        if (cancelled) return;
+        setAddresses(list);
+        const def = list.find((a) => a.isDefault) ?? list[0];
+        setSelectedAddressId(def?.id ?? "");
+      } catch {
+        if (!cancelled) {
+          setAddresses([]);
+          setSelectedAddressId("");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   // Mouse Scroll Wheel Page Swapper for Featured Chains
   useEffect(() => {
@@ -343,17 +376,22 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#f5f1eb] dark:bg-[#231f1c]">
+              <button
+                type="button"
+                onClick={() => {
+                  if (addresses.length === 0) openAddAddress();
+                  else openEditAddress(selectedAddressId || addresses[0].id);
+                }}
+                className="flex w-full items-center justify-between rounded-xl bg-[#f5f1eb] p-3.5 text-left transition hover:bg-[#ede4d9] dark:bg-[#231f1c] dark:hover:bg-[#2a2623]"
+              >
                 <div>
                   <h4 className="text-[11px] font-medium text-gray-400">Dirección principal</h4>
                   <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mt-0.5">
-                    {savedAddresses.find((a) => a.id === selectedAddressId)?.name ||
-                      savedAddresses[0]?.name ||
-                      "Agregar dirección"}
+                    {currentAddressName}
                   </p>
                 </div>
                 <MaterialSymbol icon="location_on" size={18} className="text-[#9a0002]" />
-              </div>
+              </button>
 
               {/* Compact Conversion Options (Comercio & Delivery) */}
               <div className="space-y-2 pt-1">
@@ -571,11 +609,90 @@ export default function HomePage() {
     );
   };
 
+  const savedAddresses = addresses.map(addressToSummary);
+
   const currentAddressName =
-    savedAddresses.find((a) => a.id === selectedAddressId)?.name ||
-    savedAddresses[0]?.name ||
+    savedAddresses.find((a) => a.id === selectedAddressId)?.label ||
+    savedAddresses[0]?.label ||
     "Agregar dirección";
 
+  function contactPreset() {
+    const src = addresses.find((a) => a.isDefault) ?? addresses[addresses.length - 1];
+    if (src) {
+      const digits = src.contactPhone.replace(/\D/g, "");
+      const local = digits.startsWith("549") ? digits.slice(3) : digits;
+      return {
+        firstName: src.contactFirstName,
+        lastName: src.contactLastName,
+        phoneLocal: formatLocalMobile(local),
+      };
+    }
+    const parts = profile.name.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts[0] ?? "",
+      lastName: parts.slice(1).join(" "),
+      phoneLocal: "",
+    };
+  }
+
+  async function handleSelectAddress(id: string) {
+    setSelectedAddressId(id);
+    setShowLocationDropdown(false);
+    try {
+      const updated = await setDefaultAddressAction(id);
+      setAddresses((prev) =>
+        prev.map((a) => ({ ...a, isDefault: a.id === updated.id })),
+      );
+    } catch {
+      flashToast("No se pudo cambiar la dirección.");
+    }
+  }
+
+  function openAddAddress() {
+    setEditingAddress(null);
+    setAddressFormOpen(true);
+    setShowLocationDropdown(false);
+  }
+
+  function openEditAddress(id: string) {
+    const addr = addresses.find((a) => a.id === id);
+    if (!addr) return;
+    setEditingAddress(addr);
+    setAddressFormOpen(true);
+    setShowLocationDropdown(false);
+  }
+
+  function handleLocationClick() {
+    if (addresses.length === 0) {
+      openAddAddress();
+      return;
+    }
+    setShowLocationDropdown((v) => !v);
+  }
+
+  function handleAddressSaved(addr: UserAddress) {
+    setAddresses((prev) => {
+      const exists = prev.some((a) => a.id === addr.id);
+      if (exists) {
+        return prev.map((a) =>
+          a.id === addr.id ? addr : addr.isDefault ? { ...a, isDefault: false } : a,
+        );
+      }
+      return addr.isDefault
+        ? [...prev.map((a) => ({ ...a, isDefault: false })), addr]
+        : [...prev, addr];
+    });
+    if (addr.isDefault || !selectedAddressId) setSelectedAddressId(addr.id);
+  }
+
+  function handleAddressDeleted(deleted: UserAddress) {
+    setAddresses((prev) => {
+      const next = prev.filter((a) => a.id !== deleted.id);
+      const fallback = next.find((a) => a.isDefault) ?? next[0];
+      setSelectedAddressId((cur) => (cur === deleted.id ? fallback?.id ?? "" : cur));
+      return next;
+    });
+  }
 
   return (
     <>
@@ -597,17 +714,15 @@ export default function HomePage() {
         onTabChange={handleTabChange}
         onSearchFocus={() => setIsSearchFocused(true)}
         searchQuery={searchQuery}
-        locationLabel={currentAddressName}
+        locationLabel={isAuthenticated ? currentAddressName : undefined}
         savedAddresses={savedAddresses}
         selectedAddressId={selectedAddressId}
-        onSelectAddress={(id) => {
-          setSelectedAddressId(id);
-          setShowLocationDropdown(false);
-        }}
+        onSelectAddress={handleSelectAddress}
+        onEditAddress={openEditAddress}
+        onAddAddress={openAddAddress}
+        maxAddresses={MAX_USER_ADDRESSES}
         showLocationDropdown={showLocationDropdown}
-        onLocationClick={() => {
-          setShowLocationDropdown(!showLocationDropdown);
-        }}
+        onLocationClick={handleLocationClick}
       />
 
       {/* Full-bleed curved home header */}
@@ -733,6 +848,18 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      <AddressFormModal
+        open={addressFormOpen}
+        editing={editingAddress}
+        presetContact={contactPreset()}
+        onClose={() => {
+          setAddressFormOpen(false);
+          setEditingAddress(null);
+        }}
+        onSaved={handleAddressSaved}
+        onDeleted={handleAddressDeleted}
+      />
 
     </div>
     </>
