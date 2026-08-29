@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
+import { storedPhoneFromWaId } from "@/lib/whatsapp/format";
 
 /**
  * POST /api/webhooks/whatsapp
@@ -60,10 +61,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const normalizedPhone =
+    (parsed.data.customerPhone && storedPhoneFromWaId(parsed.data.customerPhone)) ??
+    parsed.data.customerPhone ??
+    null;
+
   const { data, error } = await createServiceClient().rpc("create_order", {
     p_business_id: parsed.data.businessId,
     p_customer_name: parsed.data.customerName ?? null,
-    p_customer_phone: parsed.data.customerPhone ?? null,
+    p_customer_phone: normalizedPhone,
     p_source: "whatsapp",
     p_wa_chat_id: parsed.data.waChatId,
     p_delivery_address: parsed.data.deliveryAddress ?? null,

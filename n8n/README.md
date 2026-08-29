@@ -26,11 +26,17 @@ Meta Cloud API  ──webhook──►  n8n (self-hosted, HTTPS público)
 - **n8n self-hosted** con tunnel HTTPS (`cloudflared`) para que Meta pueda llegar.
 - **1 solo workflow** que rutea por `metadata.phone_number_id` → `business_whatsapp`.
   El modelo es *número por comercio*; el piloto usa el número de **test** de Meta (1 solo).
+  Solo responde números con `is_active = true` y `status = 'connected'`.
 - **n8n recibe el webhook de Meta** (verificación `hub.challenge` dentro del flujo).
   Next.js NO recibe webhooks de Meta; expone **`/api/webhooks/whatsapp`** (POST),
   autenticado por header `x-whatsapp-secret`, como puerta de creación de pedidos.
 - **Tokens**: el access token de Meta vive en la credencial de n8n (encriptada por n8n)
   y, cuando un comercio conecta número desde el panel, se guarda cifrado en **Supabase Vault**.
+- **Sesión atómica**: el bot persiste el carrito vía RPC
+  (`whatsapp_session_add_item` / `whatsapp_session_reset`), no con un
+  read-modify-write desde n8n — así dos mensajes concurrentes no se pisan.
+- **Idempotencia**: tras confirmar, se guarda `lastConfirmedMessageId` en la sesión;
+  un retry de Meta del mismo mensaje no vuelve a crear el pedido.
 - **Sin LLM en el MVP**: parsing con keywords. La IA (GPT) queda para el Tier 2.
 
 ## Requisitos de entorno (env vars en n8n)
@@ -117,9 +123,10 @@ Al confirmar, el pedido aparece en `/negocio/{id}/pedidos` del comercio con soni
 ## Esquema de datos (nuevo en esta rama)
 
 - `business_whatsapp` — mapping número ↔ comercio + estado + `vault_token_ref`.
-- `whatsapp_sessions` — estado de conversación (`state: { step, cart }`) por `(business_id, chat_id)`.
+- `whatsapp_sessions` — estado de conversación (`state: { step, cart, lastConfirmedMessageId }`) por `(business_id, chat_id)`.
 - `orders` + columnas `source`, `wa_chat_id`, `delivery_address`.
-- RPC `create_order` — transacción `orders`+`order_items`, `security definer`, solo `authenticated`/`service_role`.
+- RPC `create_order` — transacción `orders`+`order_items`, `security definer`, solo `authenticated`/`service_role`. Valida que el negocio tenga WhatsApp activo cuando `source='whatsapp'`.
+- RPC `whatsapp_session_add_item` / `whatsapp_session_reset` — mutaciones atómicas del carrito (sin race conditions).
 
 ## Seguridad
 

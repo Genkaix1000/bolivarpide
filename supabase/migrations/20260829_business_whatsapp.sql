@@ -98,6 +98,15 @@ BEGIN
   IF p_source NOT IN ('web', 'whatsapp') THEN
     RAISE EXCEPTION 'source invalido';
   END IF;
+  -- WhatsApp orders must come from an active connected number.
+  IF p_source = 'whatsapp' AND NOT EXISTS (
+    SELECT 1 FROM public.business_whatsapp w
+    WHERE w.business_id = p_business_id
+      AND w.status = 'connected'
+      AND w.is_active = true
+  ) THEN
+    RAISE EXCEPTION 'WhatsApp no activo para este comercio';
+  END IF;
   IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'items requeridos';
   END IF;
@@ -161,3 +170,133 @@ REVOKE ALL ON FUNCTION public.create_order(uuid, text, text, text, text, text, t
   FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.create_order(uuid, text, text, text, text, text, text, jsonb)
   TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Atomic session helpers (race-condition-free cart/state updates).
+-- n8n calls these instead of a read-modify-write roundtrip on
+-- whatsapp_sessions, so two concurrent inbound messages can't lose updates.
+-- ---------------------------------------------------------------------------
+
+-- Adds (or merges) one product line into the session cart. Returns the new state.
+CREATE OR REPLACE FUNCTION public.whatsapp_session_add_item(
+  p_business_id uuid,
+  p_chat_id text,
+  p_product jsonb
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_state jsonb;
+  v_cart jsonb;
+  v_new_cart jsonb;
+  v_line jsonb;
+BEGIN
+  IF p_business_id IS NULL OR p_chat_id IS NULL OR p_product IS NULL THEN
+    RAISE EXCEPTION 'parametros requeridos';
+  END IF;
+
+  SELECT state INTO v_state
+  FROM public.whatsapp_sessions
+  WHERE business_id = p_business_id AND chat_id = p_chat_id
+  FOR UPDATE;
+
+  IF v_state IS NULL THEN
+    v_state := '{"step":"idle","cart":[]}'::jsonb;
+  END IF;
+  v_cart := COALESCE(v_state -> 'cart', '[]'::jsonb);
+
+  -- Merge: same productId => bump quantity, capped at 99.
+  v_new_cart := '[]'::jsonb;
+  FOR v_line IN SELECT * FROM jsonb_array_elements(v_cart) LOOP
+    IF (v_line ->> 'productId') = (p_product ->> 'productId') THEN
+      v_line := jsonb_set(
+        v_line,
+        '{quantity}',
+        to_jsonb(LEAST(99, COALESCE((v_line ->> 'quantity')::int, 0) + COALESCE((p_product ->> 'quantity')::int, 1)))
+      );
+    END IF;
+    v_new_cart := v_new_cart || v_line;
+  END LOOP;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(v_cart)
+    WHERE (value ->> 'productId') = (p_product ->> 'productId')
+  ) THEN
+    v_new_cart := v_new_cart || p_product;
+  END IF;
+
+  IF jsonb_typeof(v_new_cart) = 'array' AND jsonb_array_length(v_new_cart) = 0 THEN
+    v_new_cart := '[]'::jsonb;
+  END IF;
+
+  v_state := jsonb_set(v_state, '{cart}', v_new_cart, true);
+  v_state := jsonb_set(v_state, '{step}', '"confirming"', true);
+
+  INSERT INTO public.whatsapp_sessions (business_id, chat_id, state, updated_at)
+  VALUES (p_business_id, p_chat_id, v_state, now())
+  ON CONFLICT (business_id, chat_id)
+  DO UPDATE SET state = EXCLUDED.state, updated_at = now();
+
+  RETURN v_state;
+END;
+$$;
+
+-- Whole-state replacement (used to clear the cart / resolve the order).
+-- Keeps lastConfirmedMessageId across resets for idempotency.
+CREATE OR REPLACE FUNCTION public.whatsapp_session_reset(
+  p_business_id uuid,
+  p_chat_id text,
+  p_step text DEFAULT 'idle',
+  p_cart jsonb DEFAULT '[]'::jsonb,
+  p_last_confirmed_message_id text DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_prev jsonb;
+  v_prev_confirmed text;
+  v_state jsonb;
+BEGIN
+  IF p_business_id IS NULL OR p_chat_id IS NULL THEN
+    RAISE EXCEPTION 'parametros requeridos';
+  END IF;
+
+  SELECT state INTO v_prev
+  FROM public.whatsapp_sessions
+  WHERE business_id = p_business_id AND chat_id = p_chat_id
+  FOR UPDATE;
+
+  v_prev_confirmed := COALESCE(v_prev -> 'lastConfirmedMessageId', 'null')::text;
+  IF v_prev_confirmed = 'null' THEN v_prev_confirmed := NULL; END IF;
+
+  IF p_last_confirmed_message_id IS NOT NULL THEN
+    v_state := jsonb_build_object(
+      'step', COALESCE(p_step, 'idle'),
+      'cart', COALESCE(p_cart, '[]'::jsonb),
+      'lastConfirmedMessageId', p_last_confirmed_message_id
+    );
+  ELSE
+    v_state := jsonb_build_object('step', COALESCE(p_step, 'idle'), 'cart', COALESCE(p_cart, '[]'::jsonb));
+    IF v_prev_confirmed IS NOT NULL THEN
+      v_state := jsonb_set(v_state, '{lastConfirmedMessageId}', to_jsonb(v_prev_confirmed), true);
+    END IF;
+  END IF;
+
+  INSERT INTO public.whatsapp_sessions (business_id, chat_id, state, updated_at)
+  VALUES (p_business_id, p_chat_id, v_state, now())
+  ON CONFLICT (business_id, chat_id)
+  DO UPDATE SET state = EXCLUDED.state, updated_at = now();
+
+  RETURN v_state;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.whatsapp_session_add_item(uuid, text, jsonb) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.whatsapp_session_add_item(uuid, text, jsonb) TO authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.whatsapp_session_reset(uuid, text, text, jsonb, text) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.whatsapp_session_reset(uuid, text, text, jsonb, text) TO authenticated, service_role;
