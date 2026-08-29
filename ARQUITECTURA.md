@@ -1278,31 +1278,32 @@ $$ LANGUAGE SQL;
 ```
 ---
 ## Integraciones
-### MercadoPago (Escrow / Marketplace)
+### MercadoPago (QR dinámico presencial — sin Checkout Pro)
+
+> **Spec canónico:** [`docs/specs/payments-qr-mp.md`](docs/specs/payments-qr-mp.md)  
+> **Referencia de implementación:** proyecto Cocktrail (OAuth + Store + POS + Orders `type:qr` `mode:dynamic`).
+
+**Decisión:** no usar Checkout Pro / Marketplace online por comisiones. Cobro online vía **Código QR presencial** (Orders API, QR dinámico). No requiere terminal física Point/Posnet.
+
+**Por comercio adherido (OAuth):** 1 Store + 1 POS (`pdv`). Múltiples orders QR concurrentes sobre el mismo POS — la concurrencia se maneja en backend, no con cajas artificiales.
+
+**Flujo resumido (pagar primero):**
 ```
-Flujo técnico del pago con escrow:
-1. Backend crea una Preference de MP con:
-   - marketplace_fee: comisión de la plataforma (12%/8%/5%)
-   - collector: cuenta MercadoPago del negocio (vinculada en onboarding)
-   - El dinero queda en la cuenta del Marketplace (vos)
-2. Usuario completa el pago en Checkout Pro de MP
-3. MP llama al webhook: POST /api/webhooks/mercadopago
-   - Verificamos la firma del webhook (x-signature header)
-   - Capturamos el pago (si estaba en 2 pasos)
-   - Actualizamos payment_status = 'held' en la orden
-4. Al confirmar entrega:
-   - Llamamos a la API de MP para liberar el dinero al negocio
-   - payment_status = 'released'
-5. Si se cancela:
-   - Llamamos a refund en la API de MP
-   - payment_status = 'refunded'
-Rutas API:
-  POST /api/payments/create-preference   → crea la preferencia de MP
-  POST /api/webhooks/mercadopago         → recibe notificaciones de MP
-  POST /api/payments/release/:orderId    → libera el dinero al negocio
-  POST /api/payments/refund/:orderId     → reembolso al usuario
+1. Usuario logueado confirma pedido (un comercio; cupón opcional antes del pago)
+2. Backend crea order MP QR dynamic (PT15M) con token OAuth del comercio
+3. Cliente escanea QR con Mercado Pago u otra billetera
+4. Webhook order → GET /v1/orders/{id} → payment_status = paid
+5. Si el comercio rechaza después → refund vía API MP
+Alternativa: efectivo al delivery (con aviso de que el comercio puede rechazar)
 ```
-**Nota sobre cuenta de Marketplace**: El negocio debe vincular su cuenta de MP durante el onboarding. Se usa el flujo OAuth de MP para obtener el `access_token` del vendedor y guardarlo (encriptado) para las liquidaciones.
+
+**Dinero:** va directo a la cuenta MP del comercio (sin escrow). Fee de plataforma: pendiente — el QR no tiene split nativo.
+
+Rutas API (ver spec):
+  POST /api/payments/mp/oauth/url
+  POST /api/orders/checkout
+  POST /api/webhooks/mercadopago
+  POST /api/orders/{id}/payment/retry
 ---
 ### Supabase Auth (OAuth)
 ```

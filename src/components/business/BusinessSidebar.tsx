@@ -28,6 +28,7 @@ export function BusinessSidebar({
     { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
     { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: `${base}/pedidos` },
     { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
+    { id: "pagos", label: "Pagos", icon: "payments", href: `${base}/pagos` },
   ];
   const SUPPORT_NAV = [
     { id: "equipo", label: "Equipo", icon: "group", href: `${base}/equipo` },

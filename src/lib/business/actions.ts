@@ -65,6 +65,49 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath(`/negocio/${businessId}/carta`);
 }
 
+export async function toggleBusinessOpen(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const isOpen = formData.get("isOpen") === "true";
+  const { supabase, business } = await requireBusinessAccess(businessId);
+  if (business.id !== businessId) throw new Error("Negocio inválido");
+
+  const { error } = await supabase
+    .from("businesses")
+    .update({ is_open: isOpen, updated_at: new Date().toISOString() })
+    .eq("id", businessId);
+  if (error) throw error;
+
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath(`/c/${business.slug}`);
+}
+
+export async function toggleProductAvailability(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const productId = String(formData.get("productId") || "");
+  const { supabase } = await requireBusinessAccess(businessId);
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("available")
+    .eq("id", productId)
+    .eq("business_id", businessId)
+    .single();
+
+  if (product) {
+    const { error } = await supabase
+      .from("products")
+      .update({
+        available: !product.available,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", productId);
+    if (error) throw error;
+  }
+
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath(`/negocio/${businessId}/carta`);
+}
+
 export async function setOrderStatus(formData: FormData) {
   const businessId = String(formData.get("businessId") || "");
   const orderId = String(formData.get("orderId") || "");

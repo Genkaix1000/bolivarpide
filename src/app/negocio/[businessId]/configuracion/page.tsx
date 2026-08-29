@@ -49,18 +49,19 @@ export default async function ConfiguracionPage({
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732] flex items-center justify-between">
+          <Link
+            href={`/negocio/${businessId}/pagos`}
+            className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732] flex items-center justify-between hover:border-[#9a0002]/30 transition-colors cursor-pointer group"
+          >
             <div className="flex items-center gap-3">
-              <MaterialSymbol icon="payments" size={20} className="text-gray-500" />
+              <MaterialSymbol icon="payments" size={20} className="text-gray-500 group-hover:text-[#9a0002]" />
               <div>
-                <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Medios de Pago Habilitados</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Mercado Pago, Efectivo y Transferencia</p>
+                <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Mercado Pago (QR)</h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Vincular cuenta · sucursal y caja automáticas</p>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full">
-              Activo
-            </span>
-          </div>
+            <MaterialSymbol icon="chevron_right" size={20} className="text-gray-400" />
+          </Link>
 
           <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732] flex items-center justify-between">
             <div className="flex items-center gap-3">

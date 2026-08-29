@@ -443,7 +443,6 @@ export function StoreSidePanel({
               <span className="text-gray-400"> · </span>
               Envío {money(profile.deliveryFee)}
             </p>
-            <p className="text-gray-500">Pedido mín. {money(profile.minOrder)}</p>
           </div>
         </div>
 

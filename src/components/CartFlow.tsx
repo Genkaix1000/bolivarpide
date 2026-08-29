@@ -12,13 +12,12 @@ import {
   type TrendingItem,
 } from "@/lib/mockData";
 import {
-  amountToMinOrder,
-  canCheckout,
   cartItemCount,
   cartSubtotal,
   type SelectedOptions,
   unitPrice,
 } from "@/lib/cart";
+import { CheckoutSheet } from "@/components/checkout/CheckoutSheet";
 import { cn } from "@/lib/utils";
 
 function money(n: number) {
@@ -161,9 +160,6 @@ function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => voi
   const suggestions = suggestionsForChain(item.chainId, item.id, 4);
   const sub = cartSubtotal(cart.lines);
   const fee = chain?.deliveryFee ?? 0;
-  const min = chain?.minOrder ?? 0;
-  const missing = chain ? amountToMinOrder(sub, min) : 0;
-  const ok = canCheckout(sub, min);
 
   const goToPay = () => {
     onClose();
@@ -190,11 +186,6 @@ function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => voi
               <h2 className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
                 ¿Querés algo más de {chain?.name ?? item.storeName}?
               </h2>
-              {missing > 0 && (
-                <p className="mt-1 text-[12px] text-amber-700 dark:text-amber-400">
-                  Te faltan {money(missing)} para el pedido mínimo
-                </p>
-              )}
             </div>
             <button
               type="button"
@@ -264,9 +255,8 @@ function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => voi
             )}
             <button
               type="button"
-              disabled={!ok}
               onClick={goToPay}
-              className="flex-1 rounded-full bg-[#9a0002] py-3 text-[13px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition"
+              className="flex-1 rounded-full bg-[#9a0002] py-3 text-[13px] font-semibold text-white cursor-pointer active:scale-[0.99] transition"
             >
               Ir a pagar · {money(sub + fee)}
             </button>
@@ -329,13 +319,10 @@ function SwitchDialog({
 }
 
 function CartDrawer({ onClose }: { onClose: () => void }) {
-  const { cart, setQty, clear } = useCart();
+  const { cart, setQty, clear, openCheckout } = useCart();
   const chain = FEATURED_CHAINS.find((c) => c.id === cart.chainId);
   const sub = cartSubtotal(cart.lines);
   const fee = chain?.deliveryFee ?? 0;
-  const min = chain?.minOrder ?? 0;
-  const missing = amountToMinOrder(sub, min);
-  const ok = canCheckout(sub, min);
 
   return (
     <>
@@ -448,19 +435,15 @@ function CartDrawer({ onClose }: { onClose: () => void }) {
               <span>Total</span>
               <span>{money(sub + fee)}</span>
             </div>
-            {missing > 0 && (
-              <p className="text-[12px] text-amber-700 dark:text-amber-400">
-                Pedido mínimo {money(min)} · faltan {money(missing)}
-              </p>
-            )}
             <button
               type="button"
-              disabled={!ok}
-              className="mt-1 w-full rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white disabled:opacity-40 cursor-pointer"
-              // ponytail: checkout mock — MercadoPago when payments land
-              onClick={() => alert("Checkout próximamente")}
+              className="mt-1 w-full rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white cursor-pointer"
+              onClick={() => {
+                onClose();
+                openCheckout();
+              }}
             >
-              Confirmar pedido
+              Ir a pagar
             </button>
           </div>
         )}
@@ -519,7 +502,8 @@ function FloatingCartBar() {
 /** Mount once under CartProvider — sheets + floating bar */
 export function CartFlow() {
   const pathname = usePathname();
-  const { ui, closeUi, confirmSwitch, cancelSwitch } = useCart();
+  const { cart, ui, closeUi, confirmSwitch, cancelSwitch } = useCart();
+  const chain = FEATURED_CHAINS.find((c) => c.id === cart.chainId);
 
   if (pathname?.startsWith("/negocio")) return null;
 
@@ -534,6 +518,9 @@ export function CartFlow() {
           <SwitchDialog key="switch" item={ui.item} onConfirm={confirmSwitch} onCancel={cancelSwitch} />
         )}
         {ui.kind === "drawer" && <CartDrawer key="drawer" onClose={closeUi} />}
+        {ui.kind === "checkout" && chain && (
+          <CheckoutSheet key="checkout" chain={chain} onClose={closeUi} />
+        )}
       </AnimatePresence>
       <FloatingCartBar />
     </>

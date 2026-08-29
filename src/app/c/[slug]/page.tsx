@@ -196,7 +196,6 @@ function MobileStoreHeader({
                 <span className="text-gray-400"> · </span>
                 Envío {money(chain.deliveryFee)}
               </p>
-              <p className="text-gray-500 dark:text-gray-400">Pedido mín. {money(chain.minOrder)}</p>
             </div>
           </div>
 

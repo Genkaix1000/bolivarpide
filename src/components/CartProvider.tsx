@@ -17,7 +17,8 @@ type Ui =
   | { kind: "product"; item: TrendingItem }
   | { kind: "switch"; item: TrendingItem; selected?: SelectedOptions; note?: string; qty: number }
   | { kind: "upsell"; item: TrendingItem }
-  | { kind: "drawer" };
+  | { kind: "drawer" }
+  | { kind: "checkout" };
 
 interface CartContextValue {
   cart: CartState;
@@ -30,6 +31,7 @@ interface CartContextValue {
   cancelSwitch: () => void;
   closeUi: () => void;
   openDrawer: () => void;
+  openCheckout: () => void;
   setQty: (key: string, qty: number) => void;
   clear: () => void;
 }
@@ -99,6 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const closeUi = useCallback(() => setUi({ kind: "idle" }), []);
   const openDrawer = useCallback(() => setUi({ kind: "drawer" }), []);
+  const openCheckout = useCallback(() => setUi({ kind: "checkout" }), []);
   const setQty = useCallback((key: string, qty: number) => {
     setCart((c) => setLineQty(c, key, qty));
   }, []);
@@ -118,6 +121,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cancelSwitch,
       closeUi,
       openDrawer,
+      openCheckout,
       setQty,
       clear,
     }),
@@ -131,6 +135,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cancelSwitch,
       closeUi,
       openDrawer,
+      openCheckout,
       setQty,
       clear,
     ]
