@@ -117,18 +117,20 @@
     {
       "parameters": {
         "operation": "send",
+        "resource": "message",
+        "phoneNumberId": "1204864122720147",
+        "recipientPhoneNumber": "={{ $json.from }}",
         "messageType": "text",
-        "phoneNumber": "={{ $json.from }}",
-        "text": "={{ $json.reply }}",
+        "textBody": "={{ $json.reply }}",
         "options": {}
       },
       "id": "node-send",
       "name": "Enviar por WhatsApp",
-      "type": "n8n-nodes-base.whatsapp",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
       "position": [880, 80],
       "credentials": {
-        "whatsappApi": { "name": "WhatsApp Cloud API" }
+        "whatsAppApi": { "id": "e2fzZS6R4kCooZYU", "name": "WhatsApp Cloud API" }
       }
     }
   ],
