@@ -8,6 +8,10 @@ import {
   setPlan,
   setPublished,
 } from "@/lib/business/actions";
+import {
+  listWhatsAppConnectionsAdmin,
+} from "@/lib/business/whatsappQueries";
+import { setWhatsAppActive } from "@/lib/business/whatsapp";
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -43,6 +47,7 @@ export default async function AdminPage() {
 
   const pendingLeads = (leads ?? []).filter((l) => l.status === "pending").length;
   const published = (businesses ?? []).filter((b) => b.published).length;
+  const whatsappConnections = await listWhatsAppConnectionsAdmin();
 
   return (
     <main className="min-h-dvh bg-stone-100 px-4 py-8">
@@ -76,6 +81,58 @@ export default async function AdminPage() {
             </div>
           ))}
         </div>
+
+        <section className="space-y-3">
+          <h2 className="font-semibold">WhatsApp</h2>
+          {whatsappConnections.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-3 text-sm text-stone-500">
+              Sin números conectados. Los comercios los vinculan desde su panel de configuración.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {whatsappConnections.map((conn) => (
+                <li
+                  key={conn.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {conn.businesses?.name ?? "Comercio"}
+                    </p>
+                    <p className="text-xs text-stone-500">
+                      {conn.display_phone_number ?? conn.phone_number_id} ·{" "}
+                      {conn.status} ·{" "}
+                      {conn.is_active ? "activo" : "inactivo"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="text-[10px] break-all text-stone-500 max-w-[220px]">
+                      phone_id: {conn.phone_number_id}
+                    </code>
+                    <form action={setWhatsAppActive}>
+                      <input type="hidden" name="connectionId" value={conn.id} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={conn.is_active ? "false" : "true"}
+                      />
+                      <button
+                        type="submit"
+                        className={`rounded-full px-3 py-1.5 text-xs cursor-pointer ${
+                          conn.is_active
+                            ? "border border-stone-300"
+                            : "bg-[#9a0002] text-white font-semibold"
+                        }`}
+                      >
+                        {conn.is_active ? "Desactivar" : "Activar"}
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className="space-y-3">
           <h2 className="font-semibold">Leads</h2>

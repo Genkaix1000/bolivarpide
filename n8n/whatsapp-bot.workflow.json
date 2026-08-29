@@ -1,0 +1,180 @@
+{
+  "name": "BolivarPide WhatsApp Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp",
+        "httpMethod": "both",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-meta-webhook",
+      "name": "Meta Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-560, 80],
+      "webhookId": "bolivarpide-whatsapp"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-verification",
+              "leftValue": "={{ $json.query != null && $json.query['hub.mode'] === 'subscribe' }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-verification",
+      "name": "¿Verificación de Meta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-320, 80]
+    },
+    {
+      "parameters": {
+        "operation": "respondWithTextOrJson",
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "id": "node-respond-challenge",
+      "name": "Responder Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-80, -40]
+    },
+    {
+      "parameters": {
+        "operation": "respondWithTextOrJson",
+        "respondWith": "noResponse",
+        "options": {}
+      },
+      "id": "node-respond-ok",
+      "name": "Responder 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [-80, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the inbound WhatsApp message and resolve the connected business.\nconst body = $input.first().json.body;\nconst change = body?.entry?.[0]?.changes?.[0];\nconst value = change?.value;\nconst message = value?.messages?.[0];\n\nif (!message || message.type !== 'text') {\n  return [];\n}\n\nconst from = String(message.from || '');\nconst text = String(message.text?.body || '').trim();\nif (!from || !text) return [];\n\nconst base = $env.N8N_SUPABASE_URL + '/rest/v1';\nconst headers = {\n  apikey: $env.N8N_SUPABASE_SERVICE_KEY,\n  Authorization: 'Bearer ' + $env.N8N_SUPABASE_SERVICE_KEY,\n  Accept: 'application/json',\n};\n\nconst phoneNumberId = String(value?.metadata?.phone_number_id || '');\nlet businessId = null;\nif (phoneNumberId) {\n  const resp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${base}/business_whatsapp?phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=business_id&limit=1`,\n    headers,\n    json: true,\n  });\n  businessId = Array.isArray(resp) && resp.length > 0 ? resp[0].business_id : null;\n}\n\nlet cart = [];\nlet step = 'idle';\nif (businessId) {\n  const sessionResp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${base}/whatsapp_sessions?business_id=eq.${businessId}&chat_id=eq.${encodeURIComponent(from)}&select=state&limit=1`,\n    headers,\n    json: true,\n  });\n  const state = sessionResp?.[0]?.state;\n  if (state && typeof state === 'object') {\n    cart = Array.isArray(state.cart) ? state.cart : [];\n    step = state.step || 'idle';\n  }\n}\n\nconst contactName = String(value?.contacts?.[0]?.profile?.name || '');\n\nreturn [{\n  json: {\n    from,\n    messageId: String(message.id || ''),\n    text,\n    contactName,\n    phoneNumberId,\n    displayPhoneNumber: String(value?.metadata?.display_phone_number || ''),\n    businessId,\n    found: Boolean(businessId),\n    cart,\n    step,\n  },\n}];"
+      },
+      "id": "node-prepare",
+      "name": "Preparar conversación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [160, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-found",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-business",
+      "name": "¿Comercio conectado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [420, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nreturn [{ json: { ...c, reply: 'Este número no tiene un comercio conectado todavía.' } }];"
+      },
+      "id": "node-unknown",
+      "name": "Aviso número desconocido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Core bot logic: intent detection + action (menu/hours/cart/order).\nconst c = $input.first().json;\nconst base = $env.N8N_SUPABASE_URL + '/rest/v1';\nconst headers = {\n  apikey: $env.N8N_SUPABASE_SERVICE_KEY,\n  Authorization: 'Bearer ' + $env.N8N_SUPABASE_SERVICE_KEY,\n  Accept: 'application/json',\n};\n\nconst text = c.text.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst has = (...patterns) => patterns.some((p) => text.includes(p));\nconst isYes = /^(si|sip|ok|okey|dale|confirm|confirmar|listo)$/i.test(c.text.trim());\nconst isNo = /^(no|nop|cancel|cancelar|borrar|vaciar)$/i.test(c.text.trim());\n\nconst money = (cents) => '$' + (cents / 100).toLocaleString('es-AR');\nconst cart = c.cart || [];\n\nlet intent;\nif (c.step === 'confirming' && (isYes || has('confirmar pedido'))) intent = 'confirm_order';\nelse if (c.step === 'confirming' && isNo) intent = 'cancel_cart';\nelse if (cart.length && isYes) intent = 'confirm_order';\nelse if (has('hola', 'buenas', 'ayuda', 'help', 'empezar', 'que se puede hacer', 'qué se puede hacer')) intent = 'help';\nelse if (has('menú', 'menu', 'carta', 'que tienen', 'qué tienen', 'que venden', 'qué venden', 'listado')) intent = 'menu';\nelse if (has('horario', 'abierto', 'cerrado', 'abren', 'cierran', 'hasta que hora')) intent = 'hours';\nelse if (has('cancelar', 'borrar', 'vaciar', 'reset')) intent = 'cancel_cart';\nelse intent = 'add_item';\n\nasync function fetchProducts(params) {\n  const url = base + '/products?business_id=eq.' + c.businessId + '&' + params;\n  return this.helpers.httpRequest({ method: 'GET', url, headers, json: true });\n}\n\nif (intent === 'menu') {\n  const prods = await fetchProducts.call(this, 'available=eq.true&select=name,price_cents&order=sort_order.asc');\n  if (!prods.length) {\n    return [{ json: { ...c, reply: 'Todavía no cargamos la carta 📝. Volvé pronto.' } }];\n  }\n  const lines = prods.map((p) => '• ' + p.name + ' — ' + money(p.price_cents));\n  return [{ json: { ...c, reply: '🪧 Menú:\\n' + lines.join('\\n') + '\\n\\nEscribí la cantidad y el plato, ej: \"2 muzza\".' } }];\n}\n\nif (intent === 'hours') {\n  return [{ json: { ...c, reply: '🕐 Horarios: Lunes a Sábado 09:00 a 23:00 / Domingos cerrado 🚀' } }];\n}\n\nif (intent === 'cancel_cart') {\n  return [{ json: { ...c, reply: 'Cancelamos el carrito 🗑️. Escribí \"menú\" para volver a empezar.', cart: [], step: 'idle' } }];\n}\n\nif (intent === 'confirm_order') {\n  if (!cart.length) {\n    return [{ json: { ...c, reply: 'Tu carrito está vacío 🛒. Escribí ej: \"2 muzza\".' } }];\n  }\n  const payload = {\n    businessId: c.businessId,\n    waChatId: c.from,\n    customerName: c.contactName || undefined,\n    customerPhone: c.from,\n    notes: 'Pedido por WhatsApp',\n    items: cart.map((i) => ({\n      productId: i.productId,\n      name: i.name,\n      quantity: i.quantity,\n      unitPriceCents: i.unitPriceCents,\n    })),\n  };\n  const resp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: $env.N8N_APP_URL + '/api/webhooks/whatsapp',\n    headers: {\n      Accept: 'application/json',\n      'Content-Type': 'application/json',\n      'x-whatsapp-secret': $env.N8N_WHATSAPP_WEBHOOK_SECRET,\n    },\n    body: payload,\n    returnFullResponse: true,\n    json: true,\n  });\n  const ok = resp.statusCode < 300 && resp.body && resp.body.success === true;\n  if (ok) {\n    return [{ json: { ...c, reply: '✅ ¡Pedido enviado al local! Número: *' + resp.body.orderId + '*', cart: [], step: 'idle' } }];\n  }\n  return [{ json: { ...c, reply: '😕 Hubo un problema al registrar tu pedido. Escribí *cancelar* y probá de nuevo.' } }];\n}\n\nif (intent === 'help') {\n  let cartTxt = '';\n  if (cart.length) {\n    const sum = cart.reduce((acc, i) => acc + i.quantity * i.unitPriceCents, 0);\n    cartTxt = '\\n\\n📋 Tu carrito:\\n' + cart.map((i) => `${i.quantity}x ${i.name} — ${money(i.quantity * i.unitPriceCents)}`).join('\\n') + '\\nTotal: ' + money(sum) + '\\n\\nEscribí *confirmar* para enviarlo.';\n  }\n  const lines = [\n    `¡Hola${c.contactName ? ' ' + c.contactName : ''}! 👋`,\n    'Soy el bot de este local.',\n    '• *menú* — ver la carta',\n    '• *horario* — horarios de atención',\n    '• Ej: *\"2 muzza\"* — armar el pedido',\n    '• *confirmar* — enviar el pedido',\n    '• *cancelar* — vaciar el carrito',\n  ];\n  return [{ json: { ...c, reply: lines.join('\\n') + cartTxt } }];\n}\n\n// add_item\nlet qty = 1;\nlet term = text;\nconst qtyMatch = text.match(/^(\\d+)\\s+(.+)/);\nif (qtyMatch) {\n  qty = Math.min(99, Math.max(1, parseInt(qtyMatch[1], 10)));\n  term = qtyMatch[2];\n} else if (/^un[ao]?\\s/.test(text)) {\n  term = text.replace(/^un[ao]?\\s/, '');\n}\nif (!term) {\n  return [{ json: { ...c, reply: 'Escribí qué querés pedir, ej: *\"2 muzza\"*.' } }];\n}\n\nconst prods = await this.helpers.httpRequest({\n  method: 'GET',\n  url: base + '/products?business_id=eq.' + c.businessId + '&available=eq.true&name=ilike.*' + encodeURIComponent(term) + '*&select=id,name,price_cents&order=sort_order.asc&limit=5',\n  headers,\n  json: true,\n});\nif (!prods.length) {\n  return [{ json: { ...c, reply: 'No encontramos *\"' + term + '\"* en la carta 😕. Probá con \"menú\".' } }];\n}\n\nconst product = prods[0];\nconst existing = cart.find((i) => i.productId === product.id);\nif (existing) {\n  existing.quantity = Math.min(99, existing.quantity + qty);\n} else {\n  cart.push({ productId: product.id, name: product.name, quantity: qty, unitPriceCents: product.price_cents });\n}\nconst sum = cart.reduce((acc, i) => acc + i.quantity * i.unitPriceCents, 0);\nconst list = cart.map((i) => `${i.quantity}x ${i.name} — ${money(i.quantity * i.unitPriceCents)}`).join('\\n');\n\nreturn [{\n  json: {\n    ...c,\n    cart,\n    step: 'confirming',\n    reply: `Agregamos *${qty}x ${product.name}* ✅\\n\\n📋 Carrito:\\n${list}\\n*Total: ${money(sum)}*\\n\\n¿Confirmás? Escribí *confirmar* o *cancelar*.`,\n  },\n}];"
+      },
+      "id": "node-bot",
+      "name": "Ejecutar bot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 80]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "messageType": "text",
+        "phoneNumber": "={{ $json.from }}",
+        "text": "={{ $json.reply }}",
+        "options": {}
+      },
+      "id": "node-send",
+      "name": "Enviar por WhatsApp",
+      "type": "n8n-nodes-base.whatsapp",
+      "typeVersion": 2.2,
+      "position": [940, 80],
+      "credentials": {
+        "whatsappApi": { "name": "WhatsApp Cloud API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Persist chat session (cart + step). Idempotent upsert on (business_id, chat_id).\nconst c = $input.first().json;\nif (!c.businessId || !c.from) {\n  return [];\n}\nconst base = $env.N8N_SUPABASE_URL + '/rest/v1';\nawait this.helpers.httpRequest({\n  method: 'POST',\n  url: base + '/whatsapp_sessions?on_conflict=business_id,chat_id&select=id',\n  headers: {\n    apikey: $env.N8N_SUPABASE_SERVICE_KEY,\n    Authorization: 'Bearer ' + $env.N8N_SUPABASE_SERVICE_KEY,\n    'Content-Type': 'application/json',\n    Prefer: 'resolution=ignore-duplicates',\n  },\n  body: {\n    business_id: c.businessId,\n    chat_id: c.from,\n    state: { step: c.step || 'idle', cart: c.cart || [] },\n  },\n  json: true,\n});\nreturn [{ json: { done: true } }];"
+      },
+      "id": "node-save-session",
+      "name": "Guardar sesión",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 200]
+    }
+  ],
+  "connections": {
+    "Meta Webhook": {
+      "main": [[{ "node": "¿Verificación de Meta?", "type": "main", "index": 0 }]]
+    },
+    "¿Verificación de Meta?": {
+      "main": [
+        [{ "node": "Responder Challenge", "type": "main", "index": 0 }],
+        [{ "node": "Responder 200 OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Responder 200 OK": {
+      "main": [[{ "node": "Preparar conversación", "type": "main", "index": 0 }]]
+    },
+    "Preparar conversación": {
+      "main": [[{ "node": "¿Comercio conectado?", "type": "main", "index": 0 }]]
+    },
+    "¿Comercio conectado?": {
+      "main": [
+        [{ "node": "Ejecutar bot", "type": "main", "index": 0 }],
+        [{ "node": "Aviso número desconocido", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ejecutar bot": {
+      "main": [
+        [{ "node": "Enviar por WhatsApp", "type": "main", "index": 0 }, { "node": "Guardar sesión", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aviso número desconocido": {
+      "main": [[{ "node": "Enviar por WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,15 +1,22 @@
-"use client";
-
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Link from "next/link";
+import { getWhatsAppConnection } from "@/lib/business/whatsappQueries";
+import { WhatsAppConnectionCard } from "@/components/business/WhatsAppConnectionCard";
 
-export default function ConfiguracionPage() {
+export default async function ConfiguracionPage({
+  params,
+}: {
+  params: Promise<{ businessId: string }>;
+}) {
+  const { businessId } = await params;
+  const connection = await getWhatsAppConnection(businessId);
+
   return (
     <div className="space-y-6 pb-12 max-w-3xl mx-auto">
       <div>
         <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Configuración</h1>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Ajustes operativos, horarios y preferencias del local.
+          Ajustes operativos, horarios, WhatsApp y preferencias del local.
         </p>
       </div>
 
@@ -21,12 +28,14 @@ export default function ConfiguracionPage() {
           <div>
             <h3 className="text-lg font-black text-gray-900 dark:text-gray-100">Ajustes del Negocio</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configuración operativa, horarios de atención y opciones de pago.
+              Configuración operativa, WhatsApp, horarios de atención y opciones de pago.
             </p>
           </div>
         </div>
 
         <div className="space-y-4">
+          <WhatsAppConnectionCard businessId={businessId} connection={connection} />
+
           <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <MaterialSymbol icon="schedule" size={20} className="text-gray-500" />
@@ -69,7 +78,7 @@ export default function ConfiguracionPage() {
 
         <div className="pt-4 flex justify-end">
           <Link
-            href="/negocio/dashboard"
+            href={`/negocio/${businessId}/dashboard`}
             className="px-6 py-2.5 bg-[#9a0002] hover:bg-[#850002] text-white text-xs font-bold rounded-full transition-all shadow-md cursor-pointer flex items-center gap-2"
           >
             <MaterialSymbol icon="arrow_back" size={16} />

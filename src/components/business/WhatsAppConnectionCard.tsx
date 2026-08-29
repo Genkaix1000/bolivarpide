@@ -1,0 +1,172 @@
+"use client";
+
+import { useState } from "react";
+import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { connectWhatsAppNumber } from "@/lib/business/whatsapp";
+import type { WhatsAppConnection } from "@/lib/business/whatsappQueries";
+
+export function WhatsAppConnectionCard({
+  businessId,
+  connection,
+}: {
+  businessId: string;
+  connection: WhatsAppConnection | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [phoneNumberId, setPhoneNumberId] = useState(
+    connection?.phone_number_id ?? "",
+  );
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState(
+    connection?.display_phone_number ?? "",
+  );
+  const [wabaId, setWabaId] = useState(connection?.waba_id ?? "");
+  const [accessToken, setAccessToken] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  const active = connection?.is_active ?? false;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPending(true);
+    setError("");
+    const form = new FormData();
+    form.set("businessId", businessId);
+    form.set("phoneNumberId", phoneNumberId);
+    form.set("displayPhoneNumber", displayPhoneNumber);
+    form.set("wabaId", wabaId);
+    form.set("accessToken", accessToken);
+    try {
+      await connectWhatsAppNumber(form);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo conectar.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              active
+                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+            }`}
+          >
+            <MaterialSymbol icon="chat" size={20} />
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">
+              WhatsApp Bot
+            </h4>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              {active
+                ? `Conectado · ${connection?.display_phone_number ?? connection?.phone_number_id ?? ""}`
+                : connection
+                  ? `${connection.display_phone_number ?? connection.phone_number_id} · pendiente de verificación`
+                  : "Sin vincular — recibí pedidos por WhatsApp"}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="text-[11px] font-bold text-[#9a0002] hover:bg-[#9a0002]/10 px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <MaterialSymbol icon="tune" size={14} />
+          Configurar
+        </button>
+      </div>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t border-gray-100 dark:border-[#3d3732] pt-4">
+          {connection && (
+            <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
+              <MaterialSymbol
+                icon={active ? "verified" : "pending"}
+                size={14}
+                className={active ? "text-emerald-500" : "text-amber-500"}
+              />
+              {active
+                ? "Número verificado y recibiendo pedidos."
+                : "Guardamos la conexión. El administrador la habilita tras verificar el número en Meta."}
+            </p>
+          )}
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+              Phone Number ID
+            </label>
+            <input
+              value={phoneNumberId}
+              onChange={(e) => setPhoneNumberId(e.target.value)}
+              required
+              placeholder="ej. 1045..."
+              className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+              Número visible (opcional)
+            </label>
+            <input
+              value={displayPhoneNumber}
+              onChange={(e) => setDisplayPhoneNumber(e.target.value)}
+              placeholder="ej. +54 9 2314 000000"
+              className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+              WABA ID (opcional)
+            </label>
+            <input
+              value={wabaId}
+              onChange={(e) => setWabaId(e.target.value)}
+              placeholder="WhatsApp Business Account ID"
+              className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+              Access Token
+            </label>
+            <input
+              type="password"
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              required
+              placeholder={connection ? "Dejar vacío para no cambiar" : "Token de Meta"}
+              className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">
+              Se guarda cifrado en Supabase Vault. Nunca se muestra en el navegador.
+            </p>
+          </div>
+
+          {error && (
+            <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full px-4 py-2.5 bg-[#9a0002] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#850002] text-white text-xs font-bold rounded-full transition-all shadow-md cursor-pointer"
+          >
+            {pending ? "Guardando..." : connection ? "Actualizar conexión" : "Vincular número"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export { WhatsAppConnectionCard as default };
