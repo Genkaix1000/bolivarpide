@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Navbar from "@/components/Navbar";
 import CurvedHomeHeader from "@/components/CurvedHomeHeader";
-import { SmoothInput } from "@/components/SmoothInput";
 import { cn } from "@/lib/utils";
 import {
   FEATURED_CHAINS,
@@ -18,9 +18,8 @@ import { useCart } from "@/components/CartProvider";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_HOME } from "@/lib/firstVisit";
 import { useUserProfile } from "@/components/UserProfileProvider";
-import { UserAvatarView } from "@/components/UserAvatarView";
-import { AvatarPickerModal } from "@/components/AvatarPickerModal";
-import { BadgeDetailModal } from "@/components/BadgeDetailModal";
+import { ProfileView } from "@/components/profile/ProfileView";
+import { SearchAutocompleteOverlay } from "@/components/search/SearchAutocompleteOverlay";
 import { flashToast } from "@/components/FlashToast";
 import { AddressFormModal } from "@/components/addresses/AddressFormModal";
 import { addressToSummary } from "@/lib/addresses/db";
@@ -31,12 +30,10 @@ import {
 } from "@/lib/addresses/actions";
 import { MAX_USER_ADDRESSES } from "@/lib/addresses/constants";
 import type { UserAddress } from "@/lib/addresses/types";
-import { UserAwardBadge, getRarityColor } from "@/lib/userProfile";
 
-export default function HomePage() {
+function HomeContent() {
   const { profile, updateAvatar, isAuthenticated, logout, persistProfile } = useUserProfile();
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
+  const searchParams = useSearchParams();
   const [currentTab, setCurrentTab] = useState("home");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeSpecialty, setActiveSpecialty] = useState<string | null>(null);
@@ -53,10 +50,8 @@ export default function HomePage() {
   // Membership real (OAuth + business_members)
   const [isBusinessOwner, setIsBusinessOwner] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [recentSearches, setRecentSearches] = useState(["Pizza", "Hamburguesa", "Café"]);
   const topSearches = ["Empanadas", "Sushi", "Desayuno", "Helado", "Envíos Gratis"];
   const [randomizedRecommended, setRandomizedRecommended] = useState<FeaturedChain[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Carousels State
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
@@ -121,6 +116,16 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [currentTab]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "home") setCurrentTab("home");
+    if (tab === "profile" && isAuthenticated) setCurrentTab("profile");
+  }, [searchParams, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated && currentTab === "profile") setCurrentTab("home");
+  }, [isAuthenticated, currentTab]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -237,244 +242,22 @@ export default function HomePage() {
 
   // Tab change handler
   const handleTabChange = (tabId: string) => {
+    if (tabId === "profile" && !isAuthenticated) return;
     setCurrentTab(tabId);
   };
 
   const renderTabContent = () => {
     if (currentTab === "profile") {
+      if (!isAuthenticated) return null;
       return (
-        <>
-          <div className="max-w-md mx-auto bg-white dark:bg-[#1c1917] rounded-[24px] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] mt-6 p-6 animate-fade-in space-y-5">
-            {/* User Profile Header Card with interactive Avatar */}
-            <div className="flex items-center gap-4 pb-5 border-b border-[#f0ebe4] dark:border-[#2a2623]">
-              <div className="relative group">
-                <button
-                  type="button"
-                  onClick={() => setIsAvatarModalOpen(true)}
-                  aria-label="Cambiar foto de perfil"
-                  className="cursor-pointer relative block transition-transform duration-200 active:scale-95 group-hover:opacity-95"
-                >
-                  <UserAvatarView avatar={profile.avatar} size="lg" showBorder />
-                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#9a0002] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#1c1917] group-hover:scale-110 transition-transform">
-                    <MaterialSymbol icon="edit" size={13} />
-                  </span>
-                </button>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-bold text-[16px] text-gray-900 dark:text-gray-100 truncate">
-                    {profile.name || "Invitado"}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsAvatarModalOpen(true)}
-                    className="text-[11px] font-bold text-[#9a0002] hover:text-[#6b0001] dark:text-[#f87171] hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <MaterialSymbol icon="palette" size={13} />
-                    <span>Cambiar foto</span>
-                  </button>
-                </div>
-                <p className="text-[12px] text-gray-400 truncate mt-0.5">
-                  {profile.email || "Sin sesión"}
-                </p>
-                <div className="mt-1.5 flex items-center gap-1.5">
-                  {isAuthenticated ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#9a0002]/10 text-[#9a0002] dark:bg-[#9a0002]/20 dark:text-red-300">
-                      <MaterialSymbol icon="verified" size={11} fill />
-                      <span>Cliente Activo</span>
-                    </span>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-200 text-stone-700 hover:bg-[#9a0002]/10 hover:text-[#9a0002]"
-                    >
-                      Iniciar sesión
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick avatar edit card banner */}
-            <div
-              onClick={() => setIsAvatarModalOpen(true)}
-              className="p-3.5 rounded-2xl bg-gradient-to-r from-[#9a0002]/8 via-[#9a0002]/4 to-transparent border border-[#9a0002]/15 flex items-center justify-between cursor-pointer hover:border-[#9a0002]/30 hover:bg-[#9a0002]/10 transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#9a0002]/15 flex items-center justify-center text-[#9a0002] flex-shrink-0">
-                  <MaterialSymbol icon="auto_awesome" size={18} fill />
-                </div>
-                <div>
-                  <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
-                    Personalizar avatar
-                  </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Iconos, emojis, iniciales y color de fondo
-                  </p>
-                </div>
-              </div>
-              <MaterialSymbol
-                icon="arrow_forward_ios"
-                size={13}
-                className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-[#9a0002] transition-all"
-              />
-            </div>
-
-            {/* Vitrina de Premios & Distinciones */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <MaterialSymbol icon="military_tech" size={18} className="text-[#9a0002]" fill />
-                  <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
-                    Premios & Distinciones
-                  </h4>
-                </div>
-                <span className="text-[11px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-2 py-0.5 rounded-full">
-                  {profile.awardedBadges?.length || 0} insignias
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {profile.awardedBadges?.map((badge) => {
-                  const style = getRarityColor(badge.rarity);
-                  return (
-                    <div
-                      key={badge.id}
-                      onClick={() => setSelectedBadge(badge)}
-                      className={cn(
-                        "p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-98 flex items-center gap-3 hover:shadow-md group",
-                        "bg-[#faf6f1] dark:bg-[#231f1c]",
-                        style.border,
-                        "hover:border-[#9a0002]/40"
-                      )}
-                    >
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border shadow-xs", style.bg, style.border)}>
-                        {badge.emoji ? (
-                          <span className="text-xl leading-none">{badge.emoji}</span>
-                        ) : (
-                          <MaterialSymbol icon={badge.icon} size={20} className={style.text} fill />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <h5 className="font-bold text-[12px] text-gray-900 dark:text-gray-100 truncate group-hover:text-[#9a0002] transition-colors">
-                            {badge.title}
-                          </h5>
-                          <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.2 rounded border", style.bg, style.text, style.border)}>
-                            {badge.rarity}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                          {badge.awardedBy || "BolivarPide Oficial"}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (addresses.length === 0) openAddAddress();
-                  else openEditAddress(selectedAddressId || addresses[0].id);
-                }}
-                className="flex w-full items-center justify-between rounded-xl bg-[#f5f1eb] p-3.5 text-left transition hover:bg-[#ede4d9] dark:bg-[#231f1c] dark:hover:bg-[#2a2623]"
-              >
-                <div>
-                  <h4 className="text-[11px] font-medium text-gray-400">Dirección principal</h4>
-                  <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mt-0.5">
-                    {currentAddressName}
-                  </p>
-                </div>
-                <MaterialSymbol icon="location_on" size={18} className="text-[#9a0002]" />
-              </button>
-
-              {/* Compact Conversion Options (Comercio & Delivery) */}
-              <div className="space-y-2 pt-1">
-                <h4 className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
-                  Oportunidades & Comunidad
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Link
-                    href={isBusinessOwner ? "/negocio" : "/negocio/registro"}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-[#9a0002]/8 hover:bg-[#9a0002]/15 border border-[#9a0002]/15 text-[#9a0002] dark:text-red-300 transition-all group active:scale-98"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-8 h-8 rounded-xl bg-[#9a0002]/15 flex items-center justify-center text-[#9a0002] dark:text-red-300 flex-shrink-0">
-                        <MaterialSymbol icon="storefront" size={18} fill />
-                      </span>
-                      <div className="min-w-0">
-                        <h5 className="text-[12px] font-bold text-gray-900 dark:text-gray-100 truncate">
-                          {isBusinessOwner ? "Mi negocio gastronómico" : "Adherir negocio"}
-                        </h5>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                          {isBusinessOwner ? "Panel de administración" : "Publicá tu carta digital"}
-                        </p>
-                      </div>
-                    </div>
-                    <MaterialSymbol icon="arrow_forward" size={16} className="text-[#9a0002]/70 dark:text-red-400/70 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                  </Link>
-
-                  <button
-                    type="button"
-                    className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-800 dark:text-amber-300 transition-all group active:scale-98 cursor-pointer text-left"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-700 dark:text-amber-300 flex-shrink-0">
-                        <MaterialSymbol icon="sports_motorsports" size={18} fill />
-                      </span>
-                      <div className="min-w-0">
-                        <h5 className="text-[12px] font-bold text-gray-900 dark:text-gray-100 truncate">
-                          Sumarme como repartidor
-                        </h5>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                          Ingresos y horarios flexibles
-                        </p>
-                      </div>
-                    </div>
-                    <MaterialSymbol icon="arrow_forward" size={16} className="text-amber-600/70 dark:text-amber-400/70 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                  </button>
-                </div>
-              </div>
-
-              {isAuthenticated && (
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
-                >
-                  <MaterialSymbol icon="logout" size={18} />
-                  Cerrar sesión
-                </button>
-              )}
-            </div>
-          </div>
-
-          <AvatarPickerModal
-            isOpen={isAvatarModalOpen}
-            currentAvatar={profile.avatar}
-            onClose={() => setIsAvatarModalOpen(false)}
-            onSave={async (newAvatar) => {
-              const next = { ...profile, avatar: newAvatar };
-              updateAvatar(newAvatar);
-              try {
-                await persistProfile(next);
-                flashToast("Avatar guardado.");
-              } catch {
-                flashToast("No se pudo guardar el avatar.");
-              }
-            }}
-          />
-
-          <BadgeDetailModal
-            badge={selectedBadge}
-            onClose={() => setSelectedBadge(null)}
-          />
-        </>
+        <ProfileView
+          onManageAddresses={() => {
+            if (addresses.length === 0) openAddAddress();
+            else openEditAddress(selectedAddressId || addresses[0].id);
+          }}
+          savedAddressesCount={addresses.length}
+          currentAddressLabel={currentAddressName}
+        />
       );
     }
 
@@ -698,7 +481,14 @@ export default function HomePage() {
     <>
       <BrandSplash show={showSplash} onSkip={skipSplash} />
 
-      <div className="min-h-screen flex flex-col bg-[#f3efe8] pb-10 pt-[64px] dark:bg-[#1c1917] md:pt-0 relative">
+      <div
+        className={cn(
+          "min-h-dvh flex flex-col bg-background dark:bg-[#1c1917] relative overscroll-y-contain",
+          "pt-[64px] md:pt-0",
+          "pb-[max(2.5rem,env(safe-area-inset-bottom,0px))]",
+          currentTab === "profile" && "pb-[max(7rem,env(safe-area-inset-bottom,0px)+4rem)]",
+        )}
+      >
 
       {/* Search overlay dimmer only — location/notifications use a transparent dismiss hit-area */}
       {isSearchFocused && (
@@ -794,60 +584,18 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Full-screen search overlay */}
-      {isSearchFocused && (
-        <div className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-[#faf6f1] px-4 pb-20 pt-4 animate-fade-in dark:bg-[#0b0b0d]">
-          {/* Header Row */}
-          <div className="flex items-center gap-3 w-full">
-            <button
-              onClick={() => setIsSearchFocused(false)}
-              className="w-10 h-10 rounded-full bg-[#ede4d9] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732]/80 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:hover:text-[#d4cfc9] shadow-sm cursor-pointer flex-shrink-0 active:scale-95 transition-all"
-            >
-              <MaterialSymbol icon="arrow_back" size={16} />
-            </button>
-
-            {/* Input Capsule Box */}
-            <div
-              className={`flex-1 h-10 bg-white dark:bg-[#2a2623] border rounded-xl flex items-center px-3.5 gap-2.5 transition-all duration-300 relative ${searchQuery !== ""
-                ? "border-[#9a0002] shadow-[0_0_16px_rgba(154,0,2,0.22)]"
-                : "border-[#9a0002]/50 shadow-[0_0_12px_rgba(154,0,2,0.12)]"
-                }`}
-            >
-              <MaterialSymbol icon="search" size={17} className="shrink-0 text-[#9a0002]" />
-              <SmoothInput
-                autoFocus
-                placeholder="Buscar comida, locales..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-[13px] font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-              />
-
-              {searchQuery !== "" && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="w-5 h-5 rounded-full bg-gray-200 dark:bg-[#302c28] text-gray-500 hover:text-[#9a0002] flex items-center justify-center transition-all cursor-pointer"
-                >
-                  <MaterialSymbol icon="close" size={12} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Results Viewport Panel: Horizontal Scroll Tracks with scroll-fade-middle */}
-          <div className="mt-6 flex-1 flex flex-col gap-6 text-gray-800 dark:text-gray-200">
-            <SearchOverlayContent
-              recentSearches={recentSearches}
-              setRecentSearches={setRecentSearches}
-              topSearches={topSearches}
-              recommended={randomizedRecommended}
-              onSelect={(term) => {
-                setSearchQuery(term);
-                setIsSearchFocused(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
+      {/* Full-screen search autocomplete overlay */}
+      <SearchAutocompleteOverlay
+        isOpen={isSearchFocused}
+        onClose={() => setIsSearchFocused(false)}
+        initialQuery={searchQuery}
+        topSearches={topSearches}
+        recommendedChains={randomizedRecommended}
+        onSelectCategory={(catName) => {
+          setSearchQuery(catName);
+          setIsSearchFocused(false);
+        }}
+      />
 
       <AddressFormModal
         open={addressFormOpen}
@@ -863,108 +611,6 @@ export default function HomePage() {
 
     </div>
     </>
-  );
-}
-
-// Inner helper component for Search Results contents
-interface SearchContentProps {
-  recentSearches: string[];
-  setRecentSearches: React.Dispatch<React.SetStateAction<string[]>>;
-  topSearches: string[];
-  recommended: FeaturedChain[];
-  onSelect: (term: string) => void;
-}
-
-function SearchOverlayContent({
-  recentSearches,
-  setRecentSearches,
-  topSearches,
-  recommended,
-  onSelect
-}: SearchContentProps) {
-  return (
-    <div className="space-y-6">
-      {/* Búsquedas Recientes */}
-      {recentSearches.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">Búsquedas recientes</h4>
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1 pb-2 px-4 -mx-4 scroll-fade-middle">
-            {recentSearches.map((term, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-2.5 pl-3.5 pr-2 py-2 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-full text-[13px] font-medium whitespace-nowrap hover:border-[#9a0002]/30 transition-all cursor-pointer group"
-                onClick={() => onSelect(term)}
-              >
-                <span>{term}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRecentSearches(recentSearches.filter((t) => t !== term));
-                  }}
-                  className="w-4 h-4 rounded-full flex items-center justify-center bg-gray-100 dark:bg-[#2a2623] hover:bg-red-50 hover:text-[#9a0002] text-gray-400 cursor-pointer"
-                >
-                  <MaterialSymbol icon="close" size={8} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top Búsquedas */}
-      <div className="space-y-2">
-        <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">Top Búsquedas</h4>
-        <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1 pb-2 px-4 -mx-4 scroll-fade-middle">
-          {topSearches.map((term, idx) => (
-            <button
-              key={idx}
-              onClick={() => onSelect(term)}
-              className="px-4 py-2 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-full text-[13px] font-medium whitespace-nowrap hover:border-[#9a0002]/30 hover:text-[#9a0002] transition-all cursor-pointer"
-            >
-              {term}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Cadenas Recomendadas */}
-      <div className="space-y-2.5">
-        <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">Cadenas recomendadas</h4>
-        <div className="flex items-center gap-4 overflow-x-auto custom-scrollbar pt-1 pb-4 px-4 -mx-4 scroll-fade-middle">
-          {recommended.map((chain) => (
-            <div
-              key={chain.id}
-              onClick={() => onSelect(chain.name)}
-              className="w-[220px] flex-shrink-0 p-3 bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] rounded-2xl shadow-[0_8px_30px_-12px_rgba(61,43,31,0.12)] flex items-center justify-between cursor-pointer hover:border-[#9a0002]/25 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-[38px] h-[38px] rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-[#3d3732] shadow-xs">
-                  {chain.logoImage ? (
-                    <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#faf6f1] dark:bg-[#2a2623] flex items-center justify-center text-xs font-bold">
-                      {chain.logoEmoji || chain.id}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h5 className="font-semibold text-[13px] text-gray-900 dark:text-gray-100">{chain.name}</h5>
-                  <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium mt-0.5">
-                    <MaterialSymbol icon="schedule" size={11} className="text-gray-400" />
-                    <span>{chain.timeEstimate}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-[#f5f1eb] dark:bg-[#231f1c] text-gray-800 dark:text-gray-200 py-0.5 px-2 rounded-full flex items-center gap-0.5 font-semibold text-[11px]">
-                <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
-                <span>{chain.rating}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1107,5 +753,13 @@ function TrendingMenuCard({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <React.Suspense fallback={null}>
+      <HomeContent />
+    </React.Suspense>
   );
 }

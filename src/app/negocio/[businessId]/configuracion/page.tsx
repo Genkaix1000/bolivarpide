@@ -1,7 +1,12 @@
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Link from "next/link";
+import {
+  getBusinessHours,
+  requireBusinessAccess,
+} from "@/lib/business/queries";
 import { getWhatsAppConnection } from "@/lib/business/whatsappQueries";
 import { WhatsAppConnectionCard } from "@/components/business/WhatsAppConnectionCard";
+import { formatHoursSummary, isOpenByHours } from "@/lib/business/hours";
 
 export default async function ConfiguracionPage({
   params,
@@ -9,7 +14,15 @@ export default async function ConfiguracionPage({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const connection = await getWhatsAppConnection(businessId);
+  const { business } = await requireBusinessAccess(businessId);
+  const [connection, hours] = await Promise.all([
+    getWhatsAppConnection(businessId),
+    getBusinessHours(businessId),
+  ]);
+
+  const hoursSummary = formatHoursSummary(hours);
+  const openBySchedule = isOpenByHours(hours, business.is_open);
+  const addressLine = [business.address, business.city].filter(Boolean).join(", ");
 
   return (
     <div className="space-y-6 pb-12 max-w-3xl mx-auto">
@@ -41,11 +54,17 @@ export default async function ConfiguracionPage({
               <MaterialSymbol icon="schedule" size={20} className="text-gray-500" />
               <div>
                 <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Horarios de Atención</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Lunes a Domingo — 11:30 a 23:30 hs</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{hoursSummary}</p>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full">
-              Abierto
+            <span
+              className={
+                openBySchedule
+                  ? "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full"
+                  : "text-[11px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-full"
+              }
+            >
+              {openBySchedule ? "Abierto ahora" : "Cerrado ahora"}
             </span>
           </div>
 
@@ -57,7 +76,9 @@ export default async function ConfiguracionPage({
               <MaterialSymbol icon="payments" size={20} className="text-gray-500 group-hover:text-[#9a0002]" />
               <div>
                 <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Mercado Pago (QR)</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Vincular cuenta · sucursal y caja automáticas</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Vincular cuenta · sucursal y caja automáticas
+                </p>
               </div>
             </div>
             <MaterialSymbol icon="chevron_right" size={20} className="text-gray-400" />
@@ -67,12 +88,20 @@ export default async function ConfiguracionPage({
             <div className="flex items-center gap-3">
               <MaterialSymbol icon="location_on" size={20} className="text-gray-500" />
               <div>
-                <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Dirección & Zona de Cobertura</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Av. San Martín 452 — Radio 5.5 km</p>
+                <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Dirección</h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {addressLine || "Sin dirección cargada"}
+                </p>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-full">
-              Configurado
+            <span
+              className={
+                business.address
+                  ? "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full"
+                  : "text-[11px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-full"
+              }
+            >
+              {business.address ? "Configurado" : "Pendiente"}
             </span>
           </div>
         </div>

@@ -9,7 +9,9 @@ import { SalesAreaChart, SalesChartLegend } from "@/components/business/SalesAre
 import { MpPaymentsNotice } from "@/components/business/MpPaymentsNotice";
 import { StoreSidePanel } from "@/components/StoreShowcase";
 import { profileFromDbBusiness } from "@/lib/business/storeProfile";
-import { toggleBusinessOpen, toggleProductAvailability } from "@/lib/business/actions";
+import { toggleBusinessOpen, toggleProductAvailability, publishBusinessAction } from "@/lib/business/actions";
+import { useUserProfile } from "@/components/UserProfileProvider";
+import { flashToast } from "@/components/FlashToast";
 import type {
   BusinessRow,
   DashboardRecentOrder,
@@ -228,6 +230,7 @@ export function DashboardView({
   tasks,
 }: Props) {
   const router = useRouter();
+  const { profile: userProfile } = useUserProfile();
   const [pending, startTransition] = useTransition();
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -280,6 +283,21 @@ export function DashboardView({
     });
   };
 
+  const handlePublish = () => {
+    startTransition(async () => {
+      try {
+        const result = await publishBusinessAction(businessId);
+        flashToast("¡Tu negocio ya está publicado en BolivarPide!");
+        router.refresh();
+        if (result.slug) {
+          window.open(`/c/${result.slug}?from=negocio`, "_blank");
+        }
+      } catch (err) {
+        flashToast(err instanceof Error ? err.message : "No se pudo publicar.");
+      }
+    });
+  };
+
   return (
     <div className="space-y-5 max-w-[1280px] mx-auto text-gray-800 dark:text-gray-200">
       {tourOpen && (
@@ -317,6 +335,66 @@ export function DashboardView({
       )}
 
       <MpPaymentsNotice businessId={businessId} />
+
+      {business.published ? (
+        <div
+          className={cn(
+            CARD,
+            "px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-emerald-500/20 bg-emerald-500/5",
+          )}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <MaterialSymbol icon="verified" size={20} className="text-emerald-600 dark:text-emerald-400 shrink-0" fill />
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Negocio publicado</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                Visible en el inicio y búsquedas de BolivarPide
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/c/${business.slug}?from=negocio`}
+            target="_blank"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-emerald-500/30 bg-white dark:bg-[#1c1917] text-[12px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+          >
+            <MaterialSymbol icon="storefront" size={16} />
+            Ver tienda
+          </Link>
+        </div>
+      ) : (
+        <div className={cn(CARD, "px-4 py-3 flex flex-wrap items-center justify-between gap-3")}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <MaterialSymbol icon="public" size={20} className="text-[#9a0002] shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Publicar negocio</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                {userProfile.identityVerified
+                  ? "Tu cuenta está verificada. Podés publicar para que aparezca en el inicio."
+                  : "Verificá tu identidad en Mi perfil para publicar."}
+              </p>
+            </div>
+          </div>
+          {userProfile.identityVerified ? (
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={pending}
+              className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#9a0002] text-white text-[12px] font-bold hover:brightness-110 active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+            >
+              <MaterialSymbol icon="rocket_launch" size={16} />
+              Publicar ahora
+            </button>
+          ) : (
+            <Link
+              href="/?tab=profile&verify=dni"
+              className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#9a0002]/30 bg-[#9a0002]/8 text-[12px] font-bold text-[#9a0002] dark:text-red-300 hover:bg-[#9a0002]/15"
+            >
+              <MaterialSymbol icon="badge" size={16} />
+              Verificar identidad
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard

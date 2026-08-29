@@ -1,40 +1,33 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import {
   CherryBtn,
   NOTIFICATION_POPOVER_MOTION,
-  SkiperSunMoon,
-  startThemeTransitionFrom,
+  ThemeToggleNavBtn,
 } from "@/components/Navbar";
 import { SmoothInput } from "@/components/SmoothInput";
-
-const NOTIFICATIONS = [
-  { emoji: "🛒", title: "Nuevo pedido #1042 de Juan Pérez", time: "Hace 2 min" },
-  { emoji: "⭐", title: "Recibiste una reseña de 5 estrellas", time: "Hace 20 min" },
-  { emoji: "📦", title: "Stock bajo: Torta Oreo", time: "Hace 1 hora" },
-];
+import { useUserProfile } from "@/components/UserProfileProvider";
+import { UserAvatarView } from "@/components/UserAvatarView";
+import { cn } from "@/lib/utils";
+import type { BusinessShellData } from "@/lib/business/queries";
 
 interface BusinessTopbarProps {
+  shell: BusinessShellData;
   onMenuClick: () => void;
 }
 
-export function BusinessTopbar({ onMenuClick }: BusinessTopbarProps) {
-  const router = useRouter();
+export function BusinessTopbar({ shell, onMenuClick }: BusinessTopbarProps) {
+  const { profile, logout, isAuthenticated } = useUserProfile();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const themeBtnRef = useRef<HTMLButtonElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const hasNotifications = shell.notifications.length > 0;
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -47,130 +40,106 @@ export function BusinessTopbar({ onMenuClick }: BusinessTopbarProps) {
     return () => document.removeEventListener("mousedown", onPointer);
   }, [showUserMenu]);
 
-  const toggleTheme = useCallback(() => {
-    const next = !isDark;
-    setIsDark(next);
-    startThemeTransitionFrom(themeBtnRef.current, next);
-  }, [isDark]);
-
-  const handleToggleNotif = () => {
-    setShowNotifDropdown((prev) => !prev);
+  async function handleLogout() {
     setShowUserMenu(false);
-    setUnreadCount(0);
-  };
+    await logout();
+  }
 
-  const handleLogout = () => {
-    setShowUserMenu(false);
-    router.push("/");
-  };
+  const notificationPanel = (
+    <motion.div
+      {...NOTIFICATION_POPOVER_MOTION}
+      className="absolute top-[48px] right-0 z-50 w-[270px] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]"
+    >
+      <div className="max-h-[220px] space-y-1.5 overflow-y-auto pr-1">
+        {shell.notifications.length === 0 ? (
+          <p className="px-1 text-[11px] text-gray-500">Sin novedades por ahora.</p>
+        ) : (
+          shell.notifications.map((n, idx) => (
+            <div
+              key={idx}
+              className="flex gap-2 rounded-xl bg-[#f5f1eb] p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
+            >
+              <span className="select-none text-base">{n.emoji}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-[12px] font-semibold leading-tight text-gray-800 dark:text-[#d4cfc9]">
+                  {n.title}
+                </span>
+                <span className="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                  {n.time}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
 
   return (
-    <header className="sticky top-0 z-20 h-[64px] flex-shrink-0 border-b border-[#e8e0d6] bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:px-8 relative">
-      <div className="mx-auto flex h-full w-full max-w-[1280px] items-center justify-between gap-3">
-        {/* Left */}
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="sticky top-0 z-20 h-[64px] flex-shrink-0 border-b border-[#e8e0d6] bg-[#faf6f1]/90 px-4 backdrop-blur-md dark:border-[#3d3732] dark:bg-[#1c1917]/90 md:px-8">
+      <div className="mx-auto flex h-full w-full max-w-[1280px] items-center gap-3 md:gap-5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button
             onClick={onMenuClick}
             aria-label="Abrir menú"
-            className="md:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] cursor-pointer"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden cursor-pointer"
           >
             <MaterialSymbol icon="menu" size={20} />
           </button>
 
-          <div className="hidden h-10 w-full max-w-sm items-center gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3.5 transition-colors focus-within:border-[#9a0002]/35 dark:border-[#3d3732] dark:bg-[#2a2623] md:flex">
+          <div className="hidden h-10 w-full max-w-md items-center gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3.5 transition-colors focus-within:border-[#9a0002]/35 dark:border-[#3d3732] dark:bg-[#2a2623] md:flex">
             <MaterialSymbol icon="search" size={17} className="shrink-0 text-gray-400" />
             <SmoothInput
               placeholder="Buscar en el panel..."
               className="w-full text-[13px] font-medium text-gray-700 dark:text-gray-300"
             />
-            <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#f5f1eb] dark:bg-[#1c1917] text-[10px] font-semibold text-gray-400 border border-[#e8e0d6] dark:border-[#3d3732]">
+            <kbd className="ml-auto hidden shrink-0 items-center rounded-md border border-[#e8e0d6] bg-[#f5f1eb] px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:border-[#3d3732] dark:bg-[#1c1917] lg:inline-flex">
               ⌘F
             </kbd>
           </div>
         </div>
 
-        {/* Right — same cluster as landing: theme · notif · | · user */}
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="relative z-50 flex shrink-0 items-center gap-2.5 md:gap-3">
           <button
             onClick={() => setMobileSearchOpen(true)}
             aria-label="Buscar"
-            className="md:hidden flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] cursor-pointer"
+            className="md:hidden flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] cursor-pointer"
           >
             <MaterialSymbol icon="search" size={18} />
           </button>
 
-          <CherryBtn
-            onClick={toggleTheme}
-            btnRef={themeBtnRef}
-            aria-label={isDark ? "Modo claro" : "Modo oscuro"}
-            className="hidden md:flex overflow-hidden"
-          >
-            <SkiperSunMoon isDark={isDark} clipId="biz-theme" />
-          </CherryBtn>
-
           <div className="relative">
-            <CherryBtn onClick={handleToggleNotif} aria-label="Notificaciones">
+            <CherryBtn
+              onClick={() => {
+                setShowNotifDropdown((o) => !o);
+                setShowUserMenu(false);
+              }}
+              aria-label="Notificaciones"
+            >
               <MaterialSymbol icon="notifications" size={17} className="text-white" />
-              {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ffeb3b] px-[4px] text-[9px] font-black text-[#6b0001] ring-[1.5px] ring-[#9a0002]">
-                  {unreadCount}
-                </span>
+              {hasNotifications && !showNotifDropdown && (
+                <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
               )}
             </CherryBtn>
-
-            <AnimatePresence>
-              {showNotifDropdown && (
-                <motion.div
-                  {...NOTIFICATION_POPOVER_MOTION}
-                  className="absolute top-[48px] right-0 z-50 w-[270px] rounded-[20px] border border-white/40 bg-[#faf6f1]/96 p-4 text-gray-800 shadow-2xl backdrop-blur-md dark:border-[#3d3732] dark:bg-[#231f1c]/96 dark:text-[#ece8e2]"
-                >
-                  <div className="space-y-2">
-                    {NOTIFICATIONS.map((n, idx) => (
-                      <div
-                        key={idx}
-                        className="flex cursor-pointer gap-2 rounded-xl bg-[#ede4d9]/60 p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
-                      >
-                        <span className="select-none text-base">{n.emoji}</span>
-                        <div className="flex min-w-0 flex-col">
-                          <span className="text-[10px] font-bold leading-tight text-gray-800 dark:text-[#d4cfc9]">
-                            {n.title}
-                          </span>
-                          <span className="mt-0.5 text-[8px] font-medium text-gray-400 dark:text-gray-500">
-                            {n.time}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <AnimatePresence>{showNotifDropdown && notificationPanel}</AnimatePresence>
           </div>
 
-          <div className="mx-0.5 hidden h-7 w-px bg-gray-200 dark:bg-[#3d3732] md:block" />
-
-          {/* User card — logout from here */}
-          <div className="relative" ref={userMenuRef}>
+          <div className="relative hidden md:block" ref={userMenuRef}>
             <button
               type="button"
               onClick={() => {
                 setShowUserMenu((v) => !v);
                 setShowNotifDropdown(false);
               }}
-              className="flex items-center gap-2.5 rounded-2xl border border-[#e8e0d6] bg-white pl-1.5 pr-2.5 py-1.5 shadow-[0_1px_2px_rgba(61,43,31,0.04)] transition-colors hover:bg-[#faf6f1] dark:border-[#3d3732] dark:bg-[#231f1c] dark:hover:bg-[#2a2623] cursor-pointer max-w-[220px]"
+              aria-label="Mi perfil"
               aria-expanded={showUserMenu}
               aria-haspopup="menu"
+              className={cn(
+                "relative shrink-0 rounded-full shadow-md shadow-[#9a0002]/30 transition-transform duration-200 cursor-pointer active:scale-95 hover:scale-105",
+                showUserMenu && "outline outline-2 outline-[#9a0002] outline-offset-2",
+              )}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#9a0002] to-[#6b0001] text-[11px] font-bold text-white">
-                CR
-              </div>
-              <div className="hidden min-w-0 text-left sm:block">
-                <p className="truncate text-[13px] font-semibold leading-tight text-gray-900 dark:text-gray-100">
-                  Carlos Rodríguez
-                </p>
-                <p className="truncate text-[11px] leading-tight text-gray-400">carlos@local.com</p>
-              </div>
-              <MaterialSymbol icon="unfold_more" size={16} className="shrink-0 text-gray-400" />
+              <UserAvatarView avatar={profile.avatar} variant="button" />
             </button>
 
             <AnimatePresence>
@@ -180,18 +149,46 @@ export function BusinessTopbar({ onMenuClick }: BusinessTopbarProps) {
                   role="menu"
                   className="absolute top-[52px] right-0 z-50 w-[220px] rounded-2xl border border-[#e8e0d6] bg-white p-2 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
                 >
-                  <div className="px-2.5 py-2 border-b border-[#f0ebe4] dark:border-[#2a2623] mb-1">
-                    <p className="text-[12px] font-semibold text-gray-900 dark:text-gray-100">Carlos Rodríguez</p>
-                    <p className="text-[11px] text-gray-400">Plan Free</p>
+                  <div className="mb-1 border-b border-[#f0ebe4] px-2.5 py-2 dark:border-[#2a2623]">
+                    <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+                      {profile.name}
+                    </p>
+                    <p className="truncate text-[11px] text-gray-400">{shell.planLabel}</p>
+                  </div>
+                  {isAuthenticated && (
+                  <Link
+                    href="/?tab=profile"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                    onClick={() => setShowUserMenu(false)}
+                  >
+                    <MaterialSymbol icon="badge" size={18} />
+                    Mi perfil
+                  </Link>
+                  )}
+                  <Link
+                    href="/"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                    onClick={() => setShowUserMenu(false)}
+                  >
+                    <MaterialSymbol icon="home" size={18} />
+                    Ir al inicio
+                  </Link>
+                  <div className="flex items-center justify-between rounded-xl px-2.5 py-2">
+                    <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">
+                      Apariencia
+                    </span>
+                    <ThemeToggleNavBtn className="h-8 w-8" clipId="biz-theme-desk" />
                   </div>
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-[#9a0002] hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer transition-colors"
+                    onClick={() => void handleLogout()}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-[#9a0002] hover:bg-red-50 dark:hover:bg-red-950/30"
                   >
                     <MaterialSymbol icon="logout" size={18} />
-                    Desconectar
+                    Cerrar sesión
                   </button>
                 </motion.div>
               )}

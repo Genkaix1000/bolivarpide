@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAvatarView } from "@/components/UserAvatarView";
+import { CockpitUserProfileBar } from "@/components/profile/CockpitUserProfileBar";
+import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
 import type { UserAddressSummary } from "@/lib/addresses/types";
 
 interface NavbarProps {
@@ -139,12 +141,15 @@ export default function Navbar({
   showLocationDropdown,
   onLocationClick,
 }: NavbarProps) {
-  const handleTabChange = useCallback((id: string) => {
-    onTabChange(id);
-  }, [onTabChange]);
-
   const { profile, isAuthenticated, hasActiveBusiness, logout } = useUserProfile();
+  const handleTabChange = useCallback((id: string) => {
+    if (id === "profile" && !isAuthenticated) return;
+    onTabChange(id);
+  }, [onTabChange, isAuthenticated]);
+
   const [showDashboard, setShowDashboard] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const drawerFooterRef = useRef<HTMLDivElement>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -160,9 +165,14 @@ export default function Navbar({
     return () => document.removeEventListener("mousedown", onPointer);
   }, [showUserMenu]);
 
+  useEffect(() => {
+    if (!showDashboard) setLogoutConfirm(false);
+  }, [showDashboard]);
+
   async function handleLogout() {
     setShowUserMenu(false);
     setShowDashboard(false);
+    setLogoutConfirm(false);
     await logout();
   }
 
@@ -381,6 +391,14 @@ export default function Navbar({
                     )}
                   >
                     <UserAvatarView avatar={profile.avatar} variant="button" />
+                    {profile.identityVerified && (
+                      <span
+                        title="Identidad verificada"
+                        className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white dark:bg-[#1c1917] flex items-center justify-center shadow-xs"
+                      >
+                        <MaterialSymbol icon="verified" size={13} fill className="text-[#9a0002] dark:text-red-400" />
+                      </span>
+                    )}
                   </button>
 
                   <AnimatePresence>
@@ -391,9 +409,16 @@ export default function Navbar({
                         className="absolute top-[52px] right-0 z-50 w-[220px] rounded-2xl border border-[#e8e0d6] bg-white p-2 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
                       >
                         <div className="mb-1 border-b border-[#f0ebe4] px-2.5 py-2 dark:border-[#2a2623]">
-                          <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
-                            {profile.name}
-                          </p>
+                          <div className="flex items-center gap-1">
+                            <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+                              {profile.name}
+                            </p>
+                            {profile.identityVerified && (
+                              <span title="Identidad verificada" className="inline-flex text-[#9a0002] dark:text-red-400 shrink-0">
+                                <MaterialSymbol icon="verified" size={14} fill />
+                              </span>
+                            )}
+                          </div>
                           <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
                         </div>
                         <button
@@ -408,6 +433,17 @@ export default function Navbar({
                           <MaterialSymbol icon="badge" size={18} />
                           Mi perfil
                         </button>
+                        {hasActiveBusiness && (
+                          <Link
+                            href="/negocio"
+                            role="menuitem"
+                            onClick={() => setShowUserMenu(false)}
+                            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                          >
+                            <MaterialSymbol icon="storefront" size={18} />
+                            Ir a mi negocio
+                          </Link>
+                        )}
                         <div className="flex items-center justify-between rounded-xl px-2.5 py-2">
                           <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">Apariencia</span>
                           <ThemeToggleNavBtn className="h-8 w-8" clipId="nav-theme-desk" />
@@ -468,48 +504,38 @@ export default function Navbar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -18 }}
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="fixed inset-y-0 left-0 z-[60] flex w-[275px] flex-col overflow-y-auto bg-[#f5f1eb] p-3 shadow-2xl dark:bg-[#161412] md:hidden custom-scrollbar"
+                  className="fixed inset-y-0 left-0 z-[60] flex w-[275px] flex-col overflow-hidden bg-[#f5f1eb] p-3 shadow-2xl dark:bg-[#161412] md:hidden"
                 >
-                  <div className="mb-2 flex items-center justify-between border-b border-[#e8e0d6] px-1 pb-3 dark:border-[#3d3732]">
-                    {isAuthenticated ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleTabChange("profile");
-                          setShowDashboard(false);
-                        }}
-                        className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl p-1 text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
-                      >
-                        <UserAvatarView avatar={profile.avatar} size="md" />
-                        <div className="min-w-0 text-left">
-                          <p className="truncate text-[14px] font-bold text-gray-900 dark:text-gray-100">
-                            {profile.name}
-                          </p>
-                          <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
-                        </div>
-                      </button>
-                    ) : (
-                      <Link
-                        href="/login"
-                        onClick={() => setShowDashboard(false)}
-                        className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-xl p-1 text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
-                      >
-                        <div className="min-w-0 text-left">
-                          <p className="text-[14px] font-bold text-gray-900 dark:text-gray-100">Iniciá sesión</p>
-                          <p className="text-[11px] text-gray-400">Pedí más rápido</p>
-                        </div>
-                      </Link>
-                    )}
+                  <div className="mb-2 flex shrink-0 items-center justify-between border-b border-[#e8e0d6] px-1 pb-3 dark:border-[#3d3732]">
                     <button
                       type="button"
-                      onClick={() => setShowDashboard(false)}
+                      onClick={() => {
+                        handleTabChange("home");
+                        setShowDashboard(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#9a0002] to-[#6b0001] text-sm font-bold text-white shadow-sm">
+                        B
+                      </span>
+                      <span className="text-[16px] font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                        BolivarPide
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoutConfirm(false);
+                        setShowDashboard(false);
+                      }}
                       aria-label="Cerrar menú"
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#ede4d9] hover:text-gray-700 dark:hover:bg-[#2a2623]"
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#ede4d9] hover:text-gray-700 dark:hover:bg-[#2a2623]"
                     >
                       <MaterialSymbol icon="close" size={18} />
                     </button>
                   </div>
 
+                  <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                   {/* ── Location panel in mobile sidebar ── */}
                   {isAuthenticated && (
                     <div className="mx-1 mb-3 rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xs dark:border-[#3d3732] dark:bg-[#1c1917]">
@@ -605,7 +631,7 @@ export default function Navbar({
 
                   <nav className="flex flex-col gap-0.5 px-1">
                     <p className="px-3 mb-1 text-[11px] font-medium text-gray-400">General</p>
-                    {DRAWER_TABS.map(({ id, label, icon }) => {
+                    {DRAWER_TABS.filter((t) => t.id !== "profile" || isAuthenticated).map(({ id, label, icon }) => {
                       const isActive = currentTab === id;
                       return (
                         <button
@@ -629,8 +655,7 @@ export default function Navbar({
                     })}
                   </nav>
 
-                  {/* Drawer Footer con botones compactos al fondo a la izquierda */}
-                  <div className="mt-auto border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
+                  <div className="mt-3 border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
                     <div className="space-y-1.5">
                       {hasActiveBusiness && (
                         <Link
@@ -657,6 +682,19 @@ export default function Navbar({
                         <MaterialSymbol icon="arrow_forward" size={15} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
 
+                      {!isAuthenticated ? (
+                        <Link
+                          href="/login"
+                          onClick={() => setShowDashboard(false)}
+                          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-800 dark:text-amber-300 transition-all group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <MaterialSymbol icon="sports_motorsports" size={16} fill />
+                            <span className="text-[12px] font-bold">Sumarme como repartidor</span>
+                          </div>
+                          <MaterialSymbol icon="arrow_forward" size={15} className="text-amber-600/60 dark:text-amber-400/60 group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                      ) : (
                       <button
                         type="button"
                         onClick={() => {
@@ -671,48 +709,75 @@ export default function Navbar({
                         </div>
                         <MaterialSymbol icon="arrow_forward" size={15} className="text-amber-600/60 dark:text-amber-400/60 group-hover:translate-x-0.5 transition-transform" />
                       </button>
+                      )}
                     </div>
 
-                    <div className="pt-2 border-t border-[#e8e0d6]/70 dark:border-[#3d3732]/70 space-y-1">
+                    <div className="pt-2 border-t border-[#e8e0d6]/70 dark:border-[#3d3732]/70">
                       <div className="flex h-9 items-center justify-between rounded-xl px-3">
                         <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Apariencia</span>
                         <ThemeToggleNavBtn className="h-7 w-7" clipId="nav-theme-drawer" />
                       </div>
-
-                      {isAuthenticated && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleTabChange("profile");
-                            setShowDashboard(false);
-                          }}
-                          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-medium text-gray-600 hover:bg-[#ede4d9]/70 dark:text-gray-400 dark:hover:bg-[#2a2623]"
-                        >
-                          <MaterialSymbol icon="settings" size={16} className="text-gray-400" />
-                          <span>Configuración de cuenta</span>
-                        </button>
-                      )}
-
-                      {isAuthenticated ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleLogout()}
-                          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10"
-                        >
-                          <MaterialSymbol icon="logout" size={16} />
-                          <span>Cerrar sesión</span>
-                        </button>
-                      ) : (
-                        <Link
-                          href="/login"
-                          onClick={() => setShowDashboard(false)}
-                          className="flex h-9 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[12px] font-semibold text-[#9a0002] hover:bg-[#9a0002]/10"
-                        >
-                          <MaterialSymbol icon="login" size={16} />
-                          <span>Iniciar sesión</span>
-                        </Link>
-                      )}
                     </div>
+                  </div>
+                  </div>
+
+                  <div
+                    ref={drawerFooterRef}
+                    className={cn(
+                      "shrink-0 -mx-3 mt-2 border-t px-3 py-3 transition-colors duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      logoutConfirm
+                        ? "border-[#9a0002] bg-[#9a0002]"
+                        : "border-[#e8e0d6] dark:border-[#3d3732]",
+                    )}
+                  >
+                    {isAuthenticated ? (
+                      <div className="flex items-center gap-3">
+                        <UserAvatarView avatar={profile.avatar} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              "truncate text-[13px] font-bold",
+                              logoutConfirm ? "text-white" : "text-gray-900 dark:text-gray-100",
+                            )}
+                          >
+                            {profile.name}
+                          </p>
+                          <p
+                            className={cn(
+                              "truncate text-[11px]",
+                              logoutConfirm ? "text-white/75" : "text-gray-400",
+                            )}
+                          >
+                            {profile.email}
+                          </p>
+                        </div>
+                        <LogoutNavRail
+                          confirm={logoutConfirm}
+                          onAccent={logoutConfirm}
+                          boundaryRef={drawerFooterRef}
+                          onAsk={() => setLogoutConfirm(true)}
+                          onCancel={() => setLogoutConfirm(false)}
+                          onConfirm={() => void handleLogout()}
+                        />
+                      </div>
+                    ) : (
+                      <Link
+                        href="/login"
+                        onClick={() => setShowDashboard(false)}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9a0002]/10 text-[#9a0002]">
+                          <MaterialSymbol icon="login" size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">
+                            Iniciá sesión
+                          </p>
+                          <p className="text-[11px] text-gray-400">Pedí más rápido</p>
+                        </div>
+                        <MaterialSymbol icon="arrow_forward" size={18} className="text-gray-400" />
+                      </Link>
+                    )}
                   </div>
                 </motion.aside>
               </>
@@ -726,7 +791,7 @@ export default function Navbar({
 }
 
 // ─── Skiper sun/moon toggle (shared design) ───────────────────────────────────
-function ThemeToggleNavBtn({ className = "", clipId = "skipper-clip" }: { className?: string; clipId?: string }) {
+export function ThemeToggleNavBtn({ className = "", clipId = "skipper-clip" }: { className?: string; clipId?: string }) {
   const [isDark, setIsDark] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -739,7 +804,7 @@ function ThemeToggleNavBtn({ className = "", clipId = "skipper-clip" }: { classN
   }, [isDark]);
 
   return (
-    <CherryBtn onClick={toggle} btnRef={btnRef} aria-label={isDark ? "Modo claro" : "Modo oscuro"} className={cn("overflow-hidden", className)}>
+    <CherryBtn onClick={toggle} btnRef={btnRef} aria-label={isDark ? "Modo claro" : "Modo oscuro"} className={cn("overflow-hidden flex items-center justify-center", className)}>
       <SkiperSunMoon isDark={isDark} clipId={clipId} />
     </CherryBtn>
   );

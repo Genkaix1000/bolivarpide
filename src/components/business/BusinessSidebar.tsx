@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 
 interface BusinessSidebarProps {
   businessId: string;
+  planLabel: string;
+  planCommission: string;
+  pendingCount: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen: boolean;
@@ -17,6 +20,9 @@ interface BusinessSidebarProps {
 
 export function BusinessSidebar({
   businessId,
+  planLabel,
+  planCommission,
+  pendingCount,
   collapsed,
   onToggleCollapse,
   mobileOpen,
@@ -26,7 +32,13 @@ export function BusinessSidebar({
   const base = `/negocio/${businessId}`;
   const GENERAL_NAV = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
-    { id: "pedidos", label: "Pedidos", icon: "receipt_long", href: `${base}/pedidos` },
+    {
+      id: "pedidos",
+      label: "Pedidos",
+      icon: "receipt_long",
+      href: `${base}/pedidos`,
+      badge: pendingCount > 0 ? pendingCount : undefined,
+    },
     { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
     { id: "pagos", label: "Pagos", icon: "payments", href: `${base}/pagos` },
   ];
@@ -178,7 +190,9 @@ export function BusinessSidebar({
                     <MaterialSymbol icon="emoji_events" size={18} fill />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-white/65">Plan Inicial · 7% comisión</p>
+                    <p className="text-[11px] font-medium text-white/65">
+                      {planLabel} · {planCommission} comisión
+                    </p>
                     <p className="text-[14px] font-bold tracking-tight mt-0.5">Impulso y Líder</p>
                     <p className="text-[11px] text-white/70 mt-1 leading-snug">
                       Planes con 3,5% y 0% de comisión — disponibles próximamente.

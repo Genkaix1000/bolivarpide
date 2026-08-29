@@ -296,6 +296,42 @@ export async function setPublished(formData: FormData) {
   revalidatePath("/");
 }
 
+/** Owner publishes store when their account identity is verified (test gate). */
+export async function publishBusinessAction(businessId: string) {
+  const { supabase, user, member } = await requireBusinessAccess(businessId);
+  if (!member || member.role !== "owner") {
+    throw new Error("Solo el dueño del local puede publicar.");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("identity_verified")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!profile?.identity_verified) {
+    throw new Error("Verificá tu identidad en Mi perfil antes de publicar.");
+  }
+
+  const { data: biz, error: fetchErr } = await supabase
+    .from("businesses")
+    .select("published, slug")
+    .eq("id", businessId)
+    .single();
+  if (fetchErr || !biz) throw new Error("Negocio no encontrado");
+  if (biz.published) return { published: true, slug: biz.slug };
+
+  const { error } = await supabase
+    .from("businesses")
+    .update({ published: true, updated_at: new Date().toISOString() })
+    .eq("id", businessId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath("/");
+  revalidatePath(`/c/${biz.slug}`);
+  return { published: true, slug: biz.slug };
+}
+
 export async function setPlan(formData: FormData) {
   const businessId = String(formData.get("businessId") || "");
   const plan = String(formData.get("plan") || "free");

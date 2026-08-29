@@ -7,13 +7,16 @@ import { BusinessSidebar } from "./BusinessSidebar";
 import { BusinessTopbar } from "./BusinessTopbar";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
+import type { BusinessShellData } from "@/lib/business/queries";
 
 export function BusinessLayout({
   children,
   businessId,
+  shell,
 }: {
   children: React.ReactNode;
   businessId: string;
+  shell: BusinessShellData;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,6 +29,9 @@ export function BusinessLayout({
 
       <BusinessSidebar
         businessId={businessId}
+        planLabel={shell.planLabel}
+        planCommission={shell.planCommission}
+        pendingCount={shell.pendingCount}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
@@ -33,7 +39,7 @@ export function BusinessLayout({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <BusinessTopbar onMenuClick={() => setMobileOpen(true)} />
+        <BusinessTopbar shell={shell} onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-7">
           {/* Solo fade-in: exit+enter se sentía como doble parpadeo */}

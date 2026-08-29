@@ -17,6 +17,7 @@ interface UserProfileContextValue {
   profile: UserProfile;
   isAuthenticated: boolean;
   hasActiveBusiness: boolean;
+  updateProfile: (partial: Partial<UserProfile>) => void;
   updateAvatar: (avatar: UserAvatar) => void;
   updateName: (name: string) => void;
   awardBadge: (badge: UserAwardBadge) => void;
@@ -150,6 +151,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     return () => clearTimeout(timer);
   }, [profile, profileReady, isAuthenticated]);
 
+  const updateProfile = useCallback((partial: Partial<UserProfile>) => {
+    setProfile((prev) => ({ ...prev, ...partial }));
+  }, []);
+
   const updateAvatar = useCallback((avatar: UserAvatar) => {
     setProfile((prev) => ({ ...prev, avatar }));
   }, []);
@@ -197,6 +202,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       profile,
       isAuthenticated,
       hasActiveBusiness,
+      updateProfile,
       updateAvatar,
       updateName,
       awardBadge,
@@ -209,6 +215,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       profile,
       isAuthenticated,
       hasActiveBusiness,
+      updateProfile,
       updateAvatar,
       updateName,
       awardBadge,

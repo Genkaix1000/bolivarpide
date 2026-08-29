@@ -20,13 +20,24 @@ export interface UserAwardBadge {
   isFeatured?: boolean;
 }
 
+export type PaymentMethod = "cash" | "mercadopago" | "transfer";
+
 export interface UserProfile {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   email: string;
   avatar: UserAvatar;
   primaryAddress: string;
   awardedBadges: UserAwardBadge[];
+  identityVerified?: boolean;
+  identityVerifiedAt?: string | null;
+  notificationOrders?: boolean;
+  notificationPromos?: boolean;
+  notificationWhatsapp?: boolean;
+  preferredPaymentMethod?: PaymentMethod;
 }
 
 export interface ColorOption {
@@ -196,6 +207,9 @@ export const PLACEHOLDER_ICONS: PlaceholderIcon[] = [
 export const DEFAULT_USER_PROFILE: UserProfile = {
   id: "guest",
   name: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
   email: "",
   avatar: {
     type: "initials",
@@ -204,6 +218,12 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   },
   primaryAddress: "",
   awardedBadges: [],
+  identityVerified: false,
+  identityVerifiedAt: null,
+  notificationOrders: true,
+  notificationPromos: false,
+  notificationWhatsapp: true,
+  preferredPaymentMethod: "cash",
 };
 
 export function getColorPalette(colorId?: string): ColorOption {

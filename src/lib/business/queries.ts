@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { BUSINESS_PLANS } from "@/lib/business/plans";
 import {
   computeMetrics,
   computeSalesChart,
@@ -22,6 +23,7 @@ export type BusinessRow = {
   reviews_count: number;
   prep_time_minutes: number;
   address: string | null;
+  city: string;
 };
 
 export type MembershipRow = {
@@ -59,7 +61,7 @@ export type DashboardStockProduct = {
 };
 
 const BUSINESS_FIELDS =
-  "id, name, slug, published, is_open, plan, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, address";
+  "id, name, slug, published, is_open, plan, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, address, city";
 
 export const requireUser = cache(async () => {
   const supabase = await createClient();
@@ -239,6 +241,148 @@ export async function getBusinessDashboardData(
     stockProducts,
     tasks,
   };
+}
+
+export type ShellNotification = { emoji: string; title: string; time: string };
+
+export type BusinessShellData = {
+  business: BusinessRow;
+  displayName: string;
+  email: string;
+  initials: string;
+  planLabel: string;
+  planCommission: string;
+  notifications: ShellNotification[];
+  pendingCount: number;
+};
+
+function planMeta(plan: string) {
+  const p = BUSINESS_PLANS.find((x) => x.id === plan);
+  return { label: p?.name ?? "Plan Inicial", commission: p?.commission ?? "7%" };
+}
+
+function userDisplay(user: { email?: string }, profileName: string | null) {
+  const email = user.email ?? "";
+  const displayName = profileName?.trim() || email.split("@")[0] || "Usuario";
+  const initials = profileName?.trim()
+    ? profileName.trim().split(/\s+/).length >= 2
+      ? (profileName.trim().split(/\s+/)[0][0] + profileName.trim().split(/\s+/)[1][0]).toUpperCase()
+      : profileName.trim().slice(0, 2).toUpperCase()
+    : email.slice(0, 2).toUpperCase();
+  return { displayName, email, initials };
+}
+
+function relativeTime(createdAt: string): string {
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Ahora";
+  if (mins < 60) return `Hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Hace ${hrs} h`;
+  return `Hace ${Math.floor(hrs / 24)} d`;
+}
+
+export async function getBusinessShellData(businessId: string): Promise<BusinessShellData> {
+  const { supabase, user, business } = await requireBusinessAccess(businessId);
+  const { label: planLabel, commission: planCommission } = planMeta(business.plan);
+
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const startToday = new Date();
+  startToday.setHours(0, 0, 0, 0);
+
+  const [profileRes, pendingRecentRes, pendingTodayRes, outOfStockRes] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("orders")
+      .select("id, customer_name, total_cents, created_at")
+      .eq("business_id", businessId)
+      .eq("status", "pending")
+      .gte("created_at", hourAgo)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "pending")
+      .gte("created_at", startToday.toISOString()),
+    supabase
+      .from("products")
+      .select("name")
+      .eq("business_id", businessId)
+      .eq("available", false)
+      .limit(2),
+  ]);
+
+  const { displayName, email, initials } = userDisplay(user, profileRes.data?.display_name);
+
+  const notifications: ShellNotification[] = [];
+  for (const o of pendingRecentRes.data ?? []) {
+    const who = o.customer_name?.trim() || "Cliente";
+    notifications.push({
+      emoji: "🛒",
+      title: `Nuevo pedido de ${who}`,
+      time: relativeTime(o.created_at),
+    });
+  }
+  for (const p of outOfStockRes.data ?? []) {
+    notifications.push({
+      emoji: "📦",
+      title: `Sin stock: ${p.name}`,
+      time: "Hoy",
+    });
+  }
+
+  return {
+    business,
+    displayName,
+    email,
+    initials,
+    planLabel,
+    planCommission,
+    notifications,
+    pendingCount: pendingTodayRes.count ?? 0,
+  };
+}
+
+export async function getBusinessHours(businessId: string) {
+  const { supabase } = await requireBusinessAccess(businessId);
+  const { data, error } = await supabase
+    .from("business_hours")
+    .select("weekday, open_time, close_time, closed")
+    .eq("business_id", businessId)
+    .order("weekday");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getPublicStoreBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data: business, error } = await supabase
+    .from("businesses")
+    .select(
+      "id, slug, name, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, is_open, address, published",
+    )
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!business) return null;
+
+  const { data: products, error: prodErr } = await supabase
+    .from("products")
+    .select("id, name, description, price_cents, image_path, category")
+    .eq("business_id", business.id)
+    .eq("available", true)
+    .order("sort_order")
+    .order("name");
+  if (prodErr) throw prodErr;
+
+  return { business, products: products ?? [] };
 }
 
 export async function listMyMemberships() {

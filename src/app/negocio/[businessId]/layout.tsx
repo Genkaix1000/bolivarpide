@@ -1,5 +1,5 @@
 import { BusinessLayout } from "@/components/business/BusinessLayout";
-import { requireBusinessAccess } from "@/lib/business/queries";
+import { getBusinessShellData } from "@/lib/business/queries";
 
 export default async function BusinessScopedLayout({
   children,
@@ -9,6 +9,10 @@ export default async function BusinessScopedLayout({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  await requireBusinessAccess(businessId);
-  return <BusinessLayout businessId={businessId}>{children}</BusinessLayout>;
+  const shell = await getBusinessShellData(businessId);
+  return (
+    <BusinessLayout businessId={businessId} shell={shell}>
+      {children}
+    </BusinessLayout>
+  );
 }

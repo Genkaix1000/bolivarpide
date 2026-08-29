@@ -66,7 +66,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
 export function getCurrentPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      reject(new Error("Tu navegador no soporta geolocalización."));
+      reject(new Error("Tu navegador no soporta ubicación. Escribí tu calle manualmente."));
       return;
     }
 
@@ -75,19 +75,32 @@ export function getCurrentPosition(): Promise<GeolocationPosition> {
       (err) => {
         let msg = "No pudimos obtener tu ubicación.";
         if (err.code === err.PERMISSION_DENIED) {
-          msg = "Permiso de ubicación denegado en tu navegador. Podés escribir tu calle arriba.";
+          msg =
+            "Permiso de ubicación bloqueado. En Chromium: ícono del candado en la barra de direcciones → Ubicación → Permitir.";
         } else if (err.code === err.POSITION_UNAVAILABLE) {
-          msg = "Señal de GPS no disponible en este momento.";
+          msg = "No hay señal de ubicación disponible. Probá en el celular o escribí la calle.";
         } else if (err.code === err.TIMEOUT) {
-          msg = "Tiempo de espera agotado buscando tu ubicación.";
+          msg = "Tardó demasiado. Reintentá o escribí tu calle.";
         }
         reject(new Error(msg));
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 120000,
+      },
     );
   });
+}
+
+export async function queryGeolocationAccess(): Promise<
+  "granted" | "prompt" | "denied" | "unsupported"
+> {
+  if (typeof window === "undefined" || !navigator.geolocation) return "unsupported";
+  try {
+    const status = await navigator.permissions.query({ name: "geolocation" });
+    return status.state as "granted" | "prompt" | "denied";
+  } catch {
+    return "prompt";
+  }
 }
