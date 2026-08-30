@@ -62,8 +62,8 @@ export function productToTrendingItem(
     emoji: product.name.slice(0, 1).toUpperCase(),
     // Primary preview is the icon (el ícono es la vista previa principal)
     image: icon ?? photo ?? undefined,
-    iconImage: icon ?? undefined,
-    photoImage: photo ?? undefined,
+    iconImage: icon ?? photo ?? undefined,
+    photoImage: photo ?? icon ?? undefined,
     description: product.description ?? undefined,
     categoryId: product.category_id ?? undefined,
     categoryName: categoryName ?? product.category ?? undefined,

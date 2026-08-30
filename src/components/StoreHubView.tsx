@@ -37,10 +37,10 @@ function ProductCard({
       )}
     >
       <div className={MENU_IMAGE_FRAME_CLASS}>
-        {item.iconImage ? (
+        {(item.iconImage || item.photoImage || item.image) ? (
           <ProductImageToggle
-            iconUrl={item.iconImage}
-            photoUrl={item.photoImage}
+            iconUrl={item.iconImage ?? item.image}
+            photoUrl={item.photoImage ?? item.image}
             className="h-full w-full group-hover:scale-105 transition-transform duration-500"
           />
         ) : (

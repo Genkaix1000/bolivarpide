@@ -26,7 +26,7 @@ export function getProductImageUrls(iconUrl?: string | null, photoUrl?: string |
 }
 
 export function productListImage(iconUrl?: string | null, photoUrl?: string | null) {
-  return iconUrl ?? photoUrl ?? undefined;
+  return iconUrl?.trim() || photoUrl?.trim() || undefined;
 }
 
 type ToggleProps = {
@@ -36,7 +36,7 @@ type ToggleProps = {
   imageClassName?: string;
   defaultMode?: ProductImageMode;
   dotsClassName?: string;
-  /** preview: solo ícono, sin carrusel ni fullscreen. expanded: carrusel + lightbox al tap */
+  /** preview: solo ícono/foto principal, sin carrusel ni fullscreen. expanded: carrusel + lightbox al tap */
   variant?: "preview" | "expanded";
 };
 
@@ -50,14 +50,16 @@ export function ProductImageToggle({
   variant = "preview",
 }: ToggleProps) {
   const icon = iconUrl?.trim() || "";
+  const photo = photoUrl?.trim() || "";
+  const displayUrl = icon || photo;
 
   if (variant === "preview") {
-    if (!icon) {
+    if (!displayUrl) {
       return <ProductImagePlaceholder className={className} />;
     }
     return (
       <div className={cn("relative overflow-hidden", className)}>
-        <img src={icon} alt="" className={cn("h-full w-full object-cover", imageClassName)} />
+        <img src={displayUrl} alt="" className={cn("h-full w-full object-cover", imageClassName)} />
       </div>
     );
   }

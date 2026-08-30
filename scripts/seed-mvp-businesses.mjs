@@ -452,6 +452,7 @@ async function main() {
         description: p.description || null,
         price_cents: p.price_cents,
         image_path: p.image_path || null,
+        icon_path: p.image_path || null,
         sort_order: p.sort_order || 0,
         options: p.options || [],
         available: true

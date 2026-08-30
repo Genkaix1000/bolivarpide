@@ -106,7 +106,7 @@ function HomeContent() {
         const { data: pubs } = await supabase
           .from("businesses")
           .select(
-            "id, slug, name, tagline, logo_path, rating, reviews_count, prep_time_minutes, is_open, address",
+            "id, slug, name, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, is_open, address",
           )
           .eq("published", true)
           .order("name");
@@ -829,10 +829,10 @@ function TrendingMenuCard({
       )}
     >
       <div className="relative aspect-[3/2] w-full overflow-hidden bg-[#f5f1eb] dark:bg-[#231f1c]">
-        {item.iconImage ? (
+        {(item.iconImage || item.photoImage || item.image) ? (
           <ProductImageToggle
-            iconUrl={item.iconImage}
-            photoUrl={item.photoImage}
+            iconUrl={item.iconImage ?? item.image}
+            photoUrl={item.photoImage ?? item.image}
             className="h-full w-full group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
