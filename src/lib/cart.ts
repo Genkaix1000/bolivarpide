@@ -1,13 +1,16 @@
 import type { TrendingItem } from "@/lib/mockData";
 
-export type SelectedOptions = Record<string, string>; // optionId → choiceId
+export type SelectedOptions = Record<string, string | string[]>;
 
 export interface CartLine {
   key: string;
   productId: string;
   chainId: string;
+  storeName?: string;
   name: string;
   image?: string;
+  iconImage?: string;
+  photoImage?: string;
   emoji: string;
   unitPrice: number;
   qty: number;
@@ -22,7 +25,15 @@ export interface CartState {
 }
 
 export function lineKey(productId: string, selected?: SelectedOptions, note?: string): string {
-  const opt = selected ? Object.entries(selected).sort().map(([k, v]) => `${k}:${v}`).join("|") : "";
+  const opt = selected
+    ? Object.entries(selected)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => {
+          const val = Array.isArray(v) ? [...v].sort().join(",") : v;
+          return `${k}:${val}`;
+        })
+        .join("|")
+    : "";
   return `${productId}__${opt}__${note ?? ""}`;
 }
 
@@ -30,10 +41,13 @@ export function unitPrice(item: TrendingItem, selected?: SelectedOptions): numbe
   let p = item.price;
   if (!selected || !item.options) return p;
   for (const opt of item.options) {
-    const choiceId = selected[opt.id];
-    if (!choiceId) continue;
-    const choice = opt.choices.find((c) => c.id === choiceId);
-    if (choice?.priceDelta) p += choice.priceDelta;
+    const raw = selected[opt.id];
+    if (!raw) continue;
+    const choiceIds = Array.isArray(raw) ? raw : [raw];
+    for (const choiceId of choiceIds) {
+      const choice = opt.choices.find((c) => c.id === choiceId);
+      if (choice?.priceDelta) p += choice.priceDelta;
+    }
   }
   return p;
 }
@@ -42,17 +56,24 @@ export function optionLabels(item: TrendingItem, selected?: SelectedOptions): st
   if (!selected || !item.options) return [];
   const labels: string[] = [];
   for (const opt of item.options) {
-    const choiceId = selected[opt.id];
-    if (!choiceId) continue;
-    const choice = opt.choices.find((c) => c.id === choiceId);
-    if (choice) labels.push(choice.label);
+    const raw = selected[opt.id];
+    if (!raw) continue;
+    const choiceIds = Array.isArray(raw) ? raw : [raw];
+    for (const choiceId of choiceIds) {
+      const choice = opt.choices.find((c) => c.id === choiceId);
+      if (choice) labels.push(choice.label);
+    }
   }
   return labels;
 }
 
 export function requiredOptionsMissing(item: TrendingItem, selected?: SelectedOptions): boolean {
   if (!item.options) return false;
-  return item.options.some((o) => o.required && !selected?.[o.id]);
+  return item.options.some((o) => {
+    if (!o.required || o.multi) return false;
+    const raw = selected?.[o.id];
+    return !raw || (Array.isArray(raw) && raw.length === 0);
+  });
 }
 
 /** Empty cart or same chain → ok; different chain → needs switch confirm */
@@ -95,8 +116,11 @@ export function addLine(
           key,
           productId: item.id,
           chainId: item.chainId,
+          storeName: item.storeName,
           name: item.name,
-          image: item.image,
+          image: item.iconImage ?? item.image,
+          iconImage: item.iconImage,
+          photoImage: item.photoImage,
           emoji: item.emoji,
           unitPrice: price,
           qty,

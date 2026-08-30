@@ -2,6 +2,7 @@ import type { BusinessRow } from "@/lib/business/queries";
 import type { TrendingItem } from "@/lib/mockData";
 import { toFeaturedChain, type PublishedStore } from "@/lib/business/home";
 import { resolveBusinessAssetUrl } from "@/lib/business/assets";
+import { parseMenuOptionGroups } from "@/lib/business/menuOptionTypes";
 
 export type PublicMenuCategory = {
   id: string;
@@ -19,29 +20,38 @@ export type PublicProductRow = {
   category_id: string | null;
   category: string | null;
   ingredients?: string[];
-  options?: Array<{ id?: string; title: string; choices: string[] }>;
+  options?: Array<{ id?: string; title: string; kind?: string; required?: boolean; choices: unknown[] }>;
 };
 
 export function productToTrendingItem(
-  business: Pick<BusinessRow, "slug" | "name">,
+  business: Pick<BusinessRow, "slug" | "name"> & {
+    logo_path?: string | null;
+    banner_path?: string | null;
+    rating?: number;
+    reviews_count?: number;
+    is_open?: boolean;
+  },
   product: PublicProductRow,
   categoryName?: string,
 ): TrendingItem {
   const photo = resolveBusinessAssetUrl(product.image_path);
   const icon = resolveBusinessAssetUrl(product.icon_path);
 
-  const mappedOptions = Array.isArray(product.options)
-    ? product.options.map((opt, i) => ({
-        id: opt.id || `opt-${i}`,
-        name: opt.title,
-        required: true,
-        choices: opt.choices.map((c, ci) => ({
-          id: `choice-${i}-${ci}`,
-          label: c,
-          priceDelta: 0,
-        })),
-      }))
-    : undefined;
+  const mappedOptions = (() => {
+    const groups = parseMenuOptionGroups(product.options);
+    if (groups.length === 0) return undefined;
+    return groups.map((opt, i) => ({
+      id: opt.id || `opt-${i}`,
+      name: opt.title,
+      required: opt.kind === "extras" ? false : Boolean(opt.required),
+      multi: opt.kind === "extras",
+      choices: opt.choices.map((c, ci) => ({
+        id: `choice-${i}-${ci}`,
+        label: c.label,
+        priceDelta: c.price_cents > 0 ? c.price_cents / 100 : 0,
+      })),
+    }));
+  })();
 
   return {
     id: product.id,
@@ -50,12 +60,20 @@ export function productToTrendingItem(
     chainId: business.slug,
     price: product.price_cents / 100,
     emoji: product.name.slice(0, 1).toUpperCase(),
-    image: photo ?? icon ?? undefined,
+    // Primary preview is the icon (el ícono es la vista previa principal)
+    image: icon ?? photo ?? undefined,
+    iconImage: icon ?? undefined,
+    photoImage: photo ?? undefined,
     description: product.description ?? undefined,
     categoryId: product.category_id ?? undefined,
     categoryName: categoryName ?? product.category ?? undefined,
     ingredients: Array.isArray(product.ingredients) ? product.ingredients : undefined,
     options: mappedOptions && mappedOptions.length > 0 ? mappedOptions : undefined,
+    storeRating: Number(business.rating) || 0,
+    storeReviewsCount: Number(business.reviews_count) || 0,
+    storeLogoUrl: resolveBusinessAssetUrl(business.logo_path ?? null),
+    storeBannerUrl: resolveBusinessAssetUrl(business.banner_path ?? null),
+    storeIsOpen: business.is_open,
   };
 }
 

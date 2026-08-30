@@ -51,7 +51,26 @@ const empty: CartState = { chainId: null, lines: [] };
 
 assert.equal(requiredOptionsMissing(withReq), true);
 assert.equal(requiredOptionsMissing(withReq, { punto: "medio" }), false);
-assert.equal(unitPrice(withReq, { punto: "medio", extra: "bacon" }), 5300);
+assert.equal(unitPrice(withReq, { punto: "medio", extra: ["bacon"] }), 5300);
+
+const withMultiExtras: TrendingItem = {
+  ...plain,
+  id: "burger2",
+  options: [
+    {
+      id: "extras",
+      name: "Extras",
+      required: false,
+      multi: true,
+      choices: [
+        { id: "bacon", label: "Bacon", priceDelta: 800 },
+        { id: "huevo", label: "Huevo", priceDelta: 500 },
+      ],
+    },
+  ],
+};
+assert.equal(unitPrice(withMultiExtras, { extras: ["bacon", "huevo"] }), 5800);
+assert.notEqual(lineKey("a", { extras: ["bacon"] }), lineKey("a", { extras: ["huevo"] }));
 
 let cart = addLine(empty, plain, 1);
 assert.equal(cart.chainId, "burgerboz");

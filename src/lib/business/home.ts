@@ -24,6 +24,8 @@ export function toFeaturedChain(b: PublishedStore) {
     deliveryFee: 0,
     minOrder: 0,
     rating: Number(b.rating) || 0,
+    reviewsCount: Number(b.reviews_count) || 0,
+    isOpen: b.is_open,
     address: b.address ?? "",
     lat: 0,
     lng: 0,

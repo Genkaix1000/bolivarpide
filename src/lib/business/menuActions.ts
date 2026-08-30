@@ -10,6 +10,7 @@ import {
   isFreePlan,
 } from "@/lib/business/planLimits";
 import { formatMenuError } from "@/lib/business/menuErrors";
+import { parseMenuOptionGroups } from "@/lib/business/menuOptionTypes";
 
 function extFromMime(mime: string) {
   if (mime === "image/png") return "png";
@@ -150,22 +151,10 @@ export async function saveMenuProductAction(formData: FormData) {
     ingredients = [];
   }
 
-  let options: Array<{ title: string; choices: string[] }> = [];
+  let options: ReturnType<typeof parseMenuOptionGroups> = [];
   try {
     const raw = formData.get("options");
-    if (raw) {
-      const parsed = JSON.parse(String(raw));
-      if (Array.isArray(parsed)) {
-        options = parsed
-          .map((opt: any) => ({
-            title: String(opt.title || "").trim(),
-            choices: Array.isArray(opt.choices)
-              ? opt.choices.map((c: any) => String(c).trim()).filter(Boolean)
-              : [],
-          }))
-          .filter((opt) => opt.title.length > 0 && opt.choices.length > 0);
-      }
-    }
+    if (raw) options = parseMenuOptionGroups(JSON.parse(String(raw)));
   } catch {
     options = [];
   }

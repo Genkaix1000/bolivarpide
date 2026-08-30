@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
@@ -12,6 +12,22 @@ import {
   MENU_PHOTO_OPTS,
   optimizeImageFile,
 } from "@/lib/images/optimizeImage";
+import { ImageSourceActions } from "@/components/menu/ImageSourceActions";
+import {
+  extrasGroupFromRows,
+  parseMenuOptionGroups,
+  splitExtrasFromOptions,
+} from "@/lib/business/menuOptionTypes";
+
+const QUICK_EXTRAS = [
+  { label: "Bacon", price: 800 },
+  { label: "Huevo frito", price: 500 },
+  { label: "Cheddar", price: 600 },
+  { label: "Papas extra", price: 1200 },
+];
+
+type SelectOptionGroup = { title: string; choices: string[] };
+type ExtraRow = { label: string; pricePesos: string };
 
 const QUICK_INGREDIENTS = [
   "Cheddar",
@@ -94,8 +110,7 @@ function SectionBadge({ isRequired, helpText }: { isRequired: boolean; helpText?
                 className="absolute right-0 top-6 z-50 w-64 rounded-xl border border-[#e8e0d6] bg-white p-3 text-[11px] leading-relaxed text-stone-700 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-200"
               >
                 <div className="flex items-start justify-between gap-1 mb-1">
-                  <span className="font-bold text-[#9a0002] dark:text-red-400 flex items-center gap-1">
-                    <MaterialSymbol icon="lightbulb" size={13} fill />
+                  <span className="font-bold text-[#9a0002] dark:text-red-400">
                     Consejo
                   </span>
                   <button
@@ -134,14 +149,14 @@ export function ProductSlidePanel({
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(undefined);
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [ingredientInput, setIngredientInput] = useState("");
-  const [optionGroups, setOptionGroups] = useState<ProductOptionGroup[]>([]);
+  const [optionGroups, setOptionGroups] = useState<SelectOptionGroup[]>([]);
+  const [extras, setExtras] = useState<ExtraRow[]>([]);
+  const [extraLabel, setExtraLabel] = useState("");
+  const [extraPrice, setExtraPrice] = useState("");
   const [pending, setPending] = useState(false);
   const [iconProcessing, setIconProcessing] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const iconInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = Boolean(editing?.id);
 
@@ -157,7 +172,20 @@ export function ProductSlidePanel({
         setIconFile(null);
         setPhotoFile(null);
         setIngredients(editing.ingredients || []);
-        setOptionGroups(editing.options || []);
+        const parsed = parseMenuOptionGroups(editing.options || []);
+        const { extrasGroup, optionGroups: ogs } = splitExtrasFromOptions(parsed);
+        setOptionGroups(
+          ogs.map((g) => ({
+            title: g.title,
+            choices: g.choices.map((c) => (typeof c === "string" ? c : c.label)),
+          })),
+        );
+        setExtras(
+          extrasGroup?.choices.map((c) => ({
+            label: c.label,
+            pricePesos: c.price_cents > 0 ? String(Math.round(c.price_cents / 100)) : "",
+          })) ?? [],
+        );
       } else {
         setName("");
         setCategoryId(categories[0]?.id || "");
@@ -169,9 +197,12 @@ export function ProductSlidePanel({
         setPhotoFile(null);
         setIngredients([]);
         setOptionGroups([]);
+        setExtras([]);
       }
       setError(null);
       setIngredientInput("");
+      setExtraLabel("");
+      setExtraPrice("");
     }
   }, [open, editing, categories]);
 
@@ -238,6 +269,25 @@ export function ProductSlidePanel({
     setOptionGroups((prev) => prev.filter((_, i) => i !== groupIdx));
   }
 
+  function addExtra(label: string, pricePesos: string) {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const pesos = parseInt(pricePesos.replace(/\D/g, ""), 10);
+    if (!pesos || pesos <= 0) {
+      setError("El extra necesita un precio mayor a $0.");
+      return;
+    }
+    if (extras.some((e) => e.label.toLowerCase() === trimmed.toLowerCase())) return;
+    setExtras((prev) => [...prev, { label: trimmed, pricePesos: String(pesos) }]);
+    setExtraLabel("");
+    setExtraPrice("");
+    setError(null);
+  }
+
+  function removeExtra(idx: number) {
+    setExtras((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handlePickIcon(file: File) {
     setIconProcessing(true);
     setError(null);
@@ -292,12 +342,24 @@ export function ProductSlidePanel({
       fd.set("price", String(priceNum));
       fd.set("description", description.trim());
       fd.set("ingredients", JSON.stringify(ingredients));
-      fd.set(
-        "options",
-        JSON.stringify(
-          optionGroups.filter((g) => g.title.trim().length > 0 && g.choices.length > 0)
-        )
+      const selectGroups = optionGroups
+        .filter((g) => g.title.trim() && g.choices.length > 0)
+        .map((g) => ({
+          title: g.title.trim(),
+          kind: "select" as const,
+          choices: g.choices,
+        }));
+      const extrasGroup = extrasGroupFromRows(
+        extras.map((e) => ({
+          label: e.label,
+          pricePesos: parseInt(e.pricePesos, 10) || 0,
+        })),
       );
+      const allOptions = parseMenuOptionGroups([
+        ...selectGroups,
+        ...(extrasGroup ? [extrasGroup] : []),
+      ]);
+      fd.set("options", JSON.stringify(allOptions));
 
       if (editing?.iconPath) fd.set("existingIconPath", editing.iconPath);
       if (editing?.photoPath) fd.set("existingPhotoPath", editing.photoPath);
@@ -308,7 +370,12 @@ export function ProductSlidePanel({
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+      const msg = err instanceof Error ? err.message : "No se pudo guardar.";
+      setError(
+        msg.includes("Body exceeded") || msg.includes("1 MB")
+          ? "Las fotos son muy pesadas. Esperá a que termine “Optimizando…” o probá con otra imagen."
+          : msg,
+      );
     } finally {
       setPending(false);
     }
@@ -423,27 +490,22 @@ export function ProductSlidePanel({
                   </div>
                 </div>
 
-                {/* 2. Ícono Obligatorio y Foto Opcional */}
+                {/* 2. Ícono y foto (mismo tamaño) */}
                 <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
-                  {/* Ícono Obligatorio */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                        <MaterialSymbol icon="category" size={15} className="text-[#9a0002]" />
-                        Ícono del producto
-                      </label>
-                      <SectionBadge isRequired={true} />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        disabled={iconProcessing}
-                        onClick={() => iconInputRef.current?.click()}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
+                          Ícono
+                        </label>
+                        <SectionBadge isRequired={true} />
+                      </div>
+                      <div
                         className={cn(
-                          "relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed transition-all",
+                          "relative flex h-28 w-full items-center justify-center rounded-2xl border-2 border-dashed",
                           iconPreview
-                            ? "border-[#9a0002]/40 bg-[#9a0002]/5 shadow-xs"
-                            : "border-stone-200 bg-stone-50 hover:border-[#9a0002]/40 dark:border-[#3d3732] dark:bg-[#231f1c]"
+                            ? "border-[#9a0002]/40 bg-[#9a0002]/5"
+                            : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
                         )}
                       >
                         {iconPreview ? (
@@ -456,109 +518,71 @@ export function ProductSlidePanel({
                           <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
                         )}
                         {iconProcessing && (
-                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 text-[9px] font-bold text-white">
-                            …
+                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">
+                            Optimizando…
                           </span>
                         )}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
-                          {iconPreview ? "Ícono seleccionado" : "Subí un ícono cuadrado"}
-                        </p>
-                        <p className="text-[10px] text-stone-500 leading-tight mt-0.5">
-                          Aparece en listas y búsquedas rápidas.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => iconInputRef.current?.click()}
-                          className="mt-1 text-[11px] font-bold text-[#9a0002] hover:underline dark:text-red-400 cursor-pointer"
-                        >
-                          {iconPreview ? "Cambiar ícono" : "Elegir imagen"}
-                        </button>
                       </div>
-                    </div>
-                    <input
-                      ref={iconInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void handlePickIcon(file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </div>
-
-                  <hr className="border-stone-100 dark:border-[#2a2623]" />
-
-                  {/* Foto Real de Portada (Opcional) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                        <MaterialSymbol icon="photo_camera" size={15} className="text-stone-500" />
-                        Foto real del plato
-                      </label>
-                      <SectionBadge
-                        isRequired={false}
-                        helpText="La foto real de portada se destaca en la carta pública y atrae más pedidos visuales."
+                      <ImageSourceActions
+                        disabled={iconProcessing}
+                        compact
+                        className="mt-2"
+                        onPick={handlePickIcon}
                       />
                     </div>
-                    <button
-                      type="button"
-                      disabled={photoProcessing}
-                      onClick={() => photoInputRef.current?.click()}
-                      className={cn(
-                        "relative flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed transition-all",
-                        photoPreview
-                          ? "border-[#9a0002]/30 bg-[#9a0002]/5"
-                          : "border-stone-200 bg-stone-50 hover:border-[#9a0002]/40 dark:border-[#3d3732] dark:bg-[#231f1c]"
-                      )}
-                    >
-                      {photoPreview ? (
-                        <img
-                          src={photoPreview}
-                          alt="Foto real"
-                          className="absolute inset-0 h-full w-full rounded-2xl object-cover"
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
+                          Foto real
+                        </label>
+                        <SectionBadge
+                          isRequired={false}
+                          helpText="Foto de portada en la carta pública."
                         />
-                      ) : (
-                        <>
-                          <MaterialSymbol icon="add_a_photo" size={22} className="text-stone-400" />
-                          <span className="text-[11px] font-medium text-stone-500">
-                            Subir foto de portada (opcional)
+                      </div>
+                      <div
+                        className={cn(
+                          "relative flex h-28 w-full items-center justify-center rounded-2xl border-2 border-dashed",
+                          photoPreview
+                            ? "border-[#9a0002]/30 bg-[#9a0002]/5"
+                            : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
+                        )}
+                      >
+                        {photoPreview ? (
+                          <img
+                            src={photoPreview}
+                            alt="Foto real"
+                            className="h-full w-full rounded-2xl object-cover"
+                          />
+                        ) : (
+                          <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                        )}
+                        {photoProcessing && (
+                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">
+                            Optimizando…
                           </span>
-                        </>
-                      )}
-                      {photoProcessing && (
-                        <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[11px] font-semibold text-white">
-                          Optimizando…
-                        </span>
-                      )}
-                    </button>
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void handlePickPhoto(file);
-                        e.target.value = "";
-                      }}
-                    />
+                        )}
+                      </div>
+                      <ImageSourceActions
+                        disabled={photoProcessing}
+                        compact
+                        className="mt-2"
+                        onPick={handlePickPhoto}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* 3. Ingredientes (Opcional con Tooltip & Chips) */}
                 <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                      <MaterialSymbol icon="restaurant" size={15} className="text-orange-500" />
+                    <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
                       Ingredientes
                     </label>
                     <SectionBadge
                       isRequired={false}
-                      helpText="💡 Impulsá tus resultados: tus platos aparecerán en búsquedas específicas (ej. 'cheddar', 'sin cebolla') y los clientes podrán pedir 'sin tal ingrediente' fácilmente."
+                      helpText="Impulsá tus resultados: tus platos aparecerán en búsquedas específicas (ej. 'cheddar', 'sin cebolla') y los clientes podrán pedir 'sin tal ingrediente' fácilmente."
                     />
                   </div>
 
@@ -579,9 +603,10 @@ export function ProductSlidePanel({
                       type="button"
                       onClick={() => addIngredient(ingredientInput)}
                       disabled={!ingredientInput.trim()}
-                      className="rounded-xl bg-[#9a0002] px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40 hover:bg-[#800002] cursor-pointer transition-colors shadow-xs"
+                      aria-label="Agregar ingrediente"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#9a0002] text-white disabled:opacity-40 hover:bg-[#800002] cursor-pointer transition-colors shadow-xs"
                     >
-                      Agregar
+                      <MaterialSymbol icon="add" size={22} />
                     </button>
                   </div>
 
@@ -591,13 +616,13 @@ export function ProductSlidePanel({
                       {ingredients.map((ing, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center gap-1 rounded-lg bg-orange-50 border border-orange-200/80 px-2.5 py-1 text-[11px] font-bold text-orange-900 dark:bg-orange-950/40 dark:border-orange-900/50 dark:text-orange-200"
+                          className="inline-flex items-center gap-1 rounded-lg bg-stone-50 border border-stone-200 px-2.5 py-1 text-[11px] font-bold text-stone-800 dark:bg-[#231f1c] dark:border-[#3d3732] dark:text-stone-200"
                         >
                           {ing}
                           <button
                             type="button"
                             onClick={() => removeIngredient(idx)}
-                            className="text-orange-400 hover:text-orange-700 dark:hover:text-orange-200 cursor-pointer ml-0.5"
+                            className="text-stone-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer ml-0.5"
                           >
                             ✕
                           </button>
@@ -631,8 +656,7 @@ export function ProductSlidePanel({
                 {/* 4. Opciones / Seleccionables Personalizados */}
                 <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                      <MaterialSymbol icon="tune" size={15} className="text-[#9a0002]" />
+                    <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
                       Opciones adicionales
                     </label>
                     <SectionBadge
@@ -746,7 +770,93 @@ export function ProductSlidePanel({
                   </div>
                 </div>
 
-                {/* 5. Descripción del plato (Opcional) */}
+                {/* 5. Extras con precio (multi-select en el pedido) */}
+                <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
+                      Extras
+                    </label>
+                    <SectionBadge
+                      isRequired={false}
+                      helpText="Agregados opcionales con precio (bacon, huevo, etc.). El cliente puede elegir varios y el total se suma al plato."
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      value={extraLabel}
+                      onChange={(e) => setExtraLabel(e.target.value)}
+                      placeholder="Nombre (ej. Bacon)"
+                      className="flex-1 rounded-xl border border-stone-200 bg-[#faf6f1]/60 px-3 py-2 text-[12px] font-medium placeholder:text-stone-400 focus:border-[#9a0002]/50 focus:bg-white focus:outline-none dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-100"
+                    />
+                    <div className="relative w-24 shrink-0">
+                      <span className="absolute left-2.5 top-2 text-[12px] font-bold text-[#9a0002] pointer-events-none">
+                        $
+                      </span>
+                      <input
+                        value={extraPrice}
+                        onChange={(e) => setExtraPrice(e.target.value.replace(/\D/g, ""))}
+                        inputMode="numeric"
+                        placeholder="800"
+                        className="w-full rounded-xl border border-stone-200 bg-[#faf6f1]/60 pl-6 pr-2 py-2 text-[12px] font-bold focus:border-[#9a0002]/50 focus:bg-white focus:outline-none dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-100"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addExtra(extraLabel, extraPrice)}
+                      disabled={!extraLabel.trim() || !extraPrice}
+                      aria-label="Agregar extra"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#9a0002] text-white disabled:opacity-40 hover:bg-[#800002] cursor-pointer transition-colors shadow-xs"
+                    >
+                      <MaterialSymbol icon="add" size={22} />
+                    </button>
+                  </div>
+
+                  {extras.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {extras.map((ex, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px] font-bold text-stone-800 dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-200"
+                        >
+                          {ex.label}
+                          <span className="text-[#9a0002] dark:text-red-400">
+                            +${Number(ex.pricePesos).toLocaleString("es-AR")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeExtra(idx)}
+                            className="text-stone-400 hover:text-red-600 cursor-pointer ml-0.5"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-0.5">
+                    <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block mb-1">
+                      Sugeridos:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {QUICK_EXTRAS.filter(
+                        (q) => !extras.some((e) => e.label.toLowerCase() === q.label.toLowerCase()),
+                      ).map((q) => (
+                        <button
+                          key={q.label}
+                          type="button"
+                          onClick={() => addExtra(q.label, String(q.price))}
+                          className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-medium text-stone-600 hover:border-[#9a0002]/40 hover:text-[#9a0002] dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-stone-400 cursor-pointer transition-colors"
+                        >
+                          + {q.label} ${q.price.toLocaleString("es-AR")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Descripción del plato (Opcional) */}
                 <div className="space-y-2 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
                   <div className="flex items-center justify-between">
                     <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
@@ -774,7 +884,7 @@ export function ProductSlidePanel({
               <div className="shrink-0 border-t border-[#e8e0d6] px-5 py-4 dark:border-[#3d3732] bg-white/70 dark:bg-[#1c1917]/70 backdrop-blur-xs">
                 <button
                   type="submit"
-                  disabled={pending}
+                  disabled={pending || iconProcessing || photoProcessing}
                   className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#9a0002] py-3 text-[14px] font-bold text-white hover:bg-[#850002] disabled:opacity-60 transition-colors shadow-md shadow-[#9a0002]/20"
                 >
                   {pending ? "Guardando…" : isEdit ? "Guardar cambios" : "Publicar en carta"}

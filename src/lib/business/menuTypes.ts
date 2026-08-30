@@ -1,8 +1,6 @@
-export type ProductOptionGroup = {
-  id?: string;
-  title: string;
-  choices: string[];
-};
+import type { MenuOptionGroup } from "@/lib/business/menuOptionTypes";
+
+export type ProductOptionGroup = MenuOptionGroup;
 
 export type MenuCategoryRow = {
   id: string;

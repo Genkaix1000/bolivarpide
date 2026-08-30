@@ -7,6 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Navbar from "@/components/Navbar";
 import CurvedHomeHeader from "@/components/CurvedHomeHeader";
+import { ProductImageToggle } from "@/components/menu/ProductImageToggle";
+import { ProductImagePlaceholder } from "@/components/menu/ProductImagePlaceholder";
+import { StoreRatingBadge } from "@/components/store/StoreRatingBadge";
 import { cn } from "@/lib/utils";
 import {
   FEATURED_CHAINS,
@@ -56,6 +59,7 @@ function HomeContent() {
   // Carousels State
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
   const [currentChainPage, setCurrentChainPage] = useState(0);
+  const [trendingItems, setTrendingItems] = useState<TrendingItem[]>(TRENDING_ITEMS);
 
   // Menús del Momento Dynamic Scroll Mask State
   const [trendingScrollState, setTrendingScrollState] = useState({ isAtStart: true, isAtEnd: false });
@@ -101,6 +105,67 @@ function HomeContent() {
           const mapped = pubs.map(toFeaturedChain);
           setRandomizedChains([...mapped].sort(() => Math.random() - 0.5));
           setRandomizedRecommended([...mapped].sort(() => Math.random() - 0.5));
+
+          const { productToTrendingItem } = await import("@/lib/business/publicStore");
+          const { data: productRows } = await supabase
+            .from("products")
+            .select(
+              "id, name, description, price_cents, image_path, icon_path, category_id, category, ingredients, options, business_id, businesses!inner(slug, name, published, logo_path, banner_path, rating, reviews_count, is_open)",
+            )
+            .eq("available", true)
+            .eq("businesses.published", true)
+            .order("updated_at", { ascending: false })
+            .limit(12);
+
+          if (!cancelled && productRows && productRows.length > 0) {
+            const items = productRows.map((row) => {
+              const bizRaw = row.businesses as
+                | {
+                    slug: string;
+                    name: string;
+                    logo_path?: string | null;
+                    banner_path?: string | null;
+                    rating?: number;
+                    reviews_count?: number;
+                    is_open?: boolean;
+                  }
+                | Array<{
+                    slug: string;
+                    name: string;
+                    logo_path?: string | null;
+                    banner_path?: string | null;
+                    rating?: number;
+                    reviews_count?: number;
+                    is_open?: boolean;
+                  }>;
+              const biz = Array.isArray(bizRaw) ? bizRaw[0] : bizRaw;
+              return productToTrendingItem(
+                {
+                  slug: biz.slug,
+                  name: biz.name,
+                  logo_path: biz.logo_path,
+                  banner_path: biz.banner_path,
+                  rating: biz.rating,
+                  reviews_count: biz.reviews_count,
+                  is_open: biz.is_open,
+                },
+                {
+                  id: row.id,
+                  name: row.name,
+                  description: row.description,
+                  price_cents: row.price_cents,
+                  image_path: row.image_path,
+                  icon_path: row.icon_path,
+                  category_id: row.category_id,
+                  category: row.category,
+                  ingredients: row.ingredients,
+                  options: row.options,
+                },
+                row.category_id ? undefined : row.category,
+              );
+            });
+            setTrendingItems(items);
+          }
           return;
         }
       } catch {
@@ -290,8 +355,10 @@ function HomeContent() {
                   ref={trendingContainerRef}
                   className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-1 pt-1 pb-3"
                 >
-                  {TRENDING_ITEMS.map((item) => {
-                    const ownerChain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
+                  {trendingItems.map((item) => {
+                    const ownerChain =
+                      randomizedChains.find((c) => c.id === item.chainId) ??
+                      FEATURED_CHAINS.find((c) => c.id === item.chainId);
                     return (
                       <TrendingMenuCard
                         key={item.id}
@@ -697,16 +764,14 @@ function TrendingMenuCard({
       )}
     >
       <div className="h-[125px] w-full relative overflow-hidden bg-[#f5f1eb] dark:bg-[#231f1c]">
-        {item.image ? (
-          <img
-            src={item.image}
-            alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        {item.iconImage ? (
+          <ProductImageToggle
+            iconUrl={item.iconImage}
+            photoUrl={item.photoImage}
+            className="h-full w-full group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl">
-            {item.emoji}
-          </div>
+          <ProductImagePlaceholder className="h-full w-full" />
         )}
       </div>
 
@@ -726,9 +791,12 @@ function TrendingMenuCard({
               {ownerChain?.name || item.storeName}
             </span>
           </div>
-          <div className="flex items-center gap-0.5 text-[11px] text-gray-400 font-medium flex-shrink-0">
-            <MaterialSymbol icon="star" size={11} fill className="text-[#9a0002]" />
-            <span>{ownerChain?.rating || "4.5"}</span>
+          <div className="flex shrink-0 items-center gap-0.5 text-[11px] font-medium">
+            <StoreRatingBadge
+              rating={item.storeRating ?? ownerChain?.rating ?? 0}
+              reviewsCount={item.storeReviewsCount ?? ownerChain?.reviewsCount ?? 0}
+              size="sm"
+            />
           </div>
         </div>
 

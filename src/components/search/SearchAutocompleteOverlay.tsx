@@ -413,7 +413,7 @@ export function SearchAutocompleteOverlay({
                               {store.isNew ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-1.5 py-0.5 rounded-full">
                                   <MaterialSymbol icon="new_releases" size={12} />
-                                  <span>Nueva incorporación</span>
+                                  <span>Nuevo</span>
                                 </span>
                               ) : (
                                 <span className="flex items-center text-amber-500 font-semibold">

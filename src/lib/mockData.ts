@@ -24,16 +24,18 @@ export interface SpecialtyCategory {
   image?: string;
 }
 
-export interface ProductOptionChoice {
+export type ProductOptionChoice = {
   id: string;
   label: string;
   priceDelta?: number;
-}
+};
 
 export interface ProductOption {
   id: string;
   name: string;
   required: boolean;
+  /** Extras: el cliente puede marcar varios */
+  multi?: boolean;
   choices: ProductOptionChoice[];
 }
 
@@ -50,6 +52,8 @@ export interface FeaturedChain {
   /** Monto mínimo de pedido (subtotal productos, sin envío) */
   minOrder: number;
   rating: number;
+  reviewsCount?: number;
+  isOpen?: boolean;
   address: string;
   lat: number;
   lng: number;
@@ -63,12 +67,21 @@ export interface TrendingItem {
   price: number;
   emoji: string;
   image?: string;
+  /** Ícono cuadrado del menú */
+  iconImage?: string;
+  /** Foto real del plato */
+  photoImage?: string;
   description?: string;
   categoryId?: string;
   categoryName?: string;
   ingredients?: string[];
   /** Si hay alguna required:true, el + no hace quick-add */
   options?: ProductOption[];
+  storeRating?: number;
+  storeReviewsCount?: number;
+  storeLogoUrl?: string;
+  storeBannerUrl?: string;
+  storeIsOpen?: boolean;
 }
 
 export interface PopularChain {

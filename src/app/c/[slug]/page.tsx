@@ -30,7 +30,15 @@ export default async function StoreHubPage({
   const chain = publicStoreToFeaturedChain(business);
   const trending = products.map((p) =>
     productToTrendingItem(
-      business,
+      {
+        slug: business.slug,
+        name: business.name,
+        logo_path: business.logo_path,
+        banner_path: business.banner_path,
+        rating: business.rating,
+        reviews_count: business.reviews_count,
+        is_open: business.is_open,
+      },
       p,
       p.category_id ? categoryNameById.get(p.category_id) : p.category,
     ),
