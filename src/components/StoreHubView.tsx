@@ -10,6 +10,7 @@ import { profileFromChain, StoreLocationBlock, StoreSidePanel } from "@/componen
 import { ProductImageToggle } from "@/components/menu/ProductImageToggle";
 import { ProductImagePlaceholder } from "@/components/menu/ProductImagePlaceholder";
 import { MobileStoreCoverHeader } from "@/components/store/MobileStoreCoverHeader";
+import { MENU_IMAGE_FRAME_CLASS } from "@/lib/images/menuImageSpec";
 import { cn } from "@/lib/utils";
 
 function money(n: number) {
@@ -35,7 +36,7 @@ function ProductCard({
         "shadow-[0_8px_24px_-16px_rgba(61,43,31,0.2)]",
       )}
     >
-      <div className="relative h-28 md:h-36 overflow-hidden bg-[#f0ebe4] dark:bg-[#231f1c]">
+      <div className={MENU_IMAGE_FRAME_CLASS}>
         {item.iconImage ? (
           <ProductImageToggle
             iconUrl={item.iconImage}

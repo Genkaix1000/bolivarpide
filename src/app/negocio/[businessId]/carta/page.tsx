@@ -29,6 +29,7 @@ export default async function CartaPage({
   return (
     <CartaView
       businessId={businessId}
+      businessName={business.name}
       plan={business.plan}
       categories={categoryViews}
       products={productViews}

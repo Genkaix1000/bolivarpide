@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { TrendingItem } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/client";
 import {
   type CartState,
   type SelectedOptions,
@@ -101,7 +102,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const closeUi = useCallback(() => setUi({ kind: "idle" }), []);
   const openDrawer = useCallback(() => setUi({ kind: "drawer" }), []);
-  const openCheckout = useCallback(() => setUi({ kind: "checkout" }), []);
+  const openCheckout = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("openCheckout", "1");
+      const returnPath =
+        window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+      window.location.assign(`/login?next=${encodeURIComponent(returnPath)}`);
+      return;
+    }
+    setUi({ kind: "checkout" });
+  }, []);
   const setQty = useCallback((key: string, qty: number) => {
     setCart((c) => setLineQty(c, key, qty));
   }, []);

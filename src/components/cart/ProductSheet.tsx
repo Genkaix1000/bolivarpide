@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useCart } from "@/components/CartProvider";
 import { FEATURED_CHAINS, type TrendingItem } from "@/lib/mockData";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/cart";
 import { ProductImageToggle } from "@/components/menu/ProductImageToggle";
 import { MobileStoreCoverHeader } from "@/components/store/MobileStoreCoverHeader";
+import { MENU_IMAGE_FRAME_CLASS } from "@/lib/images/menuImageSpec";
 import { cn } from "@/lib/utils";
 
 function money(n: number) {
@@ -40,12 +42,18 @@ type Props = {
 
 export function ProductSheet({ item, onClose }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const { confirmAdd } = useCart();
   const [customNote, setCustomNote] = useState("");
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [selected, setSelected] = useState<SelectedOptions>({});
 
   const store = useMemo(() => resolveStoreContext(item), [item]);
+
+  const onStoreMenuPage = useMemo(() => {
+    const slug = pathname?.match(/^\/c\/([^/?#]+)/)?.[1];
+    return slug != null && slug === store.slug;
+  }, [pathname, store.slug]);
 
   const autoNote = useMemo(() => {
     const parts: string[] = [];
@@ -84,21 +92,37 @@ export function ProductSheet({ item, onClose }: Props) {
       transition={{ type: "spring", damping: 28, stiffness: 320 }}
     >
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <MobileStoreCoverHeader
-          name={store.name}
-          logoUrl={store.logoUrl}
-          logoEmoji={store.logoEmoji}
-          bannerUrl={store.bannerUrl}
-          bannerBg={store.bannerBg}
-          rating={store.rating}
-          reviewsCount={store.reviewsCount}
-          isOpen={store.isOpen}
-          onBack={onClose}
-          backIcon="close"
-        />
+        {onStoreMenuPage ? (
+          <div
+            className="sticky top-0 z-20 flex items-center px-3 pb-2 bg-white dark:bg-[#1c1917]"
+            style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/5 text-gray-700 dark:bg-white/10 dark:text-gray-200"
+              aria-label="Cerrar"
+            >
+              <MaterialSymbol icon="close" size={22} />
+            </button>
+          </div>
+        ) : (
+          <MobileStoreCoverHeader
+            name={store.name}
+            logoUrl={store.logoUrl}
+            logoEmoji={store.logoEmoji}
+            bannerUrl={store.bannerUrl}
+            bannerBg={store.bannerBg}
+            rating={store.rating}
+            reviewsCount={store.reviewsCount}
+            isOpen={store.isOpen}
+            onBack={onClose}
+            backIcon="close"
+          />
+        )}
 
         {/* Hero del producto */}
-        <div className="relative mx-4 mb-4 h-44 overflow-hidden rounded-2xl bg-[#f0ebe4] dark:bg-[#231f1c]">
+        <div className={cn("relative mx-4 mb-4 overflow-hidden rounded-2xl", MENU_IMAGE_FRAME_CLASS, onStoreMenuPage && "mt-1")}>
           <ProductImageToggle
             variant="expanded"
             iconUrl={item.iconImage}
@@ -225,10 +249,10 @@ export function ProductSheet({ item, onClose }: Props) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={goToMenu}
+            onClick={onStoreMenuPage ? onClose : goToMenu}
             className="flex-1 rounded-full border border-black/10 py-3 text-[13px] font-semibold text-gray-800 cursor-pointer hover:border-[#9a0002]/30 dark:border-[#3d3732] dark:text-gray-200"
           >
-            Ver menú
+            {onStoreMenuPage ? "Cerrar" : "Ver menú"}
           </button>
           <button
             type="button"

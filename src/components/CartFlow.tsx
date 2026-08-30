@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -403,8 +403,18 @@ function FloatingCartBar() {
 /** Mount once under CartProvider — sheets + floating bar */
 export function CartFlow() {
   const pathname = usePathname();
-  const { cart, ui, closeUi, confirmSwitch, cancelSwitch } = useCart();
+  const { cart, ui, closeUi, confirmSwitch, cancelSwitch, openCheckout } = useCart();
   const chain = getEffectiveChain(cart);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openCheckout") !== "1") return;
+    params.delete("openCheckout");
+    const rest = params.toString();
+    const clean = window.location.pathname + (rest ? `?${rest}` : "");
+    window.history.replaceState(null, "", clean);
+    void openCheckout();
+  }, [openCheckout]);
 
   if (pathname?.startsWith("/negocio")) return null;
 

@@ -12,6 +12,7 @@ import {
   MENU_PHOTO_OPTS,
   optimizeImageFile,
 } from "@/lib/images/optimizeImage";
+import { MENU_IMAGE_FRAME_CLASS } from "@/lib/images/menuImageSpec";
 import { ImageSourceActions } from "@/components/menu/ImageSourceActions";
 import {
   extrasGroupFromRows,
@@ -288,7 +289,7 @@ export function ProductSlidePanel({
     setExtras((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function handlePickIcon(file: File) {
+  async function applyIconFile(file: File) {
     setIconProcessing(true);
     setError(null);
     try {
@@ -302,7 +303,7 @@ export function ProductSlidePanel({
     }
   }
 
-  async function handlePickPhoto(file: File) {
+  async function applyPhotoFile(file: File) {
     setPhotoProcessing(true);
     setError(null);
     try {
@@ -314,6 +315,14 @@ export function ProductSlidePanel({
     } finally {
       setPhotoProcessing(false);
     }
+  }
+
+  async function handlePickIcon(file: File) {
+    await applyIconFile(file);
+  }
+
+  async function handlePickPhoto(file: File) {
+    await applyPhotoFile(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -502,7 +511,8 @@ export function ProductSlidePanel({
                       </div>
                       <div
                         className={cn(
-                          "relative flex h-28 w-full items-center justify-center rounded-2xl border-2 border-dashed",
+                          MENU_IMAGE_FRAME_CLASS,
+                          "rounded-2xl border-2 border-dashed",
                           iconPreview
                             ? "border-[#9a0002]/40 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
@@ -515,7 +525,9 @@ export function ProductSlidePanel({
                             className="h-full w-full rounded-2xl object-cover"
                           />
                         ) : (
-                          <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          <div className="flex h-full w-full items-center justify-center">
+                            <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          </div>
                         )}
                         {iconProcessing && (
                           <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">
@@ -543,7 +555,8 @@ export function ProductSlidePanel({
                       </div>
                       <div
                         className={cn(
-                          "relative flex h-28 w-full items-center justify-center rounded-2xl border-2 border-dashed",
+                          MENU_IMAGE_FRAME_CLASS,
+                          "rounded-2xl border-2 border-dashed",
                           photoPreview
                             ? "border-[#9a0002]/30 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
@@ -556,7 +569,9 @@ export function ProductSlidePanel({
                             className="h-full w-full rounded-2xl object-cover"
                           />
                         ) : (
-                          <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          <div className="flex h-full w-full items-center justify-center">
+                            <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          </div>
                         )}
                         {photoProcessing && (
                           <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">

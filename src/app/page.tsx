@@ -763,7 +763,7 @@ function TrendingMenuCard({
         className
       )}
     >
-      <div className="h-[125px] w-full relative overflow-hidden bg-[#f5f1eb] dark:bg-[#231f1c]">
+      <div className="relative aspect-[3/2] w-full overflow-hidden bg-[#f5f1eb] dark:bg-[#231f1c]">
         {item.iconImage ? (
           <ProductImageToggle
             iconUrl={item.iconImage}
