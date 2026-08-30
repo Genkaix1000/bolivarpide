@@ -98,21 +98,14 @@ export default function NotFound() {
           No pudimos encontrar la ruta que estás buscando. La dirección puede haber cambiado o ya no existir en BolívarPide.
         </p>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
+        {/* Action Button */}
+        <div className="mt-8 w-full max-w-xs">
           <Link
             href="/"
             className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#9a0002] px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-[#9a0002]/25 hover:bg-[#7f0002] active:scale-[0.98] transition-all cursor-pointer"
           >
             <MaterialSymbol icon="home" size={19} />
             <span>Ir al inicio</span>
-          </Link>
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#1c1917] px-6 py-3.5 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-stone-50 dark:hover:bg-stone-800/60 active:scale-[0.98] transition-all cursor-pointer shadow-sm"
-          >
-            <MaterialSymbol icon="search" size={19} />
-            <span>Explorar locales</span>
           </Link>
         </div>
       </div>

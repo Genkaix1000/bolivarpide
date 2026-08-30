@@ -39,20 +39,13 @@ export default async function StoreHubPage({
         </p>
 
         {/* Actions */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
+        <div className="mt-8 w-full max-w-xs">
           <Link
             href="/"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#9a0002] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9a0002]/20 hover:bg-[#7f0002] active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#9a0002] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#9a0002]/20 hover:bg-[#7f0002] active:scale-[0.98] transition-all"
           >
-            <MaterialSymbol icon="explore" size={18} />
-            Explorar locales
-          </Link>
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-[#e8e0d6] dark:border-[#3d3732] bg-white dark:bg-[#1c1917] px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#25211e] active:scale-[0.98] transition-all"
-          >
-            <MaterialSymbol icon="arrow_back" size={18} />
-            Volver al inicio
+            <MaterialSymbol icon="home" size={19} />
+            <span>Volver al inicio</span>
           </Link>
         </div>
       </div>
