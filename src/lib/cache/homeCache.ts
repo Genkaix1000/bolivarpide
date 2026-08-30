@@ -1,6 +1,6 @@
 import type { FeaturedChain, TrendingItem } from "@/lib/mockData";
 
-const HOME_CACHE_KEY = "bolivarpide_home_cache_v1";
+const HOME_CACHE_KEY = "bolivarpide_home_cache_v2";
 
 export interface HomeCacheData {
   chains: FeaturedChain[];

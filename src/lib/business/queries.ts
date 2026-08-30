@@ -361,16 +361,24 @@ export async function getBusinessHours(businessId: string) {
   return data ?? [];
 }
 
-export async function getPublicStoreBySlug(slug: string) {
+export async function getPublicStoreBySlug(slugOrId: string) {
   const supabase = await createClient();
-  const { data: business, error } = await supabase
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+  
+  let query = supabase
     .from("businesses")
     .select(
       "id, slug, name, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, is_open, address, published",
     )
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
+    .eq("published", true);
+
+  if (isUuid) {
+    query = query.or(`slug.eq.${slugOrId},id.eq.${slugOrId}`);
+  } else {
+    query = query.eq("slug", slugOrId);
+  }
+
+  const { data: business, error } = await query.maybeSingle();
   if (error) throw error;
   if (!business) return null;
 

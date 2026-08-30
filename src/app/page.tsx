@@ -747,12 +747,18 @@ function HomeContent() {
 }
 
 function FeaturedCard({ chain }: { chain: FeaturedChain }) {
+  const bgClass = chain.bannerBg?.startsWith("bg-")
+    ? chain.bannerBg
+    : chain.bannerBg?.startsWith("from-")
+      ? `bg-gradient-to-r ${chain.bannerBg}`
+      : chain.bannerBg || "bg-gradient-to-r from-[#9a0002] to-[#6b0001]";
+
   return (
     <Link
       href={`/c/${chain.id}`}
       className="group rounded-[20px] bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] overflow-hidden transition-all duration-300 cursor-pointer block"
     >
-      <div className={`h-[130px] ${chain.bannerBg} relative flex items-center justify-center p-6 text-white overflow-hidden`}>
+      <div className={cn("h-[130px] relative flex items-center justify-center p-6 text-white overflow-hidden", bgClass)}>
         {chain.bannerImage && (
           <img
             src={chain.bannerImage}
