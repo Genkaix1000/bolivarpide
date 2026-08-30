@@ -14,9 +14,10 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
     .select(
       `
       id, order_number, status, customer_user_id, rejection_reason, delivery_pin,
-      fulfillment_type, delivery_address, business_id,
-      paid_at, dispatched_at,
-      businesses!inner(id, name, logo_path, prep_time_minutes, phone, address)
+      fulfillment_type, delivery_address, business_id, total_cents, notes, created_at,
+      payment_method, payment_status, paid_at, dispatched_at,
+      order_items(name, quantity, unit_price_cents, note),
+      businesses!inner(id, name, logo_path, prep_time_minutes, phone, address, rating, reviews_count)
     `,
     )
     .eq("id", orderId)
@@ -35,6 +36,8 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
     prep_time_minutes: number;
     phone: string | null;
     address: string | null;
+    rating?: number;
+    reviews_count?: number;
   };
 
   let eta: string | undefined;
@@ -61,6 +64,21 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
     status,
   });
 
+  const items = ((row.order_items as unknown[]) ?? []).map((raw) => {
+    const r = raw as {
+      name: string;
+      quantity: number;
+      unit_price_cents: number;
+      note?: string | null;
+    };
+    return {
+      name: r.name,
+      quantity: r.quantity,
+      unitPriceCents: r.unit_price_cents,
+      note: r.note,
+    };
+  });
+
   return {
     id: row.id,
     orderNumber: row.order_number ?? 0,
@@ -68,6 +86,15 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
     businessName: business.name,
     businessLogoUrl: business.logo_path ?? undefined,
     businessPhone: business.phone ?? undefined,
+    businessAddress: business.address ?? undefined,
+    businessRating: Number(business.rating) || 4.8,
+    businessReviewsCount: Number(business.reviews_count) || 0,
+    totalCents: row.total_cents,
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    notes: row.notes,
+    createdAt: row.created_at,
+    items,
     estimatedDeliveryAt: eta,
     deliveryPin:
       fulfillmentType === "delivery" && status === "delivering"

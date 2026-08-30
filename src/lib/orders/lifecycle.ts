@@ -54,6 +54,15 @@ export type OrderTrackingView = {
   businessName: string;
   businessLogoUrl?: string;
   businessPhone?: string;
+  businessAddress?: string;
+  businessRating?: number;
+  businessReviewsCount?: number;
+  totalCents?: number;
+  paymentMethod?: string | null;
+  paymentStatus?: string;
+  notes?: string | null;
+  createdAt?: string;
+  items?: OrderItemDetail[];
   estimatedDeliveryAt?: string;
   deliveryPin?: string;
   rejectionReason?: string;
