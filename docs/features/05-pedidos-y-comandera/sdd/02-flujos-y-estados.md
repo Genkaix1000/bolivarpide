@@ -118,8 +118,9 @@ Operador → modal motivo → advanceOrderStatus('rejected')
 
 ---
 
-## Flujo PIN entrega
+## Flujo PIN entrega vs Retiro en Local
 
+### A. Pedidos con Envío a Domicilio (Delivery)
 ```
 preparing → delivering
     │
@@ -133,6 +134,16 @@ delivering → delivered
     ├─ verifyPin(input, delivery_pin_hash)
     ├─ OK → delivered
     └─ FAIL → increment pin_attempts; block at 5
+```
+
+### B. Pedidos con Retiro en Local (Takeaway / Pickup)
+```
+preparing → delivered (o ready_for_pickup)
+    │
+    ├─ NO requiere PIN (no existe repartidor)
+    ├─ El ticket muestra la insignia destacada: 🏪 RETIRO EN LOCAL
+    ├─ El cliente se acerca al mostrador con su nombre / número de pedido
+    └─ El comercio presiona el botón directo "Entregar Pedido" ➔ pasa a delivered
 ```
 
 ---
