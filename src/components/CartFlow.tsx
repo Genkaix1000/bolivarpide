@@ -40,9 +40,27 @@ function Backdrop({ onClose }: { onClose: () => void }) {
 
 function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
   const { confirmAdd } = useCart();
-  const [note, setNote] = useState("");
+  const [customNote, setCustomNote] = useState("");
+  const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [selected, setSelected] = useState<SelectedOptions>({});
   const chain = FEATURED_CHAINS.find((c) => c.id === item.chainId);
+
+  const autoNote = useMemo(() => {
+    const parts: string[] = [];
+    if (removedIngredients.length > 0) {
+      parts.push(removedIngredients.map((i) => `Sin ${i.toLowerCase()}`).join(", "));
+    }
+    if (customNote.trim()) {
+      parts.push(customNote.trim());
+    }
+    return parts.join(". ");
+  }, [removedIngredients, customNote]);
+
+  const toggleIngredient = (ing: string) => {
+    setRemovedIngredients((prev) =>
+      prev.includes(ing) ? prev.filter((i) => i !== ing) : [...prev, ing]
+    );
+  };
 
   const missing = useMemo(() => {
     if (!item.options) return false;
@@ -71,7 +89,7 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white cursor-pointer"
+            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white cursor-pointer hover:bg-black/60 transition-colors"
             aria-label="Cerrar"
           >
             <MaterialSymbol icon="close" size={18} />
@@ -89,6 +107,7 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
             )}
           </div>
 
+          {/* Option Groups (Punto de cocción, tipo de pan, etc.) */}
           {item.options?.map((opt) => (
             <div key={opt.id} className="space-y-2">
               <div className="flex items-baseline justify-between">
@@ -113,10 +132,10 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
                         })
                       }
                       className={cn(
-                        "rounded-full border px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors",
+                        "rounded-full border px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-all",
                         active
-                          ? "border-[#9a0002] bg-[#9a0002]/10 text-[#9a0002]"
-                          : "border-black/10 dark:border-[#3d3732] text-gray-700 dark:text-gray-300"
+                          ? "border-[#9a0002] bg-[#9a0002]/10 text-[#9a0002] ring-1 ring-[#9a0002]"
+                          : "border-black/10 dark:border-[#3d3732] text-gray-700 dark:text-gray-300 hover:border-black/20"
                       )}
                     >
                       {c.label}
@@ -128,13 +147,58 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
             </div>
           ))}
 
+          {/* Ingredients Modifier */}
+          {item.ingredients && item.ingredients.length > 0 && (
+            <div className="space-y-2 rounded-2xl bg-[#faf6f1] p-3.5 dark:bg-[#231f1c] border border-[#e8e0d6] dark:border-[#3d3732]">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                  <MaterialSymbol icon="restaurant" size={15} className="text-orange-500" />
+                  Ingredientes incluidos
+                </span>
+                <span className="text-[10px] font-medium text-stone-400">
+                  Tocá para quitar
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {item.ingredients.map((ing) => {
+                  const isRemoved = removedIngredients.includes(ing);
+                  return (
+                    <button
+                      key={ing}
+                      type="button"
+                      onClick={() => toggleIngredient(ing)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs",
+                        isRemoved
+                          ? "bg-red-100 text-red-700 line-through border border-red-300 dark:bg-red-950/50 dark:text-red-300 dark:border-red-900/50 opacity-80"
+                          : "bg-white text-gray-800 border border-stone-200 hover:border-[#9a0002]/40 dark:bg-[#1c1917] dark:text-gray-200 dark:border-[#3d3732]"
+                      )}
+                    >
+                      {isRemoved ? "✕ Sin " : "✓ "}
+                      {ing}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {removedIngredients.length > 0 && (
+                <p className="text-[11px] font-semibold text-[#9a0002] dark:text-red-400 pt-0.5">
+                  Nota añadida: &ldquo;{removedIngredients.map((i) => `Sin ${i.toLowerCase()}`).join(", ")}&rdquo;
+                </p>
+              )}
+            </div>
+          )}
+
           <label className="block space-y-1.5">
-            <span className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">Nota</span>
+            <span className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">
+              Aclaraciones del pedido
+            </span>
             <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Ej: sin cebolla"
-              className="w-full rounded-xl border border-black/10 dark:border-[#3d3732] bg-transparent px-3 py-2.5 text-[13px] outline-none focus:border-[#9a0002]/50"
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              placeholder="Ej: bien caliente, aderezo aparte..."
+              className="w-full rounded-xl border border-black/10 dark:border-[#3d3732] bg-transparent px-3 py-2.5 text-[13px] outline-none focus:border-[#9a0002]/50 placeholder:text-stone-400"
             />
           </label>
         </div>
@@ -143,10 +207,10 @@ function ProductSheet({ item, onClose }: { item: TrendingItem; onClose: () => vo
           <button
             type="button"
             disabled={missing}
-            onClick={() => confirmAdd(item, 1, selected, note.trim() || undefined)}
-            className="w-full rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition"
+            onClick={() => confirmAdd(item, 1, selected, autoNote.trim() || undefined)}
+            className="w-full rounded-full bg-[#9a0002] py-3 text-[14px] font-semibold text-white disabled:opacity-40 cursor-pointer active:scale-[0.99] transition-all shadow-md shadow-[#9a0002]/20 hover:bg-[#800002]"
           >
-            Agregar · {money(unitPrice(item, selected))}
+            Agregar al pedido · {money(unitPrice(item, selected))}
           </button>
         </div>
       </motion.div>

@@ -195,7 +195,7 @@ function IdentityVerificationModal({
             {/* DNI Guide Image placed directly on modal background without inner box */}
             <div className="flex justify-center py-0.5">
               <img
-                src="/images/dni_scan_guide.jpg"
+                src="/images/dni_scan_new.jpg"
                 alt="Guía para escanear DNI"
                 className="w-full max-w-[280px] sm:max-w-[310px] h-auto object-contain rounded-2xl drop-shadow-sm"
               />

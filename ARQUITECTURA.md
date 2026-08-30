@@ -1006,7 +1006,25 @@ CREATE TABLE business_delivery_agents (
   UNIQUE(business_id, delivery_user_id)
 );
 ```
-### Tabla: `product_categories`
+### Tabla: `menu_categories` (implementado en código)
+
+Nombre en DB: `menu_categories` (no `product_categories`). Lista plana ordenada por `sort_order`.
+
+```sql
+CREATE TABLE menu_categories (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id  uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  name         text NOT NULL,
+  sort_order   int NOT NULL DEFAULT 0,
+  UNIQUE (business_id, name)
+);
+```
+
+Migración: `supabase/migrations/20260829_menu_categories.sql`. Bucket Storage: `business-assets` (fotos de producto).
+
+**Plan Free:** 25 productos, 5 categorías (`src/lib/business/planLimits.ts`).
+
+### Tabla: `product_categories` (nombre legacy en este doc)
 ```sql
 CREATE TABLE product_categories (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

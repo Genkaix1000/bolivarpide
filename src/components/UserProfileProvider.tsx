@@ -194,6 +194,9 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       setIsAuthenticated(false);
       setHasActiveBusiness(false);
       skipNextSave.current = true;
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     }
   }, []);
 

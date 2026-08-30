@@ -233,7 +233,7 @@ export function BusinessSidebar({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40"
+              className="md:hidden fixed inset-x-0 bottom-0 top-[64px] z-40 bg-black/40 backdrop-blur-[2px]"
               onClick={onMobileClose}
             />
             <motion.aside
@@ -241,7 +241,7 @@ export function BusinessSidebar({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="md:hidden fixed inset-y-0 left-0 w-[260px] bg-[#f5f1eb] dark:bg-[#161412] border-r border-[#e8e0d6] dark:border-[#3d3732] z-50 shadow-2xl"
+              className="md:hidden fixed top-[64px] bottom-0 left-0 w-[260px] bg-[#f5f1eb] dark:bg-[#161412] border-r border-[#e8e0d6] dark:border-[#3d3732] z-50 shadow-2xl"
             >
               {sidebarContent(true)}
             </motion.aside>

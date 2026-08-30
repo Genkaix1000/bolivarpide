@@ -391,14 +391,6 @@ export default function Navbar({
                     )}
                   >
                     <UserAvatarView avatar={profile.avatar} variant="button" />
-                    {profile.identityVerified && (
-                      <span
-                        title="Identidad verificada"
-                        className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white dark:bg-[#1c1917] flex items-center justify-center shadow-xs"
-                      >
-                        <MaterialSymbol icon="verified" size={13} fill className="text-[#9a0002] dark:text-red-400" />
-                      </span>
-                    )}
                   </button>
 
                   <AnimatePresence>
@@ -409,16 +401,9 @@ export default function Navbar({
                         className="absolute top-[52px] right-0 z-50 w-[220px] rounded-2xl border border-[#e8e0d6] bg-white p-2 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
                       >
                         <div className="mb-1 border-b border-[#f0ebe4] px-2.5 py-2 dark:border-[#2a2623]">
-                          <div className="flex items-center gap-1">
-                            <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
-                              {profile.name}
-                            </p>
-                            {profile.identityVerified && (
-                              <span title="Identidad verificada" className="inline-flex text-[#9a0002] dark:text-red-400 shrink-0">
-                                <MaterialSymbol icon="verified" size={14} fill />
-                              </span>
-                            )}
-                          </div>
+                          <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+                            {profile.name}
+                          </p>
                           <p className="truncate text-[11px] text-gray-400">{profile.email}</p>
                         </div>
                         <button

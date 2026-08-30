@@ -25,11 +25,25 @@ export default async function StoreHubPage({
     );
   }
 
-  const { business, products } = store;
+  const { business, categories, products } = store;
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const chain = publicStoreToFeaturedChain(business);
-  const trending = products.map((p) => productToTrendingItem(business, p));
+  const trending = products.map((p) =>
+    productToTrendingItem(
+      business,
+      p,
+      p.category_id ? categoryNameById.get(p.category_id) : p.category,
+    ),
+  );
   const backHref =
     from === "negocio" ? `/negocio/${business.id}/dashboard` : "/";
 
-  return <StoreHubView chain={chain} products={trending} backHref={backHref} />;
+  return (
+    <StoreHubView
+      chain={chain}
+      products={trending}
+      categories={categories}
+      backHref={backHref}
+    />
+  );
 }

@@ -329,8 +329,6 @@ export function SearchAutocompleteOverlay({
                                 <MaterialSymbol icon="star" size={12} fill className="mr-0.5" />
                                 {chain.rating}
                               </span>
-                              <span>·</span>
-                              <span>{chain.timeEstimate}</span>
                             </div>
                           </div>
                         </div>
@@ -413,14 +411,14 @@ export function SearchAutocompleteOverlay({
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
                               {store.isNew ? (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-full">
-                                  <MaterialSymbol icon="sparkles" size={11} fill />
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-1.5 py-0.5 rounded-full">
+                                  <MaterialSymbol icon="new_releases" size={12} />
                                   <span>Nueva incorporación</span>
                                 </span>
                               ) : (
                                 <span className="flex items-center text-amber-500 font-semibold">
                                   <MaterialSymbol icon="star" size={11} fill className="mr-0.5" />
-                                  {store.rating > 0 ? store.rating.toFixed(1) : "4.8"}
+                                  {store.rating > 0 ? store.rating.toFixed(1) : "—"}
                                   {store.reviewsCount > 0 && (
                                     <span className="text-gray-400 font-normal ml-0.5">
                                       ({store.reviewsCount})
@@ -428,8 +426,6 @@ export function SearchAutocompleteOverlay({
                                   )}
                                 </span>
                               )}
-                              <span>·</span>
-                              <span>{store.timeEstimate}</span>
                               {store.tagline && (
                                 <>
                                   <span>·</span>

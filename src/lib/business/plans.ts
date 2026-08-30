@@ -7,8 +7,8 @@ export const BUSINESS_PLANS = [
     badge: "Recomendado",
     highlights: [
       "Cero costo fijo",
+      "Hasta 25 productos y 5 categorías",
       "Menú digital QR",
-      "Notificaciones de pedidos en vivo",
     ],
     available: true,
   },

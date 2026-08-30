@@ -64,6 +64,9 @@ export interface TrendingItem {
   emoji: string;
   image?: string;
   description?: string;
+  categoryId?: string;
+  categoryName?: string;
+  ingredients?: string[];
   /** Si hay alguna required:true, el + no hace quick-add */
   options?: ProductOption[];
 }

@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BolivarPide (delivery)
 
-## Getting Started
+App de delivery y panel de negocios para San Carlos de Bolívar.
 
-First, run the development server:
+## Desarrollo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Migraciones Supabase: `supabase/migrations/`. Tras pull, aplicar en tu proyecto (CLI o dashboard).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Checks locales:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+node scripts/wipe-carta.mjs <businessId>
+npm run build
+```
 
-## Learn More
+## Carta / menú del negocio
 
-To learn more about Next.js, take a look at the following resources:
+- **Ruta panel:** `/negocio/[businessId]/carta`
+- **Categorías:** tabla `menu_categories`, orden con drag (lista plana, sin subcategorías).
+- **Productos:** fotos en bucket `business-assets` (`icon_path` + `image_path` foto real).
+- **Plan Free:** 25 productos, 5 categorías (`src/lib/business/planLimits.ts`).
+- **Carta pública:** `/c/[slug]` — productos `available=true`, navegación sticky por categoría.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Ver `ARQUITECTURA.md` y migración `20260829_menu_categories.sql`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Documentación
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `ARQUITECTURA.md` — diseño del producto y esquema de datos.

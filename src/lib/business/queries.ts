@@ -373,16 +373,13 @@ export async function getPublicStoreBySlug(slug: string) {
   if (error) throw error;
   if (!business) return null;
 
-  const { data: products, error: prodErr } = await supabase
-    .from("products")
-    .select("id, name, description, price_cents, image_path, category")
-    .eq("business_id", business.id)
-    .eq("available", true)
-    .order("sort_order")
-    .order("name");
-  if (prodErr) throw prodErr;
+  const { listPublicMenuCategories, listPublicProductsSafe } = await import(
+    "@/lib/business/menuQueries"
+  );
+  const categories = await listPublicMenuCategories(business.id);
+  const products = await listPublicProductsSafe(business.id);
 
-  return { business, products: products ?? [] };
+  return { business, categories, products };
 }
 
 export async function listMyMemberships() {
@@ -400,15 +397,8 @@ export async function listMyMemberships() {
 }
 
 export async function listProducts(businessId: string) {
-  const { supabase } = await requireBusinessAccess(businessId);
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("business_id", businessId)
-    .order("sort_order")
-    .order("name");
-  if (error) throw error;
-  return data ?? [];
+  const { listProductsSafe } = await import("@/lib/business/menuQueries");
+  return listProductsSafe(businessId);
 }
 
 export async function listOrders(businessId: string) {

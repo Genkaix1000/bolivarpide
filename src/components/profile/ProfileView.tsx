@@ -194,12 +194,12 @@ export function ProfileView({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2.5">
         <div className="p-3.5 rounded-[22px] bg-white dark:bg-[#231f1c] border border-[#e8e0d6] dark:border-[#3d3732] shadow-xs flex flex-col items-center text-center">
           <div className="w-9 h-9 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-1.5">
             <MaterialSymbol icon="shopping_bag" size={18} />
           </div>
-          <span className="text-[16px] font-extrabold text-gray-900 dark:text-gray-100 leading-none">
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-gray-100 leading-none">
             {ordersCount !== null ? ordersCount : "-"}
           </span>
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider">
@@ -217,13 +217,25 @@ export function ProfileView({
           <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
             <MaterialSymbol icon="military_tech" size={18} fill />
           </div>
-          <span className="text-[16px] font-extrabold text-gray-900 dark:text-gray-100 leading-none">
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-gray-100 leading-none">
             {totalBadges}
           </span>
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider">
             Insignias
           </span>
         </button>
+
+        <div className="p-3.5 rounded-[22px] bg-white dark:bg-[#231f1c] border border-[#e8e0d6] dark:border-[#3d3732] shadow-xs flex flex-col items-center text-center">
+          <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1.5">
+            <MaterialSymbol icon={profile.identityVerified ? "verified" : "badge"} size={18} fill={profile.identityVerified} />
+          </div>
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-gray-100 leading-none">
+            {profile.identityVerified ? "✓" : "—"}
+          </span>
+          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider">
+            {profile.identityVerified ? "Verificado" : "DNI"}
+          </span>
+        </div>
       </div>
 
       {hasActiveBusiness && (
