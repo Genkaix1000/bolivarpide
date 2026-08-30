@@ -12,14 +12,51 @@ type MpOrderResponse = {
   transactions?: { payments?: { id?: string; reference_id?: string | number; status?: string }[] };
 };
 
+type MpPaymentResponse = {
+  id: number | string;
+  status?: string;
+  external_reference?: string;
+};
+
 function mapMpStatus(raw?: string): string {
   if (!raw) return "created";
   const s = raw.toLowerCase();
-  if (s === "processed") return "processed";
+  if (s === "processed" || s === "approved") return "processed";
   if (s === "expired") return "expired";
-  if (s === "cancelled" || s === "canceled") return "canceled";
+  if (s === "cancelled" || s === "canceled" || s === "rejected") return "canceled";
   if (s === "failed") return "failed";
   return "created";
+}
+
+function orderIdFromExternalRef(ref?: string | null): string | null {
+  if (!ref?.startsWith("BP-")) return null;
+  return ref.slice(3);
+}
+
+async function markOrderPaid(
+  orderId: string,
+  paymentId: string | number | null,
+  sessionId?: string,
+) {
+  const svc = createServiceClient();
+  if (sessionId) {
+    await svc
+      .from("payment_sessions")
+      .update({
+        status: "processed",
+        payment_id: paymentId != null ? String(paymentId) : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId);
+  }
+  await svc
+    .from("orders")
+    .update({
+      payment_status: "paid",
+      mp_payment_id: paymentId != null ? String(paymentId) : null,
+      paid_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
 }
 
 async function reconcileOrder(mpOrderId: string) {
@@ -50,16 +87,74 @@ async function reconcileOrder(mpOrderId: string) {
     .eq("id", session.id);
 
   if (session.order_id && mapped === "processed") {
-    await svc
-      .from("orders")
-      .update({
-        payment_status: "paid",
-        mp_payment_id: paymentId != null ? String(paymentId) : null,
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", session.order_id);
+    await markOrderPaid(session.order_id, paymentId ?? null, session.id);
   } else if (session.order_id && (mapped === "expired" || mapped === "canceled")) {
     await svc.from("orders").update({ payment_status: "expired" }).eq("id", session.order_id);
+  }
+}
+
+async function reconcilePayment(paymentId: string, mpUserId: string | null) {
+  const svc = createServiceClient();
+  let businessId: string | null = null;
+
+  if (mpUserId) {
+    const { data: conn } = await svc
+      .from("mp_merchant_connections")
+      .select("business_id")
+      .eq("mp_user_id", mpUserId)
+      .eq("status", "active")
+      .maybeSingle();
+    businessId = conn?.business_id ?? null;
+  }
+
+  if (!businessId) {
+    const { data: fallbackSession } = await svc
+      .from("payment_sessions")
+      .select("business_id")
+      .eq("channel", "checkout_pro")
+      .eq("status", "created")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    businessId = fallbackSession?.business_id ?? null;
+  }
+
+  if (!businessId) return;
+
+  const token = await getAccessTokenForBusiness(businessId);
+  const payment = await mpFetch<MpPaymentResponse>(
+    token,
+    `/v1/payments/${encodeURIComponent(paymentId)}`,
+    { method: "GET" },
+  );
+
+  const orderId = orderIdFromExternalRef(payment.external_reference);
+  if (!orderId) return;
+
+  const { data: session } = await svc
+    .from("payment_sessions")
+    .select("id, status, order_id")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const mapped = mapMpStatus(payment.status);
+  if (session && mapped !== session.status) {
+    await svc
+      .from("payment_sessions")
+      .update({
+        status: mapped,
+        payment_id: String(payment.id),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", session.id);
+  }
+
+  if (mapped === "processed") {
+    await markOrderPaid(orderId, payment.id, session?.id);
+  } else if (mapped === "expired" || mapped === "canceled") {
+    await svc.from("orders").update({ payment_status: "expired" }).eq("id", orderId);
   }
 }
 
@@ -76,6 +171,7 @@ export async function POST(req: NextRequest) {
     req.nextUrl.searchParams.get("id") ??
     undefined;
   const type = req.nextUrl.searchParams.get("type") ?? undefined;
+  const mpUserId = req.nextUrl.searchParams.get("user_id") ?? null;
 
   let body: { type?: string; data?: { id?: string } } = {};
   try {
@@ -84,16 +180,16 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  const orderId = dataId ?? body.data?.id;
+  const resourceId = dataId ?? body.data?.id;
   const eventType = type ?? body.type;
 
   if (
-    !validateWebhookSignature(xSignature, xRequestId, orderId, webhookSecret)
+    !validateWebhookSignature(xSignature, xRequestId, resourceId, webhookSecret)
   ) {
     return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
   }
 
-  if (eventType !== "order" || !orderId) {
+  if (!resourceId || (eventType !== "order" && eventType !== "payment")) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
@@ -101,8 +197,8 @@ export async function POST(req: NextRequest) {
   const reqId = xRequestId ?? `no-req-${randomUUID()}`;
   const { error: insErr } = await svc.from("mp_webhook_events").insert({
     x_request_id: reqId,
-    data_id: orderId,
-    event_type: eventType,
+    data_id: resourceId,
+    event_type: eventType ?? "unknown",
     payload: body,
   });
   if (insErr?.code === "23505") {
@@ -113,7 +209,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await reconcileOrder(orderId);
+    if (eventType === "order") {
+      await reconcileOrder(resourceId);
+    } else {
+      await reconcilePayment(resourceId, mpUserId);
+    }
     await svc.from("mp_webhook_events").update({ processed: true }).eq("x_request_id", reqId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -1,15 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
 import { useCart } from "@/components/CartProvider";
-import { FEATURED_CHAINS, type FeaturedChain } from "@/lib/mockData";
+import { type FeaturedChain } from "@/lib/mockData";
 import { cartSubtotal, type CartLine } from "@/lib/cart";
 import { qrDisplaySrc } from "@/lib/qr-display";
-import { openWalletPay } from "@/lib/payments/walletDeepLinks";
+import {
+  checkoutAmountCents,
+  fastPaySurchargeCents,
+  qrDiscountCents,
+  type PayChannel,
+} from "@/lib/payments/pricing";
+import type { PendingCustomerOrder } from "@/lib/orders/pending";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { listUserAddressesAction } from "@/lib/addresses/actions";
+import { formatAddressLabel } from "@/lib/addresses/display";
+import type { UserAddress } from "@/lib/addresses/types";
+
+const OPEN_ADDRESS_EVENT = "bolivarpide:open-address";
 
 function money(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
@@ -25,23 +38,30 @@ function linesToPayload(lines: CartLine[]) {
   }));
 }
 
-type PayMethod = "mercadopago" | "wallet_qr" | "cash";
-type Phase = "pay" | "wallet_pick" | "mp_wait" | "qr_display" | "cash_ok" | "paid";
+type PayMethod = PayChannel;
+type Phase = "pay" | "qr_display" | "redirect_resume" | "cash_ok" | "paid";
 
-const PAY_OPTIONS: { id: PayMethod; label: string; icon: string }[] = [
-  { id: "mercadopago", label: "Mercado Pago", icon: "account_balance_wallet" },
-  { id: "wallet_qr", label: "QR / otra billetera", icon: "qr_code_2" },
-  { id: "cash", label: "Efectivo al recibir", icon: "payments" },
-];
+type CheckoutOptions = {
+  mpReady: boolean;
+  acceptsCash: boolean;
+  offerQrPay: boolean;
+  absorbFastPayFee: boolean;
+};
 
 export function CheckoutSheet({
   chain,
   onClose,
+  resumePending,
+  pendingOrder,
+  onPendingChange,
 }: {
   chain: FeaturedChain;
   onClose: () => void;
+  resumePending?: boolean;
+  pendingOrder: PendingCustomerOrder | null;
+  onPendingChange: (order: PendingCustomerOrder | null) => void;
 }) {
-  const { cart, clear } = useCart();
+  const { cart, clear, refreshPendingOrder, refreshActiveOrder, scheduleOrderCancel } = useCart();
   const sub = cartSubtotal(cart.lines);
   const subtotalCents = Math.round(sub * 100);
 
@@ -49,7 +69,7 @@ export function CheckoutSheet({
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [method, setMethod] = useState<PayMethod>("mercadopago");
+  const [method, setMethod] = useState<PayMethod>("fast_pay");
   const [cashAck, setCashAck] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,10 +78,136 @@ export function CheckoutSheet({
   const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [chargeCents, setChargeCents] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [initPoint, setInitPoint] = useState<string | null>(null);
+  const [options, setOptions] = useState<CheckoutOptions | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const cancelFooterRef = useRef<HTMLDivElement>(null);
+  const [pickupLocal, setPickupLocal] = useState(false);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressesLoading, setAddressesLoading] = useState(true);
 
-  const totalCents = subtotalCents - discountCents;
-  const total = totalCents / 100;
+  const loadAddresses = useCallback(async () => {
+    setAddressesLoading(true);
+    try {
+      const list = await listUserAddressesAction();
+      setAddresses(list);
+      setSelectedAddressId((prev) => {
+        if (prev && list.some((a) => a.id === prev)) return prev;
+        return list.find((a) => a.isDefault)?.id ?? list[0]?.id ?? null;
+      });
+    } catch {
+      setAddresses([]);
+      setSelectedAddressId(null);
+    } finally {
+      setAddressesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAddresses();
+  }, [loadAddresses]);
+
+  useEffect(() => {
+    const onFocus = () => void loadAddresses();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadAddresses]);
+
+  const selectedAddress = addresses.find((a) => a.id === selectedAddressId) ?? null;
+  const needsAddress = !pickupLocal && !selectedAddressId;
+
+  const applyPending = useCallback((po: PendingCustomerOrder) => {
+    setOrderId(po.orderId);
+    setChargeCents(po.amountCents);
+    if (po.paymentMethod === "cash") {
+      setPhase("cash_ok");
+      return;
+    }
+    if (po.channel === "checkout_pro" && po.qrData) {
+      setInitPoint(po.qrData);
+      setExpiresAt(po.expiresAt);
+      setPhase("redirect_resume");
+      return;
+    }
+    if (po.qrData) {
+      setQrData(po.qrData);
+      setQrSrc(qrDisplaySrc(po.qrData));
+      setExpiresAt(po.expiresAt);
+      setPhase("qr_display");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!resumePending || !pendingOrder || pendingOrder.businessSlug !== chain.id) return;
+    applyPending(pendingOrder);
+  }, [resumePending, pendingOrder, chain.id, applyPending]);
+
+  const baseCents = subtotalCents - discountCents;
+
+  const payAmountCents = useMemo(() => {
+    if (!options) return baseCents;
+    return checkoutAmountCents(baseCents, method, options.absorbFastPayFee);
+  }, [baseCents, method, options]);
+
+  const payTotal = payAmountCents / 100;
+  const fastSurcharge = fastPaySurchargeCents(baseCents) / 100;
+  const qrSaving = qrDiscountCents(baseCents) / 100;
+
+  useEffect(() => {
+    fetch(`/api/payments/checkout-options?businessSlug=${encodeURIComponent(chain.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: CheckoutOptions | null) => {
+        if (!j) return;
+        setOptions(j);
+        if (j.mpReady) setMethod("fast_pay");
+        else if (j.offerQrPay) setMethod("qr");
+        else if (j.acceptsCash) setMethod("cash");
+      })
+      .catch(() => {});
+  }, [chain.id]);
+
+  const payOptions = useMemo(() => {
+    if (!options) return [];
+    const out: {
+      id: PayMethod;
+      label: string;
+      icon: string;
+      badge?: { text: string; tone: "free" | "extra" | "save" };
+    }[] = [];
+    if (options.mpReady) {
+      out.push({
+        id: "fast_pay",
+        label: "Pagar ahora",
+        icon: "bolt",
+        badge: options.absorbFastPayFee
+          ? { text: "¡Gratis!", tone: "free" }
+          : { text: `+ ${money(fastSurcharge)}`, tone: "extra" },
+      });
+      if (options.offerQrPay) {
+        out.push({
+          id: "qr",
+          label: "Pagar con QR",
+          icon: "qr_code_2",
+          badge: { text: `Ahorrá ${money(qrSaving)}`, tone: "save" },
+        });
+      }
+    }
+    if (options.acceptsCash) {
+      out.push({ id: "cash", label: "Efectivo al recibir", icon: "payments" });
+    }
+    return out;
+  }, [options, fastSurcharge, qrSaving]);
+
+  useEffect(() => {
+    if (!payOptions.length) return;
+    if (!payOptions.some((o) => o.id === method)) setMethod(payOptions[0].id);
+  }, [payOptions, method]);
+
+  const canSubmit =
+    payOptions.length > 0 && !needsAddress && !(method === "cash" && !cashAck);
 
   const applyCoupon = async () => {
     setCouponError(null);
@@ -85,19 +231,6 @@ export function CheckoutSheet({
     setCouponOpen(false);
   };
 
-  const afterQrOrder = (j: { qrData: string; expiresAt: string; orderId: string }, payMethod: PayMethod) => {
-    setOrderId(j.orderId);
-    setQrData(j.qrData);
-    setQrSrc(qrDisplaySrc(j.qrData));
-    setExpiresAt(j.expiresAt);
-    if (payMethod === "mercadopago") {
-      setPhase("mp_wait");
-      openWalletPay("mercadopago", j.qrData);
-    } else {
-      setPhase("wallet_pick");
-    }
-  };
-
   const submit = async () => {
     setError(null);
     const supabase = createClient();
@@ -116,18 +249,27 @@ export function CheckoutSheet({
       setError("Marca la casilla para confirmar efectivo");
       return;
     }
+    if (!pickupLocal && !selectedAddressId) {
+      setError("Agregá una dirección de entrega para continuar");
+      return;
+    }
 
     setLoading(true);
     try {
+      const paymentMethod =
+        method === "cash" ? "cash" : method === "fast_pay" ? "mercadopago_fast" : "mercadopago_qr";
+
       const res = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessSlug: chain.id,
           lines: linesToPayload(cart.lines),
-          paymentMethod: method === "cash" ? "cash" : "mercadopago_qr",
+          paymentMethod,
           couponCode: discountCents > 0 ? couponCode.trim() : undefined,
           idempotencyKey: crypto.randomUUID(),
+          fulfillmentType: pickupLocal ? "pickup" : "delivery",
+          deliveryAddressId: pickupLocal ? undefined : selectedAddressId ?? undefined,
         }),
       });
       const j = await res.json();
@@ -137,10 +279,44 @@ export function CheckoutSheet({
         setOrderId(j.orderId);
         setPhase("cash_ok");
         clear();
+        onPendingChange(null);
+        void refreshActiveOrder();
         return;
       }
 
-      afterQrOrder(j, method);
+      if (j.kind === "redirect") {
+        clear();
+        onPendingChange({
+          orderId: j.orderId,
+          businessSlug: chain.id,
+          businessName: chain.name,
+          amountCents: j.amountCents,
+          paymentMethod: "mercadopago_fast",
+          channel: "checkout_pro",
+          qrData: j.initPoint,
+          expiresAt: j.expiresAt,
+        });
+        window.location.assign(j.initPoint);
+        return;
+      }
+
+      setOrderId(j.orderId);
+      setQrData(j.qrData);
+      setQrSrc(qrDisplaySrc(j.qrData));
+      setExpiresAt(j.expiresAt);
+      setChargeCents(j.amountCents);
+      setPhase("qr_display");
+      clear();
+      onPendingChange({
+        orderId: j.orderId,
+        businessSlug: chain.id,
+        businessName: chain.name,
+        amountCents: j.amountCents,
+        paymentMethod: "mercadopago_qr",
+        channel: "qr_dynamic",
+        qrData: j.qrData,
+        expiresAt: j.expiresAt,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -156,8 +332,11 @@ export function CheckoutSheet({
     if (j.order?.payment_status === "paid") {
       setPhase("paid");
       clear();
+      onPendingChange(null);
+      void refreshPendingOrder();
+      void refreshActiveOrder();
     }
-  }, [orderId, clear]);
+  }, [orderId, clear, onPendingChange, refreshPendingOrder, refreshActiveOrder]);
 
   useEffect(() => {
     if (!expiresAt || phase === "pay" || phase === "cash_ok" || phase === "paid") return;
@@ -171,7 +350,7 @@ export function CheckoutSheet({
   }, [phase, expiresAt]);
 
   useEffect(() => {
-    if (phase === "mp_wait" || phase === "qr_display" || phase === "wallet_pick") {
+    if (phase === "qr_display" || phase === "redirect_resume") {
       const id = setInterval(() => void pollPaid(), 4000);
       return () => clearInterval(id);
     }
@@ -184,24 +363,29 @@ export function CheckoutSheet({
   }, [secondsLeft]);
 
   const title =
-    phase === "mp_wait"
-      ? "Mercado Pago"
-      : phase === "wallet_pick"
-        ? "Elegí billetera"
-        : phase === "qr_display"
-          ? "Código QR"
-          : phase === "paid"
-            ? "¡Listo!"
-            : phase === "cash_ok"
-              ? "Pedido listo"
-              : "Ir a pagar";
+    phase === "qr_display"
+      ? "Código QR"
+      : phase === "redirect_resume"
+        ? "Pago pendiente"
+      : phase === "paid"
+        ? "¡Listo!"
+        : phase === "cash_ok"
+          ? "Pedido listo"
+          : "Ir a pagar";
 
-  const submitLabel =
-    method === "cash"
-      ? "Confirmar pedido"
-      : method === "mercadopago"
-        ? "Pagar con Mercado Pago"
-        : "Continuar";
+  const adjustmentLabel =
+    method === "fast_pay" && options && !options.absorbFastPayFee
+      ? "Recargo pago rápido"
+      : method === "qr"
+        ? "Descuento QR"
+        : null;
+
+  const adjustmentAmount =
+    method === "fast_pay" && options && !options.absorbFastPayFee
+      ? fastSurcharge
+      : method === "qr"
+        ? -qrSaving
+        : 0;
 
   return (
     <>
@@ -224,12 +408,7 @@ export function CheckoutSheet({
       >
         <div className="flex items-center justify-between border-b border-[#e8e0d6] px-5 pt-5 pb-3 dark:border-[#3d3732]">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer text-gray-400"
-            aria-label="Cerrar"
-          >
+          <button type="button" onClick={onClose} className="cursor-pointer text-gray-400" aria-label="Cerrar">
             <MaterialSymbol icon="close" size={22} />
           </button>
         </div>
@@ -248,9 +427,23 @@ export function CheckoutSheet({
                     <span>−{money(discountCents / 100)}</span>
                   </div>
                 )}
+                {adjustmentLabel && adjustmentAmount !== 0 && (
+                  <div
+                    className={cn(
+                      "flex justify-between text-[13px]",
+                      adjustmentAmount > 0 ? "text-amber-700" : "text-emerald-600",
+                    )}
+                  >
+                    <span>{adjustmentLabel}</span>
+                    <span>
+                      {adjustmentAmount > 0 ? "+" : "−"}
+                      {money(Math.abs(adjustmentAmount))}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[15px] font-bold pt-1 border-t border-[#f0ebe4] dark:border-[#2a2623]">
-                  <span>Total</span>
-                  <span className="text-[#9a0002]">{money(total)}</span>
+                  <span>Total a pagar</span>
+                  <span className="text-[#9a0002]">{money(payTotal)}</span>
                 </div>
               </div>
 
@@ -284,7 +477,7 @@ export function CheckoutSheet({
 
               <div className="space-y-1.5">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-stone-400">Pago</p>
-                {PAY_OPTIONS.map((opt) => {
+                {payOptions.map((opt) => {
                   const active = method === opt.id;
                   return (
                     <label
@@ -311,16 +504,26 @@ export function CheckoutSheet({
                         size={20}
                         className={cn(active ? "text-[#9a0002]" : "text-stone-400")}
                       />
-                      <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                      <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 flex-1">
                         {opt.label}
                       </span>
+                      {opt.badge && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+                            opt.badge.tone === "free" && "bg-emerald-100 text-emerald-700",
+                            opt.badge.tone === "extra" && "bg-amber-100 text-amber-800",
+                            opt.badge.tone === "save" && "bg-emerald-100 text-emerald-700",
+                          )}
+                        >
+                          {opt.badge.text}
+                        </span>
+                      )}
                     </label>
                   );
                 })}
                 {method === "cash" && (
-                  <label
-                    className="flex items-start gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3 py-2.5 cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]"
-                  >
+                  <label className="flex items-start gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3 py-2.5 cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]">
                     <input
                       type="checkbox"
                       checked={cashAck}
@@ -328,96 +531,126 @@ export function CheckoutSheet({
                       className="mt-0.5 shrink-0"
                     />
                     <span className="text-[11px] leading-snug text-stone-600 dark:text-stone-400">
-                      Acepto que el comercio puede rechazar pedidos en efectivo por motivos de
-                      seguridad o disponibilidad.
+                      Acepto que el comercio puede rechazar pedidos en efectivo por motivos de seguridad o
+                      disponibilidad.
                     </span>
                   </label>
+                )}
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-[#e8e0d6] bg-[#faf8f5] px-3 py-2.5 dark:border-[#3d3732] dark:bg-[#231f1c]/60">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pickupLocal}
+                    onChange={(e) => {
+                      setPickupLocal(e.target.checked);
+                      setError(null);
+                    }}
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                      Retiro en local
+                    </span>
+                    <p className="text-[11px] text-stone-500">Pasás a buscar el pedido al comercio</p>
+                  </div>
+                  <MaterialSymbol icon="storefront" size={20} className="shrink-0 text-stone-400" />
+                </label>
+
+                {!pickupLocal && (
+                  <div className="border-t border-dashed border-[#e8e0d6] pt-2 dark:border-[#3d3732]">
+                    {addressesLoading ? (
+                      <p className="text-[11px] text-stone-400">Cargando dirección…</p>
+                    ) : selectedAddress ? (
+                      <div className="flex items-start gap-2">
+                        <MaterialSymbol icon="location_on" size={18} className="mt-0.5 shrink-0 text-[#9a0002]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                            Enviar a
+                          </p>
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+                            {formatAddressLabel(selectedAddress)}
+                            {selectedAddress.city ? `, ${selectedAddress.city}` : ""}
+                          </p>
+                          {addresses.length > 1 ? (
+                            <select
+                              value={selectedAddressId ?? ""}
+                              onChange={(e) => setSelectedAddressId(e.target.value || null)}
+                              className="mt-1 w-full rounded-lg border border-[#e8e0d6] bg-white px-2 py-1 text-[11px] dark:border-[#3d3732] dark:bg-[#231f1c]"
+                            >
+                              {addresses.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {formatAddressLabel(a)}
+                                  {a.city ? `, ${a.city}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2">
+                        <MaterialSymbol icon="location_off" size={18} className="mt-0.5 shrink-0 text-amber-600" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                            Sin dirección de entrega
+                          </p>
+                          <p className="text-[11px] text-stone-500">
+                            Agregá una dirección para que te enviemos el pedido.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => window.dispatchEvent(new CustomEvent(OPEN_ADDRESS_EVENT))}
+                            className="mt-1 text-[11px] font-bold text-[#9a0002] cursor-pointer"
+                          >
+                            Agregar dirección
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </>
           )}
 
-          {phase === "mp_wait" && qrData && (
-            <div className="space-y-4 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#00bcff]/10">
-                <MaterialSymbol icon="account_balance_wallet" size={32} className="text-[#009ee3]" />
-              </div>
-              <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100">
-                Abrí Mercado Pago para completar el pago
+          {phase === "redirect_resume" && initPoint && (
+            <div className="flex flex-col items-center gap-4 text-center py-4">
+              <MaterialSymbol icon="account_balance_wallet" size={48} className="text-[#9a0002]" />
+              <p className="text-[14px] font-bold text-gray-900 dark:text-gray-100">
+                Pagá {money((chargeCents || payAmountCents) / 100)}
               </p>
-              <p className="text-[12px] text-gray-500">
-                Total {money(total)} · {mmss}
+              <p className="text-[12px] text-gray-500 max-w-xs leading-relaxed">
+                Tu pedido está guardado. Continuá en Mercado Pago para completar el pago.
               </p>
+              {expiresAt && (
+                <p className={cn("text-lg font-bold tabular", secondsLeft < 60 && "text-amber-600")}>{mmss}</p>
+              )}
               <button
                 type="button"
-                onClick={() => openWalletPay("mercadopago", qrData)}
-                className="w-full rounded-full bg-[#009ee3] py-3 text-[13px] font-bold text-white cursor-pointer"
+                onClick={() => window.location.assign(initPoint)}
+                className="w-full rounded-full bg-[#9a0002] py-3.5 text-sm font-bold text-white cursor-pointer"
               >
-                Abrir Mercado Pago
+                Continuar en Mercado Pago
               </button>
-              <button
-                type="button"
-                onClick={() => setPhase("wallet_pick")}
-                className="text-[12px] font-semibold text-[#9a0002] cursor-pointer"
-              >
-                Usar otra billetera
-              </button>
-            </div>
-          )}
-
-          {phase === "wallet_pick" && qrData && (
-            <div className="space-y-3">
-              <p className="text-[13px] text-gray-600 dark:text-gray-300 text-center">
-                Pagá {money(total)} desde tu billetera
-              </p>
-              <button
-                type="button"
-                onClick={() => openWalletPay("modo", qrData)}
-                className="flex w-full items-center gap-3 rounded-xl border border-[#e8e0d6] bg-white px-4 py-3 cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#008859]/10 text-[#008859] font-bold text-sm">
-                  M
-                </span>
-                <span className="text-[13px] font-semibold">MODO</span>
-                <MaterialSymbol icon="open_in_new" size={18} className="ml-auto text-stone-400" />
-              </button>
-              <button
-                type="button"
-                onClick={() => openWalletPay("mercadopago", qrData)}
-                className="flex w-full items-center gap-3 rounded-xl border border-[#e8e0d6] bg-white px-4 py-3 cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#009ee3]/10">
-                  <MaterialSymbol icon="account_balance_wallet" size={22} className="text-[#009ee3]" />
-                </span>
-                <span className="text-[13px] font-semibold">Mercado Pago</span>
-                <MaterialSymbol icon="open_in_new" size={18} className="ml-auto text-stone-400" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhase("qr_display")}
-                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-[#e8e0d6] px-4 py-3 cursor-pointer dark:border-[#3d3732]"
-              >
-                <MaterialSymbol icon="qr_code_2" size={22} className="text-stone-500" />
-                <span className="text-[13px] font-semibold">Ver código QR</span>
-              </button>
-              <p className={cn("text-center text-2xl font-bold tabular", secondsLeft < 60 && "text-amber-600")}>
-                {mmss}
-              </p>
             </div>
           )}
 
           {phase === "qr_display" && qrSrc && (
             <div className="flex flex-col items-center gap-3 text-center">
-              <img src={qrSrc} alt="QR de pago" className="w-[260px] h-[260px] rounded-xl border border-[#e8e0d6]" />
+              <img
+                src={qrSrc}
+                alt="QR de pago"
+                className="w-[260px] h-[260px] rounded-xl border border-[#e8e0d6]"
+              />
               <p className={cn("text-2xl font-bold tabular", secondsLeft < 60 && "text-amber-600")}>{mmss}</p>
-              <p className="text-[12px] text-gray-500">Total {money(total)}</p>
-              <button
-                type="button"
-                onClick={() => setPhase("wallet_pick")}
-                className="text-[12px] font-semibold text-[#9a0002] cursor-pointer"
-              >
-                Abrir billetera
-              </button>
+              <p className="text-[14px] font-bold text-gray-900 dark:text-gray-100">
+                Pagá {money((chargeCents || payAmountCents) / 100)}
+              </p>
+              <p className="text-[12px] text-gray-500 max-w-xs leading-relaxed">
+                Abrí Mercado Pago u otra billetera y escaneá este código.
+              </p>
             </div>
           )}
 
@@ -426,6 +659,14 @@ export function CheckoutSheet({
               <MaterialSymbol icon="check_circle" size={48} className="text-emerald-500 mx-auto" />
               <p className="font-bold">Pedido registrado</p>
               <p className="text-sm text-gray-500">Pagás en efectivo al recibir.</p>
+              {orderId ? (
+                <Link
+                  href={`/pedido/${orderId}`}
+                  className="inline-block mt-3 rounded-full bg-[#9a0002] px-5 py-2 text-sm font-bold text-white"
+                >
+                  Seguir pedido
+                </Link>
+              ) : null}
             </div>
           )}
 
@@ -434,6 +675,14 @@ export function CheckoutSheet({
               <MaterialSymbol icon="celebration" size={48} className="text-[#9a0002] mx-auto" />
               <p className="font-bold">Pago confirmado</p>
               <p className="text-sm text-gray-500">Tu pedido fue recibido.</p>
+              {orderId ? (
+                <Link
+                  href={`/pedido/${orderId}`}
+                  className="inline-block mt-3 rounded-full bg-[#9a0002] px-5 py-2 text-sm font-bold text-white"
+                >
+                  Seguir pedido
+                </Link>
+              ) : null}
             </div>
           )}
 
@@ -444,14 +693,61 @@ export function CheckoutSheet({
           <div className="border-t border-[#e8e0d6] p-5 dark:border-[#3d3732]">
             <button
               type="button"
-              disabled={loading}
+              disabled={loading || !canSubmit}
               onClick={() => void submit()}
               className="w-full rounded-full bg-[#9a0002] py-3.5 text-sm font-bold text-white disabled:opacity-40 cursor-pointer shadow-md shadow-[#9a0002]/20"
             >
-              {loading ? "Procesando…" : submitLabel}
+              {loading
+                ? "Procesando…"
+                : method === "cash"
+                  ? `Confirmar · ${money(payTotal)}`
+                  : `Continuar · ${money(payTotal)}`}
             </button>
           </div>
         )}
+
+        {(phase === "qr_display" || phase === "redirect_resume" || phase === "cash_ok") &&
+          (orderId ?? pendingOrder?.orderId) && (
+            <div
+              ref={cancelFooterRef}
+              className={cn(
+                "shrink-0 border-t px-5 py-4 transition-colors duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+                cancelConfirm ? "border-white/20 bg-[#9a0002]" : "border-[#e8e0d6] dark:border-[#3d3732]",
+              )}
+            >
+              {cancelConfirm ? (
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-white">¿Cancelar pedido?</p>
+                    <p className="text-[11px] text-white/75">Podés deshacerlo después</p>
+                  </div>
+                  <LogoutNavRail
+                    confirm
+                    onAccent
+                    boundaryRef={cancelFooterRef}
+                    onAsk={() => {}}
+                    onCancel={() => setCancelConfirm(false)}
+                    onConfirm={() => {
+                      const id = orderId ?? pendingOrder?.orderId;
+                      if (!id) return;
+                      setCancelConfirm(false);
+                      onPendingChange(null);
+                      scheduleOrderCancel(id);
+                      onClose();
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCancelConfirm(true)}
+                  className="w-full py-1 text-sm font-semibold text-stone-500 hover:text-[#9a0002] cursor-pointer"
+                >
+                  Cancelar pedido
+                </button>
+              )}
+            </div>
+          )}
       </motion.div>
     </>
   );

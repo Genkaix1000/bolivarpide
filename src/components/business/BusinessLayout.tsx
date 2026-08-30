@@ -7,6 +7,7 @@ import { BusinessSidebar } from "./BusinessSidebar";
 import { BusinessTopbar } from "./BusinessTopbar";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
+import { useOrderAlerts } from "@/hooks/useOrderAlerts";
 import type { BusinessShellData } from "@/lib/business/queries";
 
 export function BusinessLayout({
@@ -22,6 +23,7 @@ export function BusinessLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const { show: showSplash, skip: skipSplash } = useBrandSplash(SPLASH_NEGOCIO);
+  const { alerts, pendingCount, dismiss } = useOrderAlerts(businessId);
 
   return (
     <div className="flex min-h-screen bg-[#f3efe8] dark:bg-[#1c1917]">
@@ -31,7 +33,7 @@ export function BusinessLayout({
         businessId={businessId}
         planLabel={shell.planLabel}
         planCommission={shell.planCommission}
-        pendingCount={shell.pendingCount}
+        pendingCount={pendingCount}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
@@ -39,10 +41,15 @@ export function BusinessLayout({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <BusinessTopbar shell={shell} onMenuClick={() => setMobileOpen(true)} />
+        <BusinessTopbar
+          shell={shell}
+          businessId={businessId}
+          orderAlerts={alerts}
+          onDismissOrderAlerts={dismiss}
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
         <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-7">
-          {/* Solo fade-in: exit+enter se sentía como doble parpadeo */}
           <motion.div
             key={pathname}
             initial={showSplash ? false : { opacity: 0 }}

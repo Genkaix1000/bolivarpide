@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useCart } from "@/components/CartProvider";
@@ -18,7 +18,8 @@ import {
 } from "@/lib/cart";
 import { CheckoutSheet } from "@/components/checkout/CheckoutSheet";
 import { ProductSheet } from "@/components/cart/ProductSheet";
-import { cn } from "@/lib/utils";
+import type { PendingCustomerOrder } from "@/lib/orders/pending";
+import { statusIcon, statusShortLabel } from "@/lib/orders/active";
 
 function money(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
@@ -206,7 +207,30 @@ function SwitchDialog({
   );
 }
 
-function getEffectiveChain(cart: ReturnType<typeof useCart>["cart"]): FeaturedChain {
+function chainFromPending(po: PendingCustomerOrder): FeaturedChain {
+  const found = FEATURED_CHAINS.find((c) => c.id === po.businessSlug);
+  if (found) return found;
+  return {
+    id: po.businessSlug,
+    name: po.businessName,
+    bannerText: "Pedido pendiente",
+    bannerBg: "from-[#9a0002] to-[#6b0001]",
+    logoEmoji: po.businessName.slice(0, 1).toUpperCase() || "🛍️",
+    timeEstimate: "25-35 min",
+    deliveryFee: 0,
+    minOrder: 0,
+    rating: 5.0,
+    address: "Bolívar, Buenos Aires",
+    lat: -36.2295,
+    lng: -61.1168,
+  };
+}
+
+function getEffectiveChain(
+  cart: ReturnType<typeof useCart>["cart"],
+  pendingOrder: PendingCustomerOrder | null,
+): FeaturedChain {
+  if (cart.lines.length === 0 && pendingOrder) return chainFromPending(pendingOrder);
   const found = FEATURED_CHAINS.find((c) => c.id === cart.chainId);
   if (found) return found;
   const storeName = cart.lines[0]?.storeName || "Local";
@@ -228,7 +252,7 @@ function getEffectiveChain(cart: ReturnType<typeof useCart>["cart"]): FeaturedCh
 
 function CartDrawer({ onClose }: { onClose: () => void }) {
   const { cart, setQty, clear, openCheckout } = useCart();
-  const chain = getEffectiveChain(cart);
+  const chain = getEffectiveChain(cart, null);
   const sub = cartSubtotal(cart.lines);
   const fee = chain.deliveryFee ?? 0;
 
@@ -361,50 +385,127 @@ function CartDrawer({ onClose }: { onClose: () => void }) {
 }
 
 function FloatingCartBar() {
-  const { cart, openDrawer, ui } = useCart();
+  const router = useRouter();
+  const { cart, pendingOrder, activeOrder, activeOrderBarVisible, openDrawer, openPendingCheckout, dismissActiveOrderBar, ui } =
+    useCart();
   const count = cartItemCount(cart.lines);
   const sub = cartSubtotal(cart.lines);
-  const chain = getEffectiveChain(cart);
-  if (count === 0 || ui.kind === "drawer" || ui.kind === "product" || ui.kind === "upsell") return null;
+  const chain = getEffectiveChain(cart, pendingOrder);
+  const hiddenUi =
+    ui.kind === "drawer" ||
+    ui.kind === "product" ||
+    ui.kind === "upsell" ||
+    ui.kind === "checkout";
 
-  return (
-    <motion.button
-      type="button"
-      onClick={openDrawer}
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center justify-between rounded-full bg-[#1a1210] px-5 py-3.5 text-white shadow-xl cursor-pointer"
-    >
-      <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold">
-        <span className="relative h-7 w-7 shrink-0">
-          {chain.logoImage ? (
-            <img
-              src={chain.logoImage}
-              alt=""
-              className="h-7 w-7 rounded-full object-cover ring-1 ring-white/25"
-            />
-          ) : (
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
-              {chain.logoEmoji}
+  if (hiddenUi) return null;
+
+  if (count > 0) {
+    return (
+      <motion.button
+        type="button"
+        onClick={openDrawer}
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center justify-between rounded-full bg-[#1a1210] px-5 py-3.5 text-white shadow-xl cursor-pointer"
+      >
+        <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold">
+          <span className="relative h-7 w-7 shrink-0">
+            {chain.logoImage ? (
+              <img
+                src={chain.logoImage}
+                alt=""
+                className="h-7 w-7 rounded-full object-cover ring-1 ring-white/25"
+              />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">
+                {chain.logoEmoji}
+              </span>
+            )}
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#9a0002] px-1 text-[10px] font-bold">
+              {count}
             </span>
-          )}
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#9a0002] px-1 text-[10px] font-bold">
-            {count}
+          </span>
+          Ver carrito
+          <span className="truncate font-normal text-white/50">· {chain.name}</span>
+        </span>
+        <span className="text-[13px] font-bold">{money(sub)}</span>
+      </motion.button>
+    );
+  }
+
+  if (pendingOrder) {
+    const label =
+      pendingOrder.channel === "checkout_pro" ? "Continuar pago" : "Completar pago · QR";
+    return (
+      <motion.button
+        type="button"
+        onClick={openPendingCheckout}
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center justify-between rounded-full border border-[#9a0002]/30 bg-[#faf6f1] px-4 py-3 text-[#1a1210] shadow-lg cursor-pointer dark:bg-[#231f1c] dark:text-stone-100"
+      >
+        <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9a0002]/10 text-[#9a0002]">
+            <MaterialSymbol icon="payments" size={20} />
+          </span>
+          <span className="min-w-0 truncate">
+            {label}
+            <span className="block truncate text-[11px] font-normal text-stone-500 dark:text-stone-400">
+              {pendingOrder.businessName}
+            </span>
           </span>
         </span>
-        Ver carrito
-        <span className="truncate font-normal text-white/50">· {chain.name}</span>
-      </span>
-      <span className="text-[13px] font-bold">{money(sub)}</span>
-    </motion.button>
-  );
+        <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
+      </motion.button>
+    );
+  }
+
+  if (activeOrderBarVisible && activeOrder) {
+    return (
+      <motion.button
+        type="button"
+        onClick={() => {
+          dismissActiveOrderBar();
+          router.push(`/pedido/${activeOrder.orderId}`);
+        }}
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-[#e8e0d6] bg-white px-4 py-3 shadow-xl cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#9a0002]/10 text-[#9a0002]">
+          <MaterialSymbol icon={statusIcon(activeOrder.status)} size={22} />
+        </span>
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block text-[13px] font-bold text-stone-900 dark:text-stone-100">
+            Pedido en curso
+          </span>
+          <span className="block truncate text-[11px] text-stone-500 dark:text-stone-400">
+            {statusShortLabel(activeOrder.status)} · #{activeOrder.orderNumber} ·{" "}
+            {activeOrder.businessName}
+          </span>
+        </span>
+        <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
+      </motion.button>
+    );
+  }
+
+  return null;
 }
 
 /** Mount once under CartProvider — sheets + floating bar */
 export function CartFlow() {
   const pathname = usePathname();
-  const { cart, ui, closeUi, confirmSwitch, cancelSwitch, openCheckout } = useCart();
-  const chain = getEffectiveChain(cart);
+  const {
+    cart,
+    ui,
+    pendingOrder,
+    closeUi,
+    confirmSwitch,
+    cancelSwitch,
+    openCheckout,
+    setPendingOrder,
+  } = useCart();
+  const chain = getEffectiveChain(cart, pendingOrder);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -416,7 +517,13 @@ export function CartFlow() {
     void openCheckout();
   }, [openCheckout]);
 
-  if (pathname?.startsWith("/negocio")) return null;
+  useEffect(() => {
+    const onOpenAddress = () => closeUi();
+    window.addEventListener("bolivarpide:open-address", onOpenAddress);
+    return () => window.removeEventListener("bolivarpide:open-address", onOpenAddress);
+  }, [closeUi]);
+
+  if (pathname?.startsWith("/negocio") || pathname?.startsWith("/pedido")) return null;
 
   return (
     <>
@@ -430,7 +537,14 @@ export function CartFlow() {
         )}
         {ui.kind === "drawer" && <CartDrawer key="drawer" onClose={closeUi} />}
         {ui.kind === "checkout" && (
-          <CheckoutSheet key="checkout" chain={chain} onClose={closeUi} />
+          <CheckoutSheet
+            key="checkout"
+            chain={chain}
+            onClose={closeUi}
+            resumePending={ui.resumePending}
+            pendingOrder={pendingOrder}
+            onPendingChange={setPendingOrder}
+          />
         )}
       </AnimatePresence>
       <FloatingCartBar />

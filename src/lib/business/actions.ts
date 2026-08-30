@@ -112,16 +112,24 @@ export async function setOrderStatus(formData: FormData) {
   const businessId = String(formData.get("businessId") || "");
   const orderId = String(formData.get("orderId") || "");
   const status = String(formData.get("status") || "");
-  const allowed = ["pending", "accepted", "preparing", "ready", "delivered", "cancelled"];
-  if (!allowed.includes(status)) throw new Error("Status inválido");
-  const { supabase } = await requireBusinessAccess(businessId);
-  const { error } = await supabase
-    .from("orders")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", orderId)
-    .eq("business_id", businessId);
-  if (error) throw error;
-  revalidatePath(`/negocio/${businessId}/pedidos`);
+  const map: Record<string, "preparing" | "delivering" | "delivered" | "rejected"> = {
+    accepted: "preparing",
+    preparing: "preparing",
+    ready: "delivering",
+    delivering: "delivering",
+    delivered: "delivered",
+    cancelled: "rejected",
+  };
+  const target = map[status];
+  if (!target) throw new Error("Status inválido");
+  const { advanceOrderStatus } = await import("@/lib/orders/actions");
+  const res = await advanceOrderStatus({
+    businessId,
+    orderId,
+    targetStatus: target,
+    rejectionReason: target === "rejected" ? "Cancelado desde panel legacy" : undefined,
+  });
+  if (!res.ok) throw new Error(res.error);
 }
 
 export async function inviteMember(formData: FormData) {

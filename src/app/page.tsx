@@ -12,11 +12,10 @@ import { ProductImagePlaceholder } from "@/components/menu/ProductImagePlacehold
 import { StoreRatingBadge } from "@/components/store/StoreRatingBadge";
 import { cn } from "@/lib/utils";
 import {
-  FEATURED_CHAINS,
-  TRENDING_ITEMS,
-  FeaturedChain,
-  TrendingItem
+  type FeaturedChain,
+  type TrendingItem,
 } from "@/lib/mockData";
+import { getHomeCache, setHomeCache } from "@/lib/cache/homeCache";
 import { useCart } from "@/components/CartProvider";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_HOME } from "@/lib/firstVisit";
@@ -59,7 +58,8 @@ function HomeContent() {
   // Carousels State
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
   const [currentChainPage, setCurrentChainPage] = useState(0);
-  const [trendingItems, setTrendingItems] = useState<TrendingItem[]>(TRENDING_ITEMS);
+  const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Menús del Momento Dynamic Scroll Mask State
   const [trendingScrollState, setTrendingScrollState] = useState({ isAtStart: true, isAtEnd: false });
@@ -76,6 +76,16 @@ function HomeContent() {
   // Shuffling Featured Chains & Recommended on Mount (+ published DB when hay)
   useEffect(() => {
     let cancelled = false;
+
+    // Cargar caché del cliente inmediatamente al montar sin romper la hidratación de Next.js
+    const cached = getHomeCache();
+    if (cached && !cancelled) {
+      setRandomizedChains(cached.chains);
+      setRandomizedRecommended(cached.recommended);
+      setTrendingItems(cached.trendingItems);
+      setIsDataLoading(false);
+    }
+
     (async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client");
@@ -103,8 +113,10 @@ function HomeContent() {
         if (cancelled) return;
         if (pubs && pubs.length > 0) {
           const mapped = pubs.map(toFeaturedChain);
-          setRandomizedChains([...mapped].sort(() => Math.random() - 0.5));
-          setRandomizedRecommended([...mapped].sort(() => Math.random() - 0.5));
+          const shuffledChains = [...mapped].sort(() => Math.random() - 0.5);
+          const shuffledRec = [...mapped].sort(() => Math.random() - 0.5);
+          setRandomizedChains(shuffledChains);
+          setRandomizedRecommended(shuffledRec);
 
           const { productToTrendingItem } = await import("@/lib/business/publicStore");
           const { data: productRows } = await supabase
@@ -117,8 +129,9 @@ function HomeContent() {
             .order("updated_at", { ascending: false })
             .limit(12);
 
+          let items: TrendingItem[] = [];
           if (!cancelled && productRows && productRows.length > 0) {
-            const items = productRows.map((row) => {
+            items = productRows.map((row) => {
               const bizRaw = row.businesses as
                 | {
                     slug: string;
@@ -165,17 +178,35 @@ function HomeContent() {
               );
             });
             setTrendingItems(items);
+          } else if (!cancelled) {
+            setTrendingItems([]);
           }
+
+          setHomeCache({
+            chains: shuffledChains,
+            recommended: shuffledRec,
+            trendingItems: items,
+          });
+          if (!cancelled) setIsDataLoading(false);
+          return;
+        } else if (!cancelled) {
+          setRandomizedChains([]);
+          setRandomizedRecommended([]);
+          setTrendingItems([]);
+          setHomeCache({
+            chains: [],
+            recommended: [],
+            trendingItems: [],
+          });
+          setIsDataLoading(false);
           return;
         }
       } catch {
-        /* fallback mock */
+        /* fallback */
       }
-      if (cancelled) return;
-      const shuffled = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
-      setRandomizedChains(shuffled);
-      const shuffledRec = [...FEATURED_CHAINS].sort(() => Math.random() - 0.5);
-      setRandomizedRecommended(shuffledRec);
+      if (!cancelled) {
+        setIsDataLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -191,6 +222,16 @@ function HomeContent() {
   useEffect(() => {
     if (!isAuthenticated && currentTab === "profile") setCurrentTab("home");
   }, [isAuthenticated, currentTab]);
+
+  useEffect(() => {
+    const open = () => {
+      setEditingAddress(null);
+      setAddressFormOpen(true);
+      setShowLocationDropdown(false);
+    };
+    window.addEventListener("bolivarpide:open-address", open);
+    return () => window.removeEventListener("bolivarpide:open-address", open);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -329,132 +370,156 @@ function HomeContent() {
     return (
           <div className="space-y-8 text-gray-800 dark:text-gray-200 animate-fade-in">
             {/* Menús del momento */}
-            <section className="space-y-4">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Menús del momento</h3>
-                  <p className="text-[12px] text-gray-400 mt-0.5">Lo que más se pide ahora</p>
+            {(isDataLoading || trendingItems.length > 0) && (
+              <section className="space-y-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Menús del momento</h3>
+                    <p className="text-[12px] text-gray-400 mt-0.5">Lo que más se pide ahora</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="relative w-full">
-                <div
-                  className={cn(
-                    "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                    trendingScrollState.isAtStart ? "opacity-0" : "opacity-100"
-                  )}
-                />
-                <div
-                  className={cn(
-                    "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                    trendingScrollState.isAtEnd ? "opacity-0" : "opacity-100"
-                  )}
-                />
+                <div className="relative w-full">
+                  <div
+                    className={cn(
+                      "absolute left-0 top-0 bottom-[5px] w-14 bg-gradient-to-r from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                      trendingScrollState.isAtStart ? "opacity-0" : "opacity-100"
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "absolute right-0 top-0 bottom-[5px] w-14 bg-gradient-to-l from-[#f3efe8] from-40% dark:from-[#1c1917] to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                      trendingScrollState.isAtEnd ? "opacity-0" : "opacity-100"
+                    )}
+                  />
 
-                <div
-                  ref={trendingContainerRef}
-                  className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-1 pt-1 pb-3"
-                >
-                  {trendingItems.map((item) => {
-                    const ownerChain =
-                      randomizedChains.find((c) => c.id === item.chainId) ??
-                      FEATURED_CHAINS.find((c) => c.id === item.chainId);
-                    return (
-                      <TrendingMenuCard
-                        key={item.id}
-                        item={item}
-                        ownerChain={ownerChain}
-                        className="w-[220px] flex-shrink-0"
-                      />
-                    );
-                  })}
+                  <div
+                    ref={trendingContainerRef}
+                    className="flex items-center gap-4 overflow-x-auto custom-scrollbar px-1 pt-1 pb-3"
+                  >
+                    {isDataLoading ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-[220px] h-[190px] flex-shrink-0 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] animate-pulse border border-black/[0.04] dark:border-white/[0.04]"
+                        />
+                      ))
+                    ) : (
+                      trendingItems.map((item) => {
+                        const ownerChain = randomizedChains.find((c) => c.id === item.chainId);
+                        return (
+                          <TrendingMenuCard
+                            key={item.id}
+                            item={item}
+                            ownerChain={ownerChain}
+                            className="w-[220px] flex-shrink-0"
+                          />
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Cadenas destacadas */}
-            <section className="space-y-4">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Cadenas destacadas</h3>
-                  <p className="text-[12px] text-gray-400 mt-0.5">Locales recomendados cerca tuyo</p>
+            {(isDataLoading || randomizedChains.length > 0) && (
+              <section className="space-y-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Cadenas destacadas</h3>
+                    <p className="text-[12px] text-gray-400 mt-0.5">Locales recomendados cerca tuyo</p>
+                  </div>
+                  {randomizedChains.length > 2 && (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => setCurrentChainPage(0)}
+                        className={cn(
+                          "w-5 h-1.5 rounded-full transition-all cursor-pointer",
+                          currentChainPage === 0 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
+                        )}
+                      />
+                      <button
+                        onClick={() => setCurrentChainPage(1)}
+                        className={cn(
+                          "w-5 h-1.5 rounded-full transition-all cursor-pointer",
+                          currentChainPage === 1 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setCurrentChainPage(0)}
-                    className={cn(
-                      "w-5 h-1.5 rounded-full transition-all cursor-pointer",
-                      currentChainPage === 0 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
-                    )}
-                  />
-                  <button
-                    onClick={() => setCurrentChainPage(1)}
-                    className={cn(
-                      "w-5 h-1.5 rounded-full transition-all cursor-pointer",
-                      currentChainPage === 1 ? "bg-[#9a0002]" : "bg-[#ddd4c8] dark:bg-[#302c28]"
-                    )}
-                  />
-                </div>
-              </div>
 
-              <div
-                ref={chainContainerRef}
-                className="relative overflow-hidden w-full min-h-[400px] md:min-h-[210px]"
-                onTouchStart={handleChainTouchStart}
-                onTouchMove={handleChainTouchMove}
-                onTouchEnd={handleChainTouchEnd}
-              >
                 <div
-                  className="flex w-full transition-transform duration-500 ease-in-out gap-6"
-                  style={{ transform: `translateX(calc(-${currentChainPage} * (100% + 24px)))` }}
+                  ref={chainContainerRef}
+                  className="relative overflow-hidden w-full min-h-[140px] md:min-h-[210px]"
+                  onTouchStart={handleChainTouchStart}
+                  onTouchMove={handleChainTouchMove}
+                  onTouchEnd={handleChainTouchEnd}
                 >
-                  <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
-                    {randomizedChains.slice(0, 2).map((chain) => (
-                      <FeaturedCard key={chain.id} chain={chain} />
-                    ))}
-                  </div>
-                  <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
-                    {randomizedChains.slice(2, 4).map((chain) => (
-                      <FeaturedCard key={chain.id} chain={chain} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Populares — quiet strip */}
-            <section className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Más populares</h3>
-                <p className="text-[12px] text-gray-400 mt-0.5">Los favoritos de la zona</p>
-              </div>
-              <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1">
-                {FEATURED_CHAINS.map((chain) => (
-                  <Link
-                    key={chain.id}
-                    href={`/c/${chain.id}`}
-                    className="min-w-[200px] flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.12)] cursor-pointer hover:border-[#9a0002]/25 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f5f1eb] dark:bg-[#2a2623]">
-                      {chain.logoImage ? (
-                        <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm font-bold">
-                          {chain.logoEmoji || chain.name[0]}
+                  {isDataLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="h-[202px] rounded-[20px] bg-black/[0.04] dark:bg-white/[0.04] animate-pulse" />
+                      <div className="h-[202px] rounded-[20px] bg-black/[0.04] dark:bg-white/[0.04] animate-pulse hidden md:block" />
+                    </div>
+                  ) : (
+                    <div
+                      className="flex w-full transition-transform duration-500 ease-in-out gap-6"
+                      style={{ transform: `translateX(calc(-${currentChainPage} * (100% + 24px)))` }}
+                    >
+                      <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
+                        {randomizedChains.slice(0, 2).map((chain) => (
+                          <FeaturedCard key={chain.id} chain={chain} />
+                        ))}
+                      </div>
+                      {randomizedChains.length > 2 && (
+                        <div className="w-full flex-shrink-0 flex flex-col md:grid md:grid-cols-2 gap-5">
+                          {randomizedChains.slice(2, 4).map((chain) => (
+                            <FeaturedCard key={chain.id} chain={chain} />
+                          ))}
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">{chain.name}</p>
-                      <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                        <MaterialSymbol icon="star" size={12} fill className="text-[#9a0002]" />
-                        {chain.rating} · {chain.timeEstimate}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Populares — quiet strip */}
+            {randomizedChains.length > 0 && (
+              <section className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Más populares</h3>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Los favoritos de la zona</p>
+                </div>
+                <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1">
+                  {randomizedChains.map((chain) => (
+                    <Link
+                      key={chain.id}
+                      href={`/c/${chain.id}`}
+                      className="min-w-[200px] flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#1c1917] border border-black/[0.04] dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.12)] cursor-pointer hover:border-[#9a0002]/25 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f5f1eb] dark:bg-[#2a2623]">
+                        {chain.logoImage ? (
+                          <img src={chain.logoImage} alt={chain.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold">
+                            {chain.logoEmoji || chain.name[0]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">{chain.name}</p>
+                        <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                          <MaterialSymbol icon="star" size={12} fill className="text-[#9a0002]" />
+                          {chain.rating} · {chain.timeEstimate}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
     );
   };

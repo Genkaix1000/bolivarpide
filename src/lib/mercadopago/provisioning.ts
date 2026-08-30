@@ -1,8 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { mpFetch, MpApiError } from "@/lib/mercadopago/mp-fetch";
+import { resolveMpStoreLocation, sanitizeMpPlaceName } from "@/lib/mercadopago/storeLocation";
 import {
   getAccessTokenForBusiness,
   getConnection,
+  setBusinessMpReady,
   type MpConnectionRow,
 } from "@/lib/mercadopago/repository";
 
@@ -16,22 +18,14 @@ type BusinessRow = {
   postal_code: string;
 };
 
-const DEFAULT_LAT = -36.23;
-const DEFAULT_LNG = -61.11;
-
 function externalStoreId(slug: string) {
   return `BOLIVARPIDE-${slug.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40)}`;
 }
 
+/** MP exige external_id de caja alfanumérico (sin guiones). */
 function externalPosId(slug: string) {
-  return `${externalStoreId(slug)}-POS001`;
-}
-
-function parseStreet(address: string | null): { streetName: string; streetNumber: string } {
-  if (!address?.trim()) return { streetName: "Sin número", streetNumber: "S/N" };
-  const m = address.trim().match(/^(.+?)\s+(\d+\w*)$/);
-  if (m) return { streetName: m[1], streetNumber: m[2] };
-  return { streetName: address.trim(), streetNumber: "S/N" };
+  const base = slug.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40);
+  return `BOLIVARPIDE${base}POS001`;
 }
 
 async function findStoreByExternalId(token: string, userId: string, externalId: string) {
@@ -49,11 +43,28 @@ async function findStoreByExternalId(token: string, userId: string, externalId: 
   }
 }
 
+async function findPosByExternalId(token: string, externalId: string) {
+  try {
+    const listed = await mpFetch<{ results?: { id: number | string; external_id?: string; qr?: { image?: string } }[] }>(
+      token,
+      `/v2/pos?external_id=${encodeURIComponent(externalId)}`,
+      { method: "GET" },
+    );
+    return listed.results?.find((p) => p.external_id === externalId) ?? listed.results?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function provisionStoreAndPos(business: BusinessRow, connection: MpConnectionRow) {
   const token = await getAccessTokenForBusiness(business.id);
   const extStore = externalStoreId(business.slug);
   const extPos = externalPosId(business.slug);
-  const { streetName, streetNumber } = parseStreet(business.address);
+  const location = await resolveMpStoreLocation({
+    address: business.address,
+    city: business.city,
+    province: business.province,
+  });
   const svc = createServiceClient();
 
   let mpStoreId: string;
@@ -71,16 +82,16 @@ export async function provisionStoreAndPos(business: BusinessRow, connection: Mp
         {
           method: "POST",
           body: JSON.stringify({
-            name: business.name,
+            name: sanitizeMpPlaceName(business.name) || "Local",
             external_id: extStore,
             location: {
-              street_name: streetName,
-              street_number: streetNumber,
-              city_name: business.city,
-              state_name: business.province,
-              latitude: DEFAULT_LAT,
-              longitude: DEFAULT_LNG,
-              reference: business.address ?? business.name,
+              street_name: location.streetName,
+              street_number: location.streetNumber,
+              city_name: location.cityName,
+              state_name: location.stateName,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              reference: location.reference,
             },
           }),
         },
@@ -94,14 +105,14 @@ export async function provisionStoreAndPos(business: BusinessRow, connection: Mp
         connection_id: connection.id,
         mp_store_id: mpStoreId,
         external_store_id: extStore,
-        name: business.name,
+        name: sanitizeMpPlaceName(business.name) || business.name,
         location: {
-          street_name: streetName,
-          street_number: streetNumber,
-          city_name: business.city,
-          state_name: business.province,
-          latitude: DEFAULT_LAT,
-          longitude: DEFAULT_LNG,
+          street_name: location.streetName,
+          street_number: location.streetNumber,
+          city_name: location.cityName,
+          state_name: location.stateName,
+          latitude: location.latitude,
+          longitude: location.longitude,
         },
       },
       { onConflict: "business_id" },
@@ -117,31 +128,25 @@ export async function provisionStoreAndPos(business: BusinessRow, connection: Mp
     return { storeId: mpStoreId, posId: existingPos.data.mp_pos_id, externalPosId: existingPos.data.external_pos_id };
   }
 
-  let mpPos: { id: number | string; qr?: { image?: string } };
-  try {
-    mpPos = await mpFetch<{ id: number | string; qr?: { image?: string } }>(token, "/v2/pos", {
-      method: "POST",
-      idempotencyKey: `provision-${business.id}`,
-      body: JSON.stringify({
-        name: `${business.name} — Delivery`,
-        store_id: mpStoreId,
-        external_store_id: extStore,
-        external_id: extPos,
-        config: { qr: { operating_mode: "pdv" } },
-      }),
-    });
-  } catch (err) {
-    if (err instanceof MpApiError && err.code === "point_of_sale_exists") {
-      const listed = await mpFetch<{ results?: { id: number | string; external_id?: string; qr?: { image?: string } }[] }>(
-        token,
-        `/v2/pos?external_id=${encodeURIComponent(extPos)}`,
-        { method: "GET" },
-      );
-      const hit = listed.results?.find((p) => p.external_id === extPos) ?? listed.results?.[0];
-      if (!hit?.id) throw err;
-      mpPos = hit;
-    } else {
-      throw err;
+  let mpPos: { id: number | string; qr?: { image?: string } } | null =
+    await findPosByExternalId(token, extPos);
+
+  if (!mpPos) {
+    try {
+      mpPos = await mpFetch<{ id: number | string; qr?: { image?: string } }>(token, "/v2/pos", {
+        method: "POST",
+        idempotencyKey: `provision-pos-${business.id}-${Date.now()}`,
+        body: JSON.stringify({
+          name: `${sanitizeMpPlaceName(business.name) || "Local"} Delivery`,
+          store_id: mpStoreId,
+          external_store_id: extStore,
+          external_id: extPos,
+          config: { qr: { operating_mode: "pdv" } },
+        }),
+      });
+    } catch (err) {
+      mpPos = await findPosByExternalId(token, extPos);
+      if (!mpPos) throw err;
     }
   }
 
@@ -162,6 +167,26 @@ export async function provisionStoreAndPos(business: BusinessRow, connection: Mp
   return { storeId: mpStoreId, posId: String(mpPos.id), externalPosId: extPos };
 }
 
+/** Alta automática post-OAuth: sucursal + caja interna en MP. */
+export async function autoProvisionBusiness(businessId: string) {
+  const svc = createServiceClient();
+  const { data: business, error: bizErr } = await svc
+    .from("businesses")
+    .select("id, slug, name, address, city, province, postal_code")
+    .eq("id", businessId)
+    .single();
+  if (bizErr || !business) throw new Error("Negocio no encontrado.");
+
+  const conn = await getConnection(businessId);
+  if (!conn || conn.status !== "active") {
+    throw new Error("Conectá Mercado Pago antes de provisionar.");
+  }
+
+  const result = await provisionStoreAndPos(business as BusinessRow, conn);
+  await setBusinessMpReady(businessId, true);
+  return result;
+}
+
 export async function reprovisionPos(businessId: string) {
   const svc = createServiceClient();
   const { data: business, error: bizErr } = await svc
@@ -177,7 +202,8 @@ export async function reprovisionPos(businessId: string) {
   }
 
   await svc.from("mp_pos").delete().eq("business_id", businessId);
+  await svc.from("mp_stores").delete().eq("business_id", businessId);
   const result = await provisionStoreAndPos(business as BusinessRow, conn);
-  await svc.from("businesses").update({ mp_ready: true }).eq("id", businessId);
+  await setBusinessMpReady(businessId, true);
   return result;
 }

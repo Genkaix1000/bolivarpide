@@ -56,7 +56,13 @@ export async function getMpHealth(businessId: string): Promise<MpHealth> {
     },
     mpReady: {
       ok: status.mpReady,
-      detail: status.mpReady ? "Checkout QR habilitado" : "Provisioning incompleto",
+      detail: status.mpReady
+        ? "Checkout QR habilitado"
+        : !status.store
+          ? "Falta sucursal MP"
+          : !status.pos
+            ? "Falta caja MP (sucursal ok)"
+            : "Configurando automáticamente…",
     },
     tokenExpires,
   };

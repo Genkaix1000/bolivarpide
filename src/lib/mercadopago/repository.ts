@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { encryptMpToken, decryptMpToken } from "@/lib/mercadopago/crypto";
 import { assertMpOAuthConfigured, mpEnv } from "@/lib/mercadopago/env";
 import { mpFetch, MP_API } from "@/lib/mercadopago/mp-fetch";
+import { getBusinessPaymentSettings } from "@/lib/payments/businessSettings";
+import { MP_COSTS_HELP_URL } from "@/lib/payments/pricing";
 
 const AUTH_URL = "https://auth.mercadopago.com/authorization";
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -35,6 +37,9 @@ export type MpProvisioningStatus = {
   store: { name: string; mpStoreId: string; externalStoreId: string } | null;
   pos: { externalPosId: string; mpPosId: string; operatingMode: string } | null;
   isOrphan: boolean;
+  offerQrPay: boolean;
+  absorbFastPayFee: boolean;
+  mpCostsHelpUrl: string;
 };
 
 function db() {
@@ -61,8 +66,9 @@ export async function insertOAuthState(input: {
   redirectUrl: string;
 }): Promise<{ url: string }> {
   const { appId, redirectUri } = assertMpOAuthConfigured();
-  const codeVerifier = randomBytes(32).toString("base64url");
-  const codeChallenge = createHash("sha256").update(codeVerifier).digest("base64url");
+  const { oauthUsePkce } = mpEnv();
+
+  const codeVerifier = oauthUsePkce ? randomBytes(32).toString("base64url") : "no-pkce";
   const state = randomUUID();
   const expiresAt = new Date(Date.now() + STATE_TTL_MS).toISOString();
 
@@ -81,23 +87,29 @@ export async function insertOAuthState(input: {
     platform_id: "mp",
     state,
     redirect_uri: redirectUri,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
   });
+  if (oauthUsePkce) {
+    const codeChallenge = createHash("sha256").update(codeVerifier).digest("base64url");
+    params.set("code_challenge", codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
 
   return { url: `${AUTH_URL}?${params.toString()}` };
 }
 
 export async function exchangeOAuthCode(code: string, codeVerifier: string) {
   const { appId, clientSecret, redirectUri } = assertMpOAuthConfigured();
+  const { oauthUsePkce } = mpEnv();
   const body = new URLSearchParams({
     client_id: appId,
     client_secret: clientSecret,
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
-    code_verifier: codeVerifier,
   });
+  if (oauthUsePkce && codeVerifier !== "no-pkce") {
+    body.set("code_verifier", codeVerifier);
+  }
   const res = await fetch(`${MP_API}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -269,12 +281,18 @@ export async function getProvisioningStatus(businessId: string): Promise<MpProvi
   const conn = connRes.data as MpConnectionRow | null;
   const store = storeRes.data;
   const pos = posRes.data;
-  const mpReady = Boolean(bizRes.data?.mp_ready);
 
   const linked = Boolean(conn && conn.status === "active" && conn.refresh_token_enc);
   const isOrphan = Boolean(
     linked && pos && conn && pos.connection_id !== conn.id,
   );
+  const mpReady = Boolean(linked && store && pos && !isOrphan);
+
+  if (mpReady !== Boolean(bizRes.data?.mp_ready)) {
+    void db().from("businesses").update({ mp_ready: mpReady }).eq("id", businessId);
+  }
+
+  const paySettings = await getBusinessPaymentSettings(businessId);
 
   return {
     linked,
@@ -301,6 +319,9 @@ export async function getProvisioningStatus(businessId: string): Promise<MpProvi
         }
       : null,
     isOrphan,
+    offerQrPay: paySettings.offerQrPay,
+    absorbFastPayFee: paySettings.absorbFastPayFee,
+    mpCostsHelpUrl: MP_COSTS_HELP_URL,
   };
 }
 

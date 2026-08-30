@@ -48,5 +48,5 @@ next-env.d.ts
 # agent and project config (local only)
 .agents/
 .gemini/
-skills/
-docs/
+# supabase temp
+supabase/.temp/

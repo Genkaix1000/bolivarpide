@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createCheckout } from "@/lib/mercadopago/checkout";
+import { resolveSiteOrigin } from "@/lib/mercadopago/env";
+
+function requestOrigin(req: NextRequest): string {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host) return resolveSiteOrigin();
+  const proto =
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ??
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+  return resolveSiteOrigin(`${proto}://${host}`);
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -14,9 +24,11 @@ export async function POST(req: NextRequest) {
   let body: {
     businessSlug?: string;
     lines?: { name: string; quantity: number; unitPriceCents: number; productId?: string; note?: string }[];
-    paymentMethod?: "mercadopago_qr" | "cash";
+    paymentMethod?: "mercadopago_qr" | "mercadopago_fast" | "cash";
     couponCode?: string;
     idempotencyKey?: string;
+    fulfillmentType?: "delivery" | "pickup";
+    deliveryAddressId?: string;
   };
   try {
     body = await req.json();
@@ -36,6 +48,9 @@ export async function POST(req: NextRequest) {
       paymentMethod: body.paymentMethod,
       couponCode: body.couponCode,
       idempotencyKey: body.idempotencyKey,
+      returnOrigin: requestOrigin(req),
+      fulfillmentType: body.fulfillmentType === "pickup" ? "pickup" : "delivery",
+      deliveryAddressId: body.deliveryAddressId,
     });
     return NextResponse.json(result);
   } catch (e) {

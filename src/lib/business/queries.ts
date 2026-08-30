@@ -287,10 +287,8 @@ export async function getBusinessShellData(businessId: string): Promise<Business
   const { label: planLabel, commission: planCommission } = planMeta(business.plan);
 
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const startToday = new Date();
-  startToday.setHours(0, 0, 0, 0);
 
-  const [profileRes, pendingRecentRes, pendingTodayRes, outOfStockRes] = await Promise.all([
+  const [profileRes, pendingRecentRes, pendingAllRes, outOfStockRes] = await Promise.all([
     supabase
       .from("user_profiles")
       .select("display_name")
@@ -298,7 +296,7 @@ export async function getBusinessShellData(businessId: string): Promise<Business
       .maybeSingle(),
     supabase
       .from("orders")
-      .select("id, customer_name, total_cents, created_at")
+      .select("id, customer_name, total_cents, created_at, payment_status, payment_method")
       .eq("business_id", businessId)
       .eq("status", "pending")
       .gte("created_at", hourAgo)
@@ -306,10 +304,9 @@ export async function getBusinessShellData(businessId: string): Promise<Business
       .limit(3),
     supabase
       .from("orders")
-      .select("id", { count: "exact", head: true })
+      .select("id, status, payment_status, payment_method")
       .eq("business_id", businessId)
-      .eq("status", "pending")
-      .gte("created_at", startToday.toISOString()),
+      .eq("status", "pending"),
     supabase
       .from("products")
       .select("name")
@@ -322,6 +319,7 @@ export async function getBusinessShellData(businessId: string): Promise<Business
 
   const notifications: ShellNotification[] = [];
   for (const o of pendingRecentRes.data ?? []) {
+    if (o.payment_status !== "paid" && o.payment_method !== "cash") continue;
     const who = o.customer_name?.trim() || "Cliente";
     notifications.push({
       emoji: "🛒",
@@ -337,6 +335,9 @@ export async function getBusinessShellData(businessId: string): Promise<Business
     });
   }
 
+  const { isKitchenEligible } = await import("@/lib/orders/lifecycle");
+  const operationalPending = (pendingAllRes.data ?? []).filter((o) => isKitchenEligible(o)).length;
+
   return {
     business,
     displayName,
@@ -345,7 +346,7 @@ export async function getBusinessShellData(businessId: string): Promise<Business
     planLabel,
     planCommission,
     notifications,
-    pendingCount: pendingTodayRes.count ?? 0,
+    pendingCount: operationalPending,
   };
 }
 

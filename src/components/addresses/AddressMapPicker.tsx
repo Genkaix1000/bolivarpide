@@ -5,31 +5,13 @@ import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { BOLIVAR_CENTER } from "@/lib/addresses/constants";
 import { cn } from "@/lib/utils";
 
+import { MAP_TILE_SIZE, latLngToPoint, pointToLatLng } from "@/lib/addresses/mapProjection";
+
 type Props = {
   lat: number | null;
   lng: number | null;
   onChangeCoords: (lat: number, lng: number) => void;
 };
-
-const TILE_SIZE = 256;
-
-function latLngToPoint(lat: number, lng: number, zoom: number) {
-  const scale = 1 << zoom;
-  const siny = Math.sin((lat * Math.PI) / 180);
-  const clampedSiny = Math.min(Math.max(siny, -0.9999), 0.9999);
-  return {
-    x: TILE_SIZE * (0.5 + lng / 360) * scale,
-    y: TILE_SIZE * (0.5 - Math.log((1 + clampedSiny) / (1 - clampedSiny)) / (4 * Math.PI)) * scale,
-  };
-}
-
-function pointToLatLng(x: number, y: number, zoom: number) {
-  const scale = 1 << zoom;
-  const lng = ((x / (TILE_SIZE * scale)) - 0.5) * 360;
-  const y2 = 0.5 - (y / (TILE_SIZE * scale));
-  const lat = 90 - (360 * Math.atan(Math.exp(-y2 * (2 * Math.PI)))) / Math.PI;
-  return { lat, lng };
-}
 
 export function AddressMapPicker({ lat, lng, onChangeCoords }: Props) {
   const currentLat = lat ?? BOLIVAR_CENTER.lat;
@@ -90,10 +72,10 @@ export function AddressMapPicker({ lat, lng, onChangeCoords }: Props) {
   // Compute tiles to display in a 320x180 viewport
   const viewWidth = 360;
   const viewHeight = 200;
-  const startTileX = Math.floor((centerPoint.x - viewWidth / 2) / TILE_SIZE);
-  const endTileX = Math.floor((centerPoint.x + viewWidth / 2) / TILE_SIZE);
-  const startTileY = Math.floor((centerPoint.y - viewHeight / 2) / TILE_SIZE);
-  const endTileY = Math.floor((centerPoint.y + viewHeight / 2) / TILE_SIZE);
+  const startTileX = Math.floor((centerPoint.x - viewWidth / 2) / MAP_TILE_SIZE);
+  const endTileX = Math.floor((centerPoint.x + viewWidth / 2) / MAP_TILE_SIZE);
+  const startTileY = Math.floor((centerPoint.y - viewHeight / 2) / MAP_TILE_SIZE);
+  const endTileY = Math.floor((centerPoint.y + viewHeight / 2) / MAP_TILE_SIZE);
 
   const tiles: { key: string; url: string; left: number; top: number }[] = [];
   const maxTile = (1 << zoom) - 1;
@@ -102,8 +84,8 @@ export function AddressMapPicker({ lat, lng, onChangeCoords }: Props) {
     for (let ty = startTileY; ty <= endTileY; ty++) {
       if (ty >= 0 && ty <= maxTile) {
         const wrappedX = ((tx % (maxTile + 1)) + (maxTile + 1)) % (maxTile + 1);
-        const tileLeft = tx * TILE_SIZE - (centerPoint.x - viewWidth / 2);
-        const tileTop = ty * TILE_SIZE - (centerPoint.y - viewHeight / 2);
+        const tileLeft = tx * MAP_TILE_SIZE - (centerPoint.x - viewWidth / 2);
+        const tileTop = ty * MAP_TILE_SIZE - (centerPoint.y - viewHeight / 2);
         tiles.push({
           key: `${zoom}-${tx}-${ty}`,
           url: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png`,

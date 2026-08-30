@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
-import { MpHealthPanel } from "@/components/business/MpHealthPanel";
 import { MpDevToolsPanel } from "@/components/business/MpDevToolsPanel";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +16,9 @@ export type MpStatus = {
   store: { name: string; mpStoreId: string } | null;
   pos: { externalPosId: string; operatingMode: string } | null;
   isOrphan: boolean;
+  offerQrPay: boolean;
+  absorbFastPayFee: boolean;
+  mpCostsHelpUrl: string;
 };
 
 function formatRelative(iso: string | null): string | null {
@@ -36,9 +38,12 @@ export function PagosSection({ businessId }: { businessId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
-  const [reprovisioning, setReprovisioning] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const provisionAttempted = useRef(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/payments/mp/status?businessId=${encodeURIComponent(businessId)}`);
@@ -49,22 +54,27 @@ export function PagosSection({ businessId }: { businessId: string }) {
     setStatus(await res.json());
   }, [businessId]);
 
-  const reprovision = useCallback(async () => {
-    setReprovisioning(true);
+  const runAutoProvision = useCallback(async (): Promise<boolean> => {
+    setProvisioning(true);
+    setProvisionError(null);
+    setError(null);
     try {
-      const res = await fetch("/api/payments/mp/reprovision", {
+      const res = await fetch("/api/payments/mp/provision", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessId }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? "Error");
-      setToast({ type: "ok", text: "Sucursal y caja listas en Mercado Pago" });
+      if (!res.ok) throw new Error(j.error ?? "Error al configurar pagos");
+      setToast({ type: "ok", text: "Cobros con QR configurados" });
       await load();
+      return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      const msg = e instanceof Error ? e.message : "Error al configurar pagos";
+      setProvisionError(msg);
+      return false;
     } finally {
-      setReprovisioning(false);
+      setProvisioning(false);
     }
   }, [businessId, load]);
 
@@ -80,16 +90,13 @@ export function PagosSection({ businessId }: { businessId: string }) {
     const provision = searchParams.get("provision");
 
     if (linked === "true") {
-      setToast({ type: "ok", text: "Mercado Pago vinculado" });
-      load()
-        .then(async () => {
-          if (provision === "1") {
-            const res = await fetch(`/api/payments/mp/status?businessId=${encodeURIComponent(businessId)}`);
-            const st = await res.json();
-            if (!st.mpReady) await reprovision();
-          }
-        })
-        .catch(() => {});
+      setToast({ type: "ok", text: "Mercado Pago vinculado — configurando tu local…" });
+      if (provision === "1") {
+        provisionAttempted.current = true;
+        void runAutoProvision();
+      } else {
+        void load();
+      }
     } else if (linked === "false" && message) {
       setToast({ type: "err", text: decodeURIComponent(message) });
     }
@@ -101,7 +108,43 @@ export function PagosSection({ businessId }: { businessId: string }) {
       u.searchParams.delete("provision");
       window.history.replaceState({}, "", u.pathname + u.search);
     }
-  }, [searchParams, load, businessId, reprovision]);
+  }, [searchParams, load, runAutoProvision]);
+
+  const isLinked = status?.linked && status.status === "active";
+  const isExpired = status?.linked && status.status === "expired";
+  const needsProvision = Boolean(isLinked && status && !status.mpReady);
+
+  useEffect(() => {
+    if (!needsProvision || provisioning || provisionAttempted.current) return;
+    provisionAttempted.current = true;
+    void runAutoProvision();
+  }, [needsProvision, provisioning, runAutoProvision]);
+
+  const savePaySetting = async (patch: { offerQrPay?: boolean; absorbFastPayFee?: boolean }) => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/payments/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId, ...patch }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Error al guardar");
+      setStatus((prev) =>
+        prev
+          ? {
+              ...prev,
+              offerQrPay: j.offerQrPay,
+              absorbFastPayFee: j.absorbFastPayFee,
+            }
+          : prev,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const handleLink = async () => {
     setLinking(true);
@@ -124,6 +167,7 @@ export function PagosSection({ businessId }: { businessId: string }) {
   const handleUnlink = async () => {
     setUnlinkOpen(false);
     setUnlinking(true);
+    provisionAttempted.current = false;
     try {
       const res = await fetch(
         `/api/payments/mp/disconnect?businessId=${encodeURIComponent(businessId)}`,
@@ -147,15 +191,12 @@ export function PagosSection({ businessId }: { businessId: string }) {
     );
   }
 
-  const isLinked = status?.linked && status.status === "active";
-  const isExpired = status?.linked && status.status === "expired";
-
   return (
     <div className="space-y-4 pb-8">
       <div>
         <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Pagos</h1>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          App Mercado Pago <span className="font-semibold">bolivarpide</span> · QR dinámico · sin terminal física
+          Vinculá Mercado Pago y listo — configuramos todo automáticamente
         </p>
       </div>
 
@@ -178,9 +219,10 @@ export function PagosSection({ businessId }: { businessId: string }) {
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600">
                     Vinculado
                   </span>
-                  {status?.mpReady && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#9a0002]/10 text-[#9a0002]">
-                      Listo
+                  {provisioning && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 flex items-center gap-1">
+                      <MaterialSymbol icon="progress_activity" size={12} className="animate-spin" />
+                      Configurando
                     </span>
                   )}
                 </div>
@@ -193,7 +235,7 @@ export function PagosSection({ businessId }: { businessId: string }) {
             <button
               type="button"
               onClick={() => setUnlinkOpen(true)}
-              disabled={unlinking}
+              disabled={unlinking || provisioning}
               className="h-8 px-3 rounded-full text-[11px] font-bold bg-red-50 text-red-600 cursor-pointer disabled:opacity-50"
             >
               {unlinking ? "…" : "Desvincular"}
@@ -211,11 +253,11 @@ export function PagosSection({ businessId }: { businessId: string }) {
         >
           <p className="text-base font-black">Conectar Mercado Pago</p>
           <p className="text-[12px] text-white/75 mt-1 max-w-md leading-relaxed">
-            Autorizá la app bolivarpide. Creamos sucursal y caja automáticamente — no hace falta Posnet.
+            Un solo paso: autorizá bolivarpide y damos de alta tu sucursal con el nombre y la dirección del local.
           </p>
           <button
             type="button"
-            onClick={handleLink}
+            onClick={() => void handleLink()}
             disabled={linking}
             className="mt-4 h-10 px-5 rounded-full bg-[#009EE3] hover:bg-[#008BCC] text-[12px] font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
@@ -225,50 +267,76 @@ export function PagosSection({ businessId }: { businessId: string }) {
         </div>
       )}
 
-      <MpHealthPanel businessId={businessId} linked={isLinked} expired={isExpired} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className={cn(card, "p-3.5 space-y-1")}>
-          <div className="flex items-center gap-2">
-            <MaterialSymbol icon="store" size={18} className="text-[#9a0002]" />
-            <h3 className="text-[13px] font-black">Sucursal</h3>
+      {isLinked && status && (
+        <div className={cn(card, "p-4 space-y-4")}>
+          <div>
+            <h2 className="text-[14px] font-black text-gray-900 dark:text-white">Opciones de cobro</h2>
+            <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+              Elegí qué medios ven tus clientes al pagar un pedido.
+            </p>
           </div>
-          <p className="text-[12px] text-gray-600 dark:text-gray-400 truncate">
-            {status?.store?.name ?? "—"}
+
+          <label className="flex items-start justify-between gap-3 cursor-pointer">
+            <div>
+              <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">Pago con QR</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Mostrar la opción de escanear QR (menor costo).</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={status.offerQrPay}
+              disabled={savingSettings}
+              onChange={(e) => void savePaySetting({ offerQrPay: e.target.checked })}
+              className="mt-1 shrink-0"
+            />
+          </label>
+
+          <label className="flex items-start justify-between gap-3 cursor-pointer">
+            <div>
+              <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                Absorber comisión del pago rápido
+              </p>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Si está activo, el cliente ve &quot;Gratis&quot; en pago rápido. Si no, se le suma el recargo al total.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={status.absorbFastPayFee}
+              disabled={savingSettings}
+              onChange={(e) => void savePaySetting({ absorbFastPayFee: e.target.checked })}
+              className="mt-1 shrink-0"
+            />
+          </label>
+
+          <p className="text-[11px] text-gray-500 leading-relaxed border-t border-gray-100 dark:border-[#3d3732] pt-3">
+            Mercado Pago aplica sus propias comisiones según tu cuenta.{" "}
+            <a
+              href={status.mpCostsHelpUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#9a0002] underline"
+            >
+              Ver costos en Mercado Pago
+            </a>
           </p>
         </div>
-        <div className={cn(card, "p-3.5 space-y-1")}>
-          <div className="flex items-center gap-2">
-            <MaterialSymbol icon="point_of_sale" size={18} className="text-[#9a0002]" />
-            <h3 className="text-[13px] font-black">Caja</h3>
-          </div>
-          <p className="text-[11px] font-mono text-gray-500 truncate">
-            {status?.pos?.externalPosId ?? "—"}
-          </p>
-        </div>
-      </div>
-
-      {(status?.isOrphan || (isLinked && !status?.mpReady)) && (
-        <button
-          type="button"
-          onClick={() => void reprovision()}
-          disabled={reprovisioning}
-          className="h-9 px-4 rounded-full bg-[#9a0002] text-white text-[11px] font-bold cursor-pointer disabled:opacity-50 flex items-center gap-2"
-        >
-          {reprovisioning && <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />}
-          Re-asociar sucursal y caja
-        </button>
       )}
 
-      <MpDevToolsPanel businessId={businessId} />
+      <MpDevToolsPanel
+        businessId={businessId}
+        status={status}
+        provisioning={provisioning}
+        provisionError={provisionError}
+        onRefresh={load}
+        onTryFix={runAutoProvision}
+      />
 
       {unlinkOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45">
           <div className={cn(card, "max-w-md w-full p-6 space-y-4")}>
             <h4 className="text-lg font-black">Desvincular Mercado Pago</h4>
             <p className="text-xs text-gray-500 leading-relaxed">
-              La sucursal y caja se conservan en MP. Con la misma cuenta se restauran solas; con otra, usá
-              re-asociar.
+              Podés volver a vincular con la misma cuenta cuando quieras.
             </p>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setUnlinkOpen(false)} className="text-xs font-bold cursor-pointer">

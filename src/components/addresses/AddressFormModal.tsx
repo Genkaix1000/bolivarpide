@@ -11,6 +11,7 @@ import {
   deleteUserAddressAction,
   saveUserAddressAction,
 } from "@/lib/addresses/actions";
+import { addressFormSchema } from "@/lib/addresses/schemas";
 import type { UserAddress } from "@/lib/addresses/types";
 import { flashToast, flashToastUndo } from "@/components/FlashToast";
 
@@ -78,7 +79,8 @@ export function AddressFormModal({
     } else {
       setForm(emptyForm(presetContact));
     }
-  }, [open, editing, presetContact]);
+    // Solo al abrir o cambiar la dirección editada — presetContact estable en el padre
+  }, [open, editing?.id]);
 
   async function handleUseLocation() {
     setError(null);
@@ -139,6 +141,13 @@ export function AddressFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const parsed = addressFormSchema.safeParse(form);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Revisá los datos del formulario");
+      return;
+    }
+
     setPending(true);
     try {
       const saved = await saveUserAddressAction(form, editing?.id);
@@ -228,7 +237,7 @@ export function AddressFormModal({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-1 flex-col p-5 pb-10 md:p-8">
+            <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col p-5 pb-10 md:p-8">
               {/* Desktop Header button */}
               <div className="hidden md:block">
                 <button
@@ -275,7 +284,6 @@ export function AddressFormModal({
                     value={form.street}
                     onChange={(street) => setForm((f) => ({ ...f, street }))}
                     placeholder="Ej. Av. San Martín, Colombia, Alsina..."
-                    required
                   />
                 </Field>
 
@@ -332,7 +340,6 @@ export function AddressFormModal({
                           setForm((f) => ({ ...f, contactFirstName: e.target.value }))
                         }
                         className={inputClass}
-                        required
                       />
                     </Field>
                     <Field label="Apellido">
@@ -342,7 +349,6 @@ export function AddressFormModal({
                           setForm((f) => ({ ...f, contactLastName: e.target.value }))
                         }
                         className={inputClass}
-                        required
                       />
                     </Field>
                   </div>
@@ -363,7 +369,6 @@ export function AddressFormModal({
                           placeholder="2314 443322"
                           inputMode="numeric"
                           className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 dark:text-white dark:placeholder:text-stone-500"
-                          required
                         />
                       </div>
                     </Field>

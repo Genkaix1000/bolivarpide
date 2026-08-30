@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAccessTokenForBusiness } from "@/lib/mercadopago/repository";
 import { mpFetch } from "@/lib/mercadopago/mp-fetch";
+import { mpCheckoutBackUrls, checkoutReturnOrigin } from "@/lib/mercadopago/env";
+import { checkoutAmountCents, type PayChannel } from "@/lib/payments/pricing";
+import { getBusinessPaymentSettings } from "@/lib/payments/businessSettings";
+import { formatFullDeliveryAddress } from "@/lib/addresses/display";
+import { rowToAddress, type AddressRow } from "@/lib/addresses/db";
 
 const QR_EXPIRATION_MS = 15 * 60 * 1000;
 
@@ -13,13 +18,19 @@ export type CheckoutLine = {
   note?: string;
 };
 
+export type FulfillmentType = "delivery" | "pickup";
+
 export type CheckoutInput = {
   businessSlug: string;
   userId: string;
   lines: CheckoutLine[];
-  paymentMethod: "mercadopago_qr" | "cash";
+  paymentMethod: "mercadopago_qr" | "mercadopago_fast" | "cash";
   couponCode?: string;
   idempotencyKey?: string;
+  /** Origin del request (ej. https://bolivarpide.com) para back_urls de Checkout Pro. */
+  returnOrigin?: string;
+  fulfillmentType?: FulfillmentType;
+  deliveryAddressId?: string;
 };
 
 export type CheckoutResult =
@@ -28,6 +39,16 @@ export type CheckoutResult =
       orderId: string;
       paymentSessionId: string;
       qrData: string;
+      expiresAt: string;
+      amountCents: number;
+      subtotalCents: number;
+      discountCents: number;
+    }
+  | {
+      kind: "redirect";
+      orderId: string;
+      paymentSessionId: string;
+      initPoint: string;
       expiresAt: string;
       amountCents: number;
       subtotalCents: number;
@@ -87,6 +108,32 @@ async function applyCoupon(
   return { discountCents, couponId: coupon.id };
 }
 
+async function resolveFulfillment(
+  userId: string,
+  fulfillmentType: FulfillmentType,
+  deliveryAddressId?: string,
+): Promise<{ fulfillment_type: FulfillmentType; delivery_address: string | null }> {
+  if (fulfillmentType === "pickup") {
+    return { fulfillment_type: "pickup", delivery_address: null };
+  }
+  if (!deliveryAddressId?.trim()) {
+    throw new Error("Agregá una dirección de entrega para continuar");
+  }
+  const svc = createServiceClient();
+  const { data: row, error } = await svc
+    .from("user_addresses")
+    .select("*")
+    .eq("id", deliveryAddressId.trim())
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!row) throw new Error("Dirección no encontrada");
+  return {
+    fulfillment_type: "delivery",
+    delivery_address: formatFullDeliveryAddress(rowToAddress(row as AddressRow)),
+  };
+}
+
 export async function validateCouponPublic(businessSlug: string, code: string, subtotalCents: number) {
   const business = await resolveBusiness(businessSlug);
   if (!business) throw new Error("Comercio no encontrado");
@@ -121,10 +168,44 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     couponId = applied.couponId;
   }
 
-  const amountCents = subtotalCents - discountCents;
+  const baseCents = subtotalCents - discountCents;
+  if (baseCents <= 0) throw new Error("El total debe ser mayor a cero");
+
+  const paySettings = await getBusinessPaymentSettings(business.id);
+
+  const channel: PayChannel =
+    input.paymentMethod === "cash"
+      ? "cash"
+      : input.paymentMethod === "mercadopago_fast"
+        ? "fast_pay"
+        : "qr";
+  const amountCents = checkoutAmountCents(
+    baseCents,
+    channel,
+    paySettings.absorbFastPayFee,
+  );
   if (amountCents <= 0) throw new Error("El total debe ser mayor a cero");
 
   const svc = createServiceClient();
+
+  const { data: customerProfile } = await svc
+    .from("user_profiles")
+    .select("first_name, last_name, display_name, phone")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  const customerName = [customerProfile?.first_name, customerProfile?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || customerProfile?.display_name?.trim() || null;
+  const customerPhone = customerProfile?.phone?.trim() || null;
+
+  const fulfillmentType: FulfillmentType =
+    input.fulfillmentType === "pickup" ? "pickup" : "delivery";
+  const fulfillment = await resolveFulfillment(
+    input.userId,
+    fulfillmentType,
+    input.deliveryAddressId,
+  );
 
   if (input.paymentMethod === "cash") {
     if (!business.accepts_cash) throw new Error("Este comercio no acepta efectivo");
@@ -133,12 +214,16 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       .insert({
         business_id: business.id,
         customer_user_id: input.userId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
         status: "pending",
         payment_method: "cash",
         payment_status: "awaiting_payment",
         subtotal_cents: amountCents,
         total_cents: amountCents,
         coupon_id: couponId,
+        fulfillment_type: fulfillment.fulfillment_type,
+        delivery_address: fulfillment.delivery_address,
       })
       .select("id")
       .single();
@@ -151,6 +236,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         name: l.name,
         quantity: l.quantity,
         unit_price_cents: l.unitPriceCents,
+        note: l.note ?? null,
       })),
     );
 
@@ -163,8 +249,137 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     };
   }
 
+  if (input.paymentMethod === "mercadopago_fast") {
+    if (!business.mp_ready) {
+      throw new Error("Este comercio aún no configuró Mercado Pago. Pedile que vincule desde el panel Pagos.");
+    }
+
+    const idempotencyKey = input.idempotencyKey ?? randomUUID();
+    const { data: existingSession } = await svc
+      .from("payment_sessions")
+      .select("*")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingSession?.qr_data && existingSession.status === "created" && existingSession.channel === "checkout_pro") {
+      return {
+        kind: "redirect",
+        orderId: existingSession.order_id!,
+        paymentSessionId: existingSession.id,
+        initPoint: existingSession.qr_data,
+        expiresAt: existingSession.expires_at!,
+        amountCents: existingSession.amount_cents,
+        subtotalCents,
+        discountCents,
+      };
+    }
+
+    const { data: order, error: orderErr } = await svc
+      .from("orders")
+      .insert({
+        business_id: business.id,
+        customer_user_id: input.userId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        status: "pending",
+        payment_method: "mercadopago_fast",
+        payment_status: "awaiting_payment",
+        subtotal_cents: amountCents,
+        total_cents: amountCents,
+        coupon_id: couponId,
+        fulfillment_type: fulfillment.fulfillment_type,
+        delivery_address: fulfillment.delivery_address,
+      })
+      .select("id")
+      .single();
+    if (orderErr) throw orderErr;
+
+    await svc.from("order_items").insert(
+      input.lines.map((l) => ({
+        order_id: order.id,
+        product_id: l.productId ?? null,
+        name: l.name,
+        quantity: l.quantity,
+        unit_price_cents: l.unitPriceCents,
+        note: l.note ?? null,
+      })),
+    );
+
+    const token = await getAccessTokenForBusiness(business.id);
+    const externalRef = `BP-${order.id}`.slice(0, 64);
+    const origin = checkoutReturnOrigin(input.returnOrigin);
+    const returnConfig = mpCheckoutBackUrls(origin, order.id);
+
+    const preferenceBody: Record<string, unknown> = {
+      items: [
+        {
+          title: `Pedido · ${business.name}`.slice(0, 150),
+          quantity: 1,
+          unit_price: amountCents / 100,
+          currency_id: "ARS",
+        },
+      ],
+      external_reference: externalRef,
+    };
+    if (returnConfig) {
+      preferenceBody.back_urls = returnConfig.back_urls;
+      preferenceBody.auto_return = returnConfig.auto_return;
+    }
+
+    const preference = await mpFetch<{
+      id: string;
+      init_point: string;
+      sandbox_init_point?: string;
+    }>(token, "/checkout/preferences", {
+      method: "POST",
+      body: JSON.stringify(preferenceBody),
+    });
+
+    const initPoint = preference.init_point || preference.sandbox_init_point;
+    if (!initPoint) throw new Error("Mercado Pago no devolvió URL de pago");
+
+    const expiresAt = new Date(Date.now() + QR_EXPIRATION_MS).toISOString();
+    const { data: session, error: sessErr } = await svc
+      .from("payment_sessions")
+      .insert({
+        order_id: order.id,
+        business_id: business.id,
+        channel: "checkout_pro",
+        mp_order_id: preference.id,
+        external_reference: externalRef,
+        idempotency_key: idempotencyKey,
+        amount_cents: amountCents,
+        qr_data: initPoint,
+        status: "created",
+        expires_at: expiresAt,
+      })
+      .select("id")
+      .single();
+    if (sessErr) throw sessErr;
+
+    await svc
+      .from("orders")
+      .update({ active_payment_session_id: session.id })
+      .eq("id", order.id);
+
+    return {
+      kind: "redirect",
+      orderId: order.id,
+      paymentSessionId: session.id,
+      initPoint,
+      expiresAt,
+      amountCents,
+      subtotalCents,
+      discountCents,
+    };
+  }
+
   if (!business.mp_ready) {
     throw new Error("Este comercio aún no configuró Mercado Pago. Pedile que vincule desde el panel Pagos.");
+  }
+
+  if (input.paymentMethod === "mercadopago_qr" && !paySettings.offerQrPay) {
+    throw new Error("Este comercio no ofrece pago con QR en este momento.");
   }
 
   const { data: pos } = await svc
@@ -199,12 +414,16 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     .insert({
       business_id: business.id,
       customer_user_id: input.userId,
+      customer_name: customerName,
+      customer_phone: customerPhone,
       status: "pending",
       payment_method: "mercadopago_qr",
       payment_status: "awaiting_payment",
       subtotal_cents: amountCents,
       total_cents: amountCents,
       coupon_id: couponId,
+      fulfillment_type: fulfillment.fulfillment_type,
+      delivery_address: fulfillment.delivery_address,
     })
     .select("id")
     .single();
@@ -244,12 +463,14 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         },
       },
       transactions: { payments: [{ amount: amountStr }] },
-      items: input.lines.map((l) => ({
-        title: l.name.slice(0, 150),
-        unit_price: (l.unitPriceCents / 100).toFixed(2),
-        quantity: l.quantity,
-        unit_measure: "unit",
-      })),
+      items: [
+        {
+          title: `Pedido · ${business.name}`.slice(0, 150),
+          unit_price: amountStr,
+          quantity: 1,
+          unit_measure: "unit",
+        },
+      ],
     }),
   });
 

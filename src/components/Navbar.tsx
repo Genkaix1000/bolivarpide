@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useUserProfile } from "@/components/UserProfileProvider";
+import { useCart } from "@/components/CartProvider";
+import { statusIcon, statusShortLabel } from "@/lib/orders/active";
 import { UserAvatarView } from "@/components/UserAvatarView";
 import { CockpitUserProfileBar } from "@/components/profile/CockpitUserProfileBar";
 import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
@@ -41,10 +43,8 @@ const DRAWER_TABS = [
   { id: "profile", label: "Mi Perfil", icon: "badge" },
 ] as const;
 
-const MOCK_NOTIFICATIONS = [
-  { emoji: "🛵", title: "Tu pedido de Burger Beef está en camino", time: "Hace 5 min" },
+const PROMO_NOTIFICATIONS = [
   { emoji: "🎁", title: "¡Tienes un cupón de 15% de descuento!", time: "Hace 1 hora" },
-  { emoji: "🍕", title: "Tu pizza favorita de Pizza Hut tiene 20% OFF", time: "Hace 3 horas" },
 ];
 
 // ─── Shared helper: origin-aware clip-path view-transition ────────────────────
@@ -142,6 +142,7 @@ export default function Navbar({
   onLocationClick,
 }: NavbarProps) {
   const { profile, isAuthenticated, hasActiveBusiness, logout } = useUserProfile();
+  const { activeOrder } = useCart();
   const handleTabChange = useCallback((id: string) => {
     if (id === "profile" && !isAuthenticated) return;
     onTabChange(id);
@@ -186,7 +187,26 @@ export default function Navbar({
       className="absolute top-[48px] right-0 z-50 w-[270px] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]"
     >
       <div className="max-h-[220px] space-y-1.5 overflow-y-auto pr-1">
-        {MOCK_NOTIFICATIONS.map((n, idx) => (
+        {activeOrder ? (
+          <Link
+            href={`/pedido/${activeOrder.orderId}`}
+            className="flex cursor-pointer gap-2 rounded-xl bg-[#9a0002]/8 p-2.5 text-left transition-colors hover:bg-[#9a0002]/12 dark:bg-[#9a0002]/15"
+            onClick={() => setShowNotifications(false)}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#9a0002]/10 text-[#9a0002]">
+              <MaterialSymbol icon={statusIcon(activeOrder.status)} size={18} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[12px] font-semibold leading-tight text-gray-800 dark:text-[#d4cfc9]">
+                {statusShortLabel(activeOrder.status)} · {activeOrder.businessName}
+              </span>
+              <span className="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                Pedido #{activeOrder.orderNumber} · Ver seguimiento
+              </span>
+            </div>
+          </Link>
+        ) : null}
+        {PROMO_NOTIFICATIONS.map((n, idx) => (
           <div
             key={idx}
             className="flex cursor-pointer gap-2 rounded-xl bg-[#f5f1eb] p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
@@ -198,9 +218,14 @@ export default function Navbar({
             </div>
           </div>
         ))}
+        {!activeOrder && PROMO_NOTIFICATIONS.length === 0 ? (
+          <p className="px-1 text-[11px] text-gray-500">Sin novedades por ahora.</p>
+        ) : null}
       </div>
     </motion.div>
   );
+
+  const hasOrderNotification = Boolean(activeOrder);
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 md:sticky">
@@ -367,7 +392,7 @@ export default function Navbar({
                     aria-label="Notificaciones"
                   >
                     <MaterialSymbol icon="notifications" size={17} className="text-white" />
-                    {!showNotifications && (
+                    {!showNotifications && hasOrderNotification && (
                       <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
                     )}
                   </CherryBtn>

@@ -6,6 +6,12 @@ export const BOLIVAR_DEFAULTS = {
   postalCode: "6550",
 } as const;
 
+/** Ciudad válida en MP stores API (whitelist MLA / Buenos Aires). */
+export const MP_LOCATION_DEFAULTS = {
+  cityName: "Bolívar",
+  stateName: "Buenos Aires",
+} as const;
+
 /** Centro aproximado de San Carlos de Bolívar, BA */
 export const BOLIVAR_CENTER = { lat: -36.2307, lng: -61.1189 };
 

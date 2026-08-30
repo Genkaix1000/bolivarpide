@@ -1,5 +1,5 @@
-import { listOrders } from "@/lib/business/queries";
-import { OrdersBoard } from "@/components/business/OrdersBoard";
+import { listKitchenOrders } from "@/lib/orders/kitchen";
+import { ComanderaBoard } from "@/components/business/ComanderaBoard";
 
 export default async function PedidosPage({
   params,
@@ -7,6 +7,6 @@ export default async function PedidosPage({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const orders = await listOrders(businessId);
-  return <OrdersBoard businessId={businessId} initialOrders={orders as never} />;
+  const { tickets } = await listKitchenOrders(businessId);
+  return <ComanderaBoard businessId={businessId} initialTickets={tickets} />;
 }

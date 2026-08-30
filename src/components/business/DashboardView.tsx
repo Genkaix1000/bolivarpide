@@ -40,11 +40,15 @@ const STATUS_CONFIG: Record<
     classes: "bg-gray-100 text-gray-600 dark:bg-[#231f1c] dark:text-gray-300",
   },
   preparing: { label: "En Cocina", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
-  ready: { label: "Listo", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
   delivering: { label: "En Camino", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
+  ready: { label: "Listo", classes: "bg-[#9a0002]/10 text-[#9a0002]" },
   delivered: {
     label: "Entregado",
     classes: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  },
+  rejected: {
+    label: "Rechazado",
+    classes: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
   },
   cancelled: {
     label: "Cancelado",

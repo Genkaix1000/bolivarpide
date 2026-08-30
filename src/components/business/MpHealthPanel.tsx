@@ -11,15 +11,15 @@ type MpHealth = {
   checkedAt: string;
 };
 
-/** Checks visibles para el comercio — sin jerga técnica. */
+/** Checks visibles para el comercio — sin detalle técnico de caja/sucursal. */
 const VISIBLE_CHECKS = [
   { key: "oauthLinked", label: "Cuenta", icon: "link" },
-  { key: "storeProvisioned", label: "Local", icon: "store" },
-  { key: "posProvisioned", label: "Caja", icon: "point_of_sale" },
   { key: "mpReady", label: "Cobros QR", icon: "qr_code_2" },
 ] as const;
 
 const EXTRA_CHECKS = [
+  { key: "storeProvisioned", label: "Sucursal MP", icon: "store" },
+  { key: "posProvisioned", label: "Caja MP", icon: "point_of_sale" },
   { key: "refreshToken", label: "Acceso", icon: "vpn_key" },
   { key: "tokenExpires", label: "Sesión", icon: "schedule" },
 ] as const;
@@ -56,11 +56,13 @@ export function MpHealthPanel({
   businessId,
   linked,
   expired,
+  embedded = false,
 }: {
   businessId: string;
-  /** Si false, no consulta la API y muestra estado sin vincular. */
   linked?: boolean;
   expired?: boolean;
+  /** Dentro de herramientas de desarrollador: sin card exterior ni estados desvinculados. */
+  embedded?: boolean;
 }) {
   const [health, setHealth] = useState<MpHealth | null>(null);
   const [loading, setLoading] = useState(linked !== false);
@@ -92,7 +94,7 @@ export function MpHealthPanel({
   const failures = items.filter((i) => i.ok === false);
   const allOk = visible.length > 0 && visible.every((i) => i.ok === true);
 
-  if (linked === false) {
+  if (linked === false && !embedded) {
     return (
       <div className="flex items-center gap-3 rounded-[20px] border border-dashed border-gray-200 dark:border-[#3d3732] bg-gray-50/80 dark:bg-[#231f1c]/40 px-4 py-3">
         <div className="w-9 h-9 rounded-xl bg-gray-200/80 dark:bg-[#2a2623] flex items-center justify-center shrink-0">
@@ -106,7 +108,7 @@ export function MpHealthPanel({
     );
   }
 
-  if (expired) {
+  if (expired && !embedded) {
     return (
       <div className="flex items-center gap-3 rounded-[20px] border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 px-4 py-3">
         <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
@@ -146,7 +148,13 @@ export function MpHealthPanel({
   if (!health) return null;
 
   return (
-    <section className="rounded-[20px] border border-gray-100 dark:border-[#3d3732] bg-white dark:bg-[#1c1917] px-3.5 py-3 space-y-2.5">
+    <section
+      className={cn(
+        embedded
+          ? "space-y-2.5"
+          : "rounded-[20px] border border-gray-100 dark:border-[#3d3732] bg-white dark:bg-[#1c1917] px-3.5 py-3 space-y-2.5",
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <MaterialSymbol

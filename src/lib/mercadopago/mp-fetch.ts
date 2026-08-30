@@ -6,10 +6,29 @@ export class MpApiError extends Error {
     message: string,
     readonly status?: number,
     readonly code?: string,
+    readonly causes: string[] = [],
   ) {
     super(message);
     this.name = "MpApiError";
   }
+}
+
+type MpErrorBody = {
+  message?: string;
+  error?: string;
+  causes?: { code?: string | number; description?: string }[];
+};
+
+function parseMpError(body: MpErrorBody, status: number): MpApiError {
+  const causes = (body.causes ?? [])
+    .map((c) => c.description ?? String(c.code ?? ""))
+    .filter(Boolean);
+  const detail = causes[0] ?? body.message ?? body.error;
+  const code =
+    causes.find((c) => /point_of_sale|already exists|duplicate/i.test(c)) != null
+      ? "point_of_sale_exists"
+      : body.error;
+  return new MpApiError(detail ?? "Error Mercado Pago", status, code, causes);
 }
 
 export async function mpFetch<T>(
@@ -35,9 +54,9 @@ export async function mpFetch<T>(
     throw new MpApiError(`Mercado Pago no respondió a tiempo (${path})`);
   }
 
-  const body = await response.json().catch(() => ({})) as { message?: string; error?: string };
+  const body = await response.json().catch(() => ({})) as MpErrorBody;
   if (!response.ok) {
-    throw new MpApiError(body.message ?? response.statusText, response.status, body.error);
+    throw parseMpError(body, response.status);
   }
   return body as T;
 }

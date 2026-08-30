@@ -85,6 +85,7 @@ serve(async (req: Request) => {
     const mpClientId = Deno.env.get("MP_APP_ID");
     const mpClientSecret = Deno.env.get("MP_CLIENT_SECRET");
     const tokenSecret = Deno.env.get("MP_TOKEN_SECRET");
+    const oauthUsePkce = Deno.env.get("MP_OAUTH_USE_PKCE") === "true";
 
     if (!mpRedirectUri || !mpClientId || !mpClientSecret) {
       throw new Error("Configuración MP incompleta: faltan secrets");
@@ -93,17 +94,21 @@ serve(async (req: Request) => {
       throw new Error("Falta MP_TOKEN_SECRET en la Edge Function (supabase secrets set).");
     }
 
+    const tokenParams = new URLSearchParams({
+      client_id: mpClientId,
+      client_secret: mpClientSecret,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: mpRedirectUri,
+    });
+    if (oauthUsePkce && code_verifier !== "no-pkce") {
+      tokenParams.set("code_verifier", code_verifier as string);
+    }
+
     const tokenResponse = await fetch("https://api.mercadopago.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: mpClientId,
-        client_secret: mpClientSecret,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: mpRedirectUri,
-        code_verifier: code_verifier as string,
-      }),
+      body: tokenParams,
     });
 
     if (!tokenResponse.ok) {
