@@ -1,3 +1,5 @@
+import { resolveItemOptions } from "@/lib/orders/itemOptionsNote";
+
 export type OrderLifecycleStatus =
   | "pending"
   | "preparing"
@@ -13,11 +15,17 @@ export const LIFECYCLE_STATUSES: OrderLifecycleStatus[] = [
   "rejected",
 ];
 
+export type OrderItemOptionDetail = {
+  label: string;
+  priceCents: number;
+};
+
 export type OrderItemDetail = {
   name: string;
   quantity: number;
   unitPriceCents: number;
   note?: string | null;
+  optionsDetail?: OrderItemOptionDetail[];
 };
 
 export type KitchenOrderTicket = {
@@ -272,12 +280,16 @@ export function mapKitchenTicket(row: {
   if (!status) return null;
   if (!isKitchenEligible(row)) return null;
 
-  const items: OrderItemDetail[] = (row.order_items ?? []).map((i) => ({
-    name: i.name,
-    quantity: i.quantity,
-    unitPriceCents: i.unit_price_cents,
-    note: i.note,
-  }));
+  const items: OrderItemDetail[] = (row.order_items ?? []).map((i) => {
+    const parsed = resolveItemOptions(i.note);
+    return {
+      name: i.name,
+      quantity: i.quantity,
+      unitPriceCents: i.unit_price_cents,
+      note: parsed.note,
+      optionsDetail: parsed.optionsDetail,
+    };
+  });
 
   return {
     id: row.id,

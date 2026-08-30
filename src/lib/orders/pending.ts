@@ -119,4 +119,7 @@ export async function cancelPendingCustomerOrder(orderId: string, userId: string
     })
     .eq("id", orderId);
   if (updErr) throw updErr;
+
+  const { emitOrderCancelledNotifications } = await import("@/lib/notifications/emit");
+  void emitOrderCancelledNotifications(orderId);
 }

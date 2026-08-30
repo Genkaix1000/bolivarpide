@@ -57,6 +57,9 @@ async function markOrderPaid(
       paid_at: new Date().toISOString(),
     })
     .eq("id", orderId);
+
+  const { emitOrderPaidNotifications } = await import("@/lib/notifications/emit");
+  void emitOrderPaidNotifications(orderId);
 }
 
 async function reconcileOrder(mpOrderId: string) {

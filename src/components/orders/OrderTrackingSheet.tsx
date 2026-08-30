@@ -36,22 +36,26 @@ export function OrderTrackingSheet({ view }: { view: OrderTrackingView }) {
             <div>
               <p className="text-[15px] font-bold text-red-700 dark:text-red-200">{view.statusTitle}</p>
               <p className="mt-0.5 text-[13px] text-red-600/90 dark:text-red-300/90">{view.statusSubtitle}</p>
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(true)}
+                className="mt-1.5 text-[11px] font-semibold text-stone-400 underline-offset-2 hover:text-[#9a0002] hover:underline dark:hover:text-red-400"
+              >
+                Ver comanda
+              </button>
             </div>
           </div>
         ) : (
           <>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">{view.statusTitle}</h2>
-                <p className="mt-0.5 text-[13px] text-stone-500 dark:text-stone-400">{view.statusSubtitle}</p>
-              </div>
+            <div>
+              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">{view.statusTitle}</h2>
+              <p className="mt-0.5 text-[13px] text-stone-500 dark:text-stone-400">{view.statusSubtitle}</p>
               <button
                 type="button"
                 onClick={() => setReceiptOpen(true)}
-                className="flex items-center gap-1 rounded-xl bg-[#f5f1eb] dark:bg-stone-800 px-3 py-1.5 text-xs font-bold text-[#9a0002] dark:text-red-400 shadow-sm hover:bg-[#ede4d9] dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                className="mt-1.5 text-[11px] font-semibold text-stone-400 underline-offset-2 hover:text-[#9a0002] hover:underline dark:hover:text-red-400"
               >
-                <MaterialSymbol icon="receipt_long" size={16} />
-                <span>Ver Ticket</span>
+                Ver comanda
               </button>
             </div>
 

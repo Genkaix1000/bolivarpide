@@ -1,4 +1,5 @@
 import { requireBusinessAccess, requireUser } from "@/lib/business/queries";
+import { resolveItemOptions } from "@/lib/orders/itemOptionsNote";
 import {
   normalizeLifecycleStatus,
   stepperStep,
@@ -70,12 +71,15 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
       quantity: number;
       unit_price_cents: number;
       note?: string | null;
+      options_detail?: unknown;
     };
+    const parsed = resolveItemOptions(r.note);
     return {
       name: r.name,
       quantity: r.quantity,
       unitPriceCents: r.unit_price_cents,
-      note: r.note,
+      note: parsed.note,
+      optionsDetail: parsed.optionsDetail,
     };
   });
 

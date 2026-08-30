@@ -2,6 +2,11 @@ import type { TrendingItem } from "@/lib/mockData";
 
 export type SelectedOptions = Record<string, string | string[]>;
 
+export type CartOptionDetail = {
+  label: string;
+  priceCents: number;
+};
+
 export interface CartLine {
   key: string;
   productId: string;
@@ -17,6 +22,7 @@ export interface CartLine {
   note?: string;
   selectedOptions?: SelectedOptions;
   optionLabels?: string[];
+  optionsDetail?: CartOptionDetail[];
 }
 
 export interface CartState {
@@ -53,18 +59,27 @@ export function unitPrice(item: TrendingItem, selected?: SelectedOptions): numbe
 }
 
 export function optionLabels(item: TrendingItem, selected?: SelectedOptions): string[] {
+  return optionBreakdown(item, selected).map((o) => o.label);
+}
+
+export function optionBreakdown(item: TrendingItem, selected?: SelectedOptions): CartOptionDetail[] {
   if (!selected || !item.options) return [];
-  const labels: string[] = [];
+  const lines: CartOptionDetail[] = [];
   for (const opt of item.options) {
     const raw = selected[opt.id];
     if (!raw) continue;
     const choiceIds = Array.isArray(raw) ? raw : [raw];
     for (const choiceId of choiceIds) {
       const choice = opt.choices.find((c) => c.id === choiceId);
-      if (choice) labels.push(choice.label);
+      if (choice) {
+        lines.push({
+          label: choice.label,
+          priceCents: Math.round((choice.priceDelta ?? 0) * 100),
+        });
+      }
     }
   }
-  return labels;
+  return lines;
 }
 
 export function requiredOptionsMissing(item: TrendingItem, selected?: SelectedOptions): boolean {
@@ -106,7 +121,8 @@ export function addLine(
 ): CartState {
   const key = lineKey(item.id, selected, note);
   const price = unitPrice(item, selected);
-  const labels = optionLabels(item, selected);
+  const breakdown = optionBreakdown(item, selected);
+  const labels = breakdown.map((o) => o.label);
   const existing = cart.lines.find((l) => l.key === key);
   const lines = existing
     ? cart.lines.map((l) => (l.key === key ? { ...l, qty: l.qty + qty } : l))
@@ -127,6 +143,7 @@ export function addLine(
           note: note || undefined,
           selectedOptions: selected,
           optionLabels: labels.length ? labels : undefined,
+          optionsDetail: breakdown.length ? breakdown : undefined,
         },
       ];
   return { chainId: item.chainId, lines };

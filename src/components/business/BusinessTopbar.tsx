@@ -6,12 +6,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import {
   CherryBtn,
-  NOTIFICATION_POPOVER_MOTION,
   ThemeToggleNavBtn,
 } from "@/components/Navbar";
+import { NotificationPopover, NOTIFICATION_POPOVER_MOTION } from "@/components/notifications/NotificationPopover";
 import { SmoothInput } from "@/components/SmoothInput";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAvatarView } from "@/components/UserAvatarView";
+import { NotificationPanel } from "@/components/notifications/NotificationPanel";
+import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import type { BusinessShellData } from "@/lib/business/queries";
 import type { NewOrderAlert } from "@/hooks/useOrderAlerts";
@@ -32,13 +34,14 @@ export function BusinessTopbar({
   onMenuClick,
 }: BusinessTopbarProps) {
   const { profile, logout, isAuthenticated } = useUserProfile();
+  const { items: notifications, unreadCount, markRead } = useNotifications({ businessId });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const alertMode = orderAlerts.length > 0;
-  const hasNotifications = shell.notifications.length > 0 || alertMode;
+  const hasNotifications = unreadCount > 0 || alertMode;
 
   const alertMessage =
     orderAlerts.length === 1
@@ -62,33 +65,12 @@ export function BusinessTopbar({
   }
 
   const notificationPanel = (
-    <motion.div
-      {...NOTIFICATION_POPOVER_MOTION}
-      className="absolute top-[48px] right-0 z-50 w-[270px] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]"
-    >
-      <div className="max-h-[220px] space-y-1.5 overflow-y-auto pr-1">
-        {shell.notifications.length === 0 ? (
-          <p className="px-1 text-[11px] text-gray-500">Sin novedades por ahora.</p>
-        ) : (
-          shell.notifications.map((n, idx) => (
-            <div
-              key={idx}
-              className="flex gap-2 rounded-xl bg-[#f5f1eb] p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
-            >
-              <span className="select-none text-base">{n.emoji}</span>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-[12px] font-semibold leading-tight text-gray-800 dark:text-[#d4cfc9]">
-                  {n.title}
-                </span>
-                <span className="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
-                  {n.time}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </motion.div>
+    <NotificationPanel
+      items={notifications}
+      variant="business"
+      onMarkRead={markRead}
+      onClose={() => setShowNotifDropdown(false)}
+    />
   );
 
   return (
@@ -189,7 +171,9 @@ export function BusinessTopbar({
                   <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
                 )}
               </CherryBtn>
-              <AnimatePresence>{showNotifDropdown && notificationPanel}</AnimatePresence>
+              <NotificationPopover open={showNotifDropdown}>
+                {notificationPanel}
+              </NotificationPopover>
             </div>
 
             <div className="relative hidden md:block" ref={userMenuRef}>

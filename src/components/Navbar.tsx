@@ -8,10 +8,15 @@ import { cn } from "@/lib/utils";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { useCart } from "@/components/CartProvider";
-import { statusIcon, statusShortLabel } from "@/lib/orders/active";
 import { UserAvatarView } from "@/components/UserAvatarView";
 import { CockpitUserProfileBar } from "@/components/profile/CockpitUserProfileBar";
 import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
+import { NotificationPanel } from "@/components/notifications/NotificationPanel";
+import {
+  NotificationPopover,
+  NOTIFICATION_POPOVER_MOTION,
+} from "@/components/notifications/NotificationPopover";
+import { useNotifications } from "@/hooks/useNotifications";
 import type { UserAddressSummary } from "@/lib/addresses/types";
 
 interface NavbarProps {
@@ -30,22 +35,13 @@ interface NavbarProps {
   onLocationClick?: () => void;
 }
 
-/** Shared notification popover animation for desktop navbar and mobile header. */
-export const NOTIFICATION_POPOVER_MOTION = {
-  initial: { opacity: 0, y: -6, scale: 0.97 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -4, scale: 0.98 },
-  transition: { duration: 0.2 },
-} as const;
+/** @deprecated Import from `@/components/notifications/NotificationPopover` */
+export { NOTIFICATION_POPOVER_MOTION } from "@/components/notifications/NotificationPopover";
 
 const DRAWER_TABS = [
   { id: "home", label: "Inicio", icon: "home" },
   { id: "profile", label: "Mi Perfil", icon: "badge" },
 ] as const;
-
-const PROMO_NOTIFICATIONS = [
-  { emoji: "🎁", title: "¡Tienes un cupón de 15% de descuento!", time: "Hace 1 hora" },
-];
 
 // ─── Shared helper: origin-aware clip-path view-transition ────────────────────
 export function startThemeTransitionFrom(el: HTMLElement | null, toDark: boolean) {
@@ -154,6 +150,9 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const { items: notifications, unreadCount, markRead } = useNotifications({
+    enabled: isAuthenticated,
+  });
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -182,50 +181,17 @@ export default function Navbar({
     : "Elegí dirección";
 
   const notificationPanel = (
-    <motion.div
-      {...NOTIFICATION_POPOVER_MOTION}
-      className="absolute top-[48px] right-0 z-50 w-[270px] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]"
-    >
-      <div className="max-h-[220px] space-y-1.5 overflow-y-auto pr-1">
-        {activeOrder ? (
-          <Link
-            href={`/pedido/${activeOrder.orderId}`}
-            className="flex cursor-pointer gap-2 rounded-xl bg-[#9a0002]/8 p-2.5 text-left transition-colors hover:bg-[#9a0002]/12 dark:bg-[#9a0002]/15"
-            onClick={() => setShowNotifications(false)}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#9a0002]/10 text-[#9a0002]">
-              <MaterialSymbol icon={statusIcon(activeOrder.status)} size={18} />
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-[12px] font-semibold leading-tight text-gray-800 dark:text-[#d4cfc9]">
-                {statusShortLabel(activeOrder.status)} · {activeOrder.businessName}
-              </span>
-              <span className="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
-                Pedido #{activeOrder.orderNumber} · Ver seguimiento
-              </span>
-            </div>
-          </Link>
-        ) : null}
-        {PROMO_NOTIFICATIONS.map((n, idx) => (
-          <div
-            key={idx}
-            className="flex cursor-pointer gap-2 rounded-xl bg-[#f5f1eb] p-2.5 text-left transition-colors hover:bg-[#ede4d9] dark:bg-[#2a2623] dark:hover:bg-[#302c28]/60"
-          >
-            <span className="select-none text-base">{n.emoji}</span>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-[12px] font-semibold leading-tight text-gray-800 dark:text-[#d4cfc9]">{n.title}</span>
-              <span className="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">{n.time}</span>
-            </div>
-          </div>
-        ))}
-        {!activeOrder && PROMO_NOTIFICATIONS.length === 0 ? (
-          <p className="px-1 text-[11px] text-gray-500">Sin novedades por ahora.</p>
-        ) : null}
-      </div>
-    </motion.div>
+    <NotificationPanel
+      items={notifications}
+      variant="customer"
+      activeOrder={activeOrder}
+      onMarkRead={markRead}
+      onClose={() => setShowNotifications(false)}
+      settingsHref="/?tab=profile&section=notifications"
+    />
   );
 
-  const hasOrderNotification = Boolean(activeOrder);
+  const hasOrderNotification = unreadCount > 0 || Boolean(activeOrder);
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 md:sticky">
@@ -396,7 +362,9 @@ export default function Navbar({
                       <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
                     )}
                   </CherryBtn>
-                  <AnimatePresence>{showNotifications && notificationPanel}</AnimatePresence>
+                  <NotificationPopover open={showNotifications}>
+                    {notificationPanel}
+                  </NotificationPopover>
                 </div>
 
                 <div className="relative hidden md:block" ref={userMenuRef}>

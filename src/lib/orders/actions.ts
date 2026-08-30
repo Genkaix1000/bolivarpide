@@ -79,6 +79,9 @@ export async function advanceOrderStatus(input: {
       await refundMercadoPagoOrder(input.orderId);
     }
 
+    const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
+    void emitCustomerStatusNotification(input.orderId, "rejected");
+
     revalidatePath(`/negocio/${input.businessId}/pedidos`);
     return { ok: true };
   }
@@ -133,6 +136,9 @@ export async function advanceOrderStatus(input: {
 
   const { error: updErr } = await supabase.from("orders").update(patch).eq("id", input.orderId);
   if (updErr) return { ok: false, error: updErr.message };
+
+  const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
+  void emitCustomerStatusNotification(input.orderId, target);
 
   revalidatePath(`/negocio/${input.businessId}/pedidos`);
   return { ok: true };

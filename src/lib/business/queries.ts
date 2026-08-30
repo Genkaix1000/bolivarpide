@@ -272,23 +272,11 @@ function userDisplay(user: { email?: string }, profileName: string | null) {
   return { displayName, email, initials };
 }
 
-function relativeTime(createdAt: string): string {
-  const diff = Date.now() - new Date(createdAt).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Ahora";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Hace ${hrs} h`;
-  return `Hace ${Math.floor(hrs / 24)} d`;
-}
-
 export async function getBusinessShellData(businessId: string): Promise<BusinessShellData> {
   const { supabase, user, business } = await requireBusinessAccess(businessId);
   const { label: planLabel, commission: planCommission } = planMeta(business.plan);
 
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  const [profileRes, pendingRecentRes, pendingAllRes, outOfStockRes] = await Promise.all([
+  const [profileRes, pendingAllRes] = await Promise.all([
     supabase
       .from("user_profiles")
       .select("display_name")
@@ -296,44 +284,14 @@ export async function getBusinessShellData(businessId: string): Promise<Business
       .maybeSingle(),
     supabase
       .from("orders")
-      .select("id, customer_name, total_cents, created_at, payment_status, payment_method")
-      .eq("business_id", businessId)
-      .eq("status", "pending")
-      .gte("created_at", hourAgo)
-      .order("created_at", { ascending: false })
-      .limit(3),
-    supabase
-      .from("orders")
       .select("id, status, payment_status, payment_method")
       .eq("business_id", businessId)
       .eq("status", "pending"),
-    supabase
-      .from("products")
-      .select("name")
-      .eq("business_id", businessId)
-      .eq("available", false)
-      .limit(2),
   ]);
 
   const { displayName, email, initials } = userDisplay(user, profileRes.data?.display_name);
 
   const notifications: ShellNotification[] = [];
-  for (const o of pendingRecentRes.data ?? []) {
-    if (o.payment_status !== "paid" && o.payment_method !== "cash") continue;
-    const who = o.customer_name?.trim() || "Cliente";
-    notifications.push({
-      emoji: "🛒",
-      title: `Nuevo pedido de ${who}`,
-      time: relativeTime(o.created_at),
-    });
-  }
-  for (const p of outOfStockRes.data ?? []) {
-    notifications.push({
-      emoji: "📦",
-      title: `Sin stock: ${p.name}`,
-      time: "Hoy",
-    });
-  }
 
   const { isKitchenEligible } = await import("@/lib/orders/lifecycle");
   const operationalPending = (pendingAllRes.data ?? []).filter((o) => isKitchenEligible(o)).length;

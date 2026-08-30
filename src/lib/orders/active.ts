@@ -2,6 +2,7 @@ import {
   normalizeLifecycleStatus,
   type OrderLifecycleStatus,
 } from "@/lib/orders/lifecycle";
+import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export type ActiveCustomerOrder = {
@@ -9,8 +10,10 @@ export type ActiveCustomerOrder = {
   orderNumber: number;
   businessSlug: string;
   businessName: string;
+  businessLogoUrl?: string;
   status: OrderLifecycleStatus;
   totalCents: number;
+  createdAt: string;
   paymentMethod: "mercadopago_qr" | "mercadopago_fast" | "cash" | null;
 };
 
@@ -52,7 +55,8 @@ export async function getActiveCustomerOrder(userId: string): Promise<ActiveCust
       payment_method,
       payment_status,
       total_cents,
-      businesses!inner(slug, name)
+      created_at,
+      businesses!inner(slug, name, logo_path)
     `,
     )
     .eq("customer_user_id", userId)
@@ -77,6 +81,7 @@ export async function getActiveCustomerOrder(userId: string): Promise<ActiveCust
   const business = (Array.isArray(order.businesses) ? order.businesses[0] : order.businesses) as {
     slug: string;
     name: string;
+    logo_path: string | null;
   };
 
   return {
@@ -84,8 +89,10 @@ export async function getActiveCustomerOrder(userId: string): Promise<ActiveCust
     orderNumber: order.order_number ?? 0,
     businessSlug: business.slug,
     businessName: business.name,
+    businessLogoUrl: resolveBusinessAssetUrl(business.logo_path),
     status,
     totalCents: order.total_cents ?? 0,
+    createdAt: order.created_at,
     paymentMethod: order.payment_method as ActiveCustomerOrder["paymentMethod"],
   };
 }

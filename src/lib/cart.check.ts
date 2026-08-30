@@ -10,6 +10,7 @@ import {
   canCheckout,
   clearCart,
   lineKey,
+  optionBreakdown,
   requiredOptionsMissing,
   unitPrice,
   type CartState,
@@ -70,6 +71,10 @@ const withMultiExtras: TrendingItem = {
   ],
 };
 assert.equal(unitPrice(withMultiExtras, { extras: ["bacon", "huevo"] }), 5800);
+const breakdown = optionBreakdown(withMultiExtras, { extras: ["bacon", "huevo"] });
+assert.equal(breakdown.length, 2);
+assert.equal(breakdown[0].priceCents, 80000);
+assert.equal(breakdown[1].priceCents, 50000);
 assert.notEqual(lineKey("a", { extras: ["bacon"] }), lineKey("a", { extras: ["huevo"] }));
 
 let cart = addLine(empty, plain, 1);

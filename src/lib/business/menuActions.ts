@@ -209,12 +209,26 @@ export async function deleteMenuProductAction(businessId: string, productId: str
 
 export async function pauseMenuProductAction(businessId: string, productId: string, available: boolean) {
   const { supabase, business } = await requireBusinessAccess(businessId);
+  const { data: product } = await supabase
+    .from("products")
+    .select("name")
+    .eq("id", productId)
+    .eq("business_id", businessId)
+    .maybeSingle();
   const { error } = await supabase
     .from("products")
     .update({ available, updated_at: new Date().toISOString() })
     .eq("id", productId)
     .eq("business_id", businessId);
   if (error) throw new Error(formatMenuError(error));
+  if (!available && product?.name) {
+    const { notifyBusinessOutOfStock } = await import("@/lib/notifications/emit");
+    void notifyBusinessOutOfStock({
+      businessId,
+      productId,
+      productName: product.name,
+    });
+  }
   revalidateMenu(businessId, business.slug);
 }
 

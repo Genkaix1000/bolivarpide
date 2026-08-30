@@ -73,6 +73,11 @@ export function ProfileView({
   }, [profile]);
 
   useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) setOpenSection(section);
+  }, [searchParams]);
+
+  useEffect(() => {
     if (verifyDniHandled.current) return;
     if (searchParams.get("verify") !== "dni") return;
     if (!isAuthenticated || profile.id === "guest") return;

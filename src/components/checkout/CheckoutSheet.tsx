@@ -35,6 +35,7 @@ function linesToPayload(lines: CartLine[]) {
     unitPriceCents: Math.round(l.unitPrice * 100),
     productId: l.productId,
     note: l.note,
+    optionsDetail: l.optionsDetail,
   }));
 }
 

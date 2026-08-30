@@ -16,9 +16,23 @@ export type CheckoutLine = {
   unitPriceCents: number;
   productId?: string;
   note?: string;
+  optionsDetail?: { label: string; priceCents: number }[];
 };
 
+import { packOrderItemNote } from "@/lib/orders/itemOptionsNote";
+
 export type FulfillmentType = "delivery" | "pickup";
+
+function orderItemRows(orderId: string, lines: CheckoutLine[]) {
+  return lines.map((l) => ({
+    order_id: orderId,
+    product_id: l.productId ?? null,
+    name: l.name,
+    quantity: l.quantity,
+    unit_price_cents: l.unitPriceCents,
+    note: packOrderItemNote(l.note, l.optionsDetail),
+  }));
+}
 
 export type CheckoutInput = {
   businessSlug: string;
@@ -229,16 +243,10 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       .single();
     if (error) throw error;
 
-    await svc.from("order_items").insert(
-      input.lines.map((l) => ({
-        order_id: order.id,
-        product_id: l.productId ?? null,
-        name: l.name,
-        quantity: l.quantity,
-        unit_price_cents: l.unitPriceCents,
-        note: l.note ?? null,
-      })),
-    );
+    await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
+
+    const { emitCashOrderNotifications } = await import("@/lib/notifications/emit");
+    void emitCashOrderNotifications(order.id);
 
     return {
       kind: "cash",
@@ -294,16 +302,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       .single();
     if (orderErr) throw orderErr;
 
-    await svc.from("order_items").insert(
-      input.lines.map((l) => ({
-        order_id: order.id,
-        product_id: l.productId ?? null,
-        name: l.name,
-        quantity: l.quantity,
-        unit_price_cents: l.unitPriceCents,
-        note: l.note ?? null,
-      })),
-    );
+    await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
 
     const token = await getAccessTokenForBusiness(business.id);
     const externalRef = `BP-${order.id}`.slice(0, 64);
@@ -429,15 +428,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     .single();
   if (orderErr) throw orderErr;
 
-  await svc.from("order_items").insert(
-    input.lines.map((l) => ({
-      order_id: order.id,
-      product_id: l.productId ?? null,
-      name: l.name,
-      quantity: l.quantity,
-      unit_price_cents: l.unitPriceCents,
-    })),
-  );
+  await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
 
   const token = await getAccessTokenForBusiness(business.id);
   const amountStr = (amountCents / 100).toFixed(2);
