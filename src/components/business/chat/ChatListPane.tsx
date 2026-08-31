@@ -111,7 +111,7 @@ export function ChatListPane({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
         {filtered.length === 0 ? (
           <div className="px-4 py-10 text-center text-gray-400">
             <p className="text-[13px] font-medium">No hay conversaciones</p>
@@ -127,10 +127,10 @@ export function ChatListPane({
                 type="button"
                 onClick={() => onSelect(conv.id)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                  "flex w-full items-center gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors",
                   selected
-                    ? "bg-[#1a2b4a] text-white dark:bg-[#243552]"
-                    : "hover:bg-[#f5efe7] dark:hover:bg-[#1f1b19]",
+                    ? "bg-[#9a0002] text-white shadow-sm"
+                    : "hover:bg-[#f0ebe3] dark:hover:bg-[#1f1b19]",
                 )}
               >
                 <div className="relative shrink-0">
@@ -145,7 +145,7 @@ export function ChatListPane({
                       className={cn(
                         "flex h-12 w-12 items-center justify-center rounded-full text-[13px] font-bold",
                         selected
-                          ? "bg-white/15 text-white"
+                          ? "bg-white/20 text-white"
                           : "bg-[#e8e0d6] text-gray-700 dark:bg-[#2b2521] dark:text-gray-200",
                       )}
                     >
@@ -153,7 +153,12 @@ export function ChatListPane({
                     </span>
                   )}
                   {live ? (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#fdfcfb] bg-[#9a0002] dark:border-[#161413]" />
+                    <span
+                      className={cn(
+                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 bg-emerald-500",
+                        selected ? "border-[#9a0002]" : "border-[#fdfcfb] dark:border-[#161413]",
+                      )}
+                    />
                   ) : null}
                 </div>
 
@@ -170,7 +175,7 @@ export function ChatListPane({
                     <span
                       className={cn(
                         "shrink-0 text-[10px] font-medium",
-                        selected ? "text-white/70" : "text-gray-400",
+                        selected ? "text-white/75" : "text-gray-400",
                       )}
                     >
                       {conv.lastMessage.timestamp}
@@ -181,7 +186,7 @@ export function ChatListPane({
                       className={cn(
                         "min-w-0 flex-1 truncate text-[12px]",
                         selected
-                          ? "text-white/80"
+                          ? "text-white/85"
                           : conv.unreadCount > 0
                             ? "font-semibold text-gray-800 dark:text-gray-100"
                             : "text-gray-500 dark:text-gray-400",
@@ -194,7 +199,7 @@ export function ChatListPane({
                       <span
                         className={cn(
                           "h-2 w-2 shrink-0 rounded-full",
-                          selected ? "bg-[#7eb6ff]" : "bg-[#9a0002]",
+                          selected ? "bg-white" : "bg-[#9a0002]",
                         )}
                         aria-label="No leído"
                       />
@@ -204,7 +209,7 @@ export function ChatListPane({
                     <p
                       className={cn(
                         "mt-1 truncate text-[10px] font-semibold",
-                        selected ? "text-[#9ec5ff]" : "text-[#9a0002] dark:text-red-400",
+                        selected ? "text-white/90" : "text-[#9a0002] dark:text-red-400",
                       )}
                     >
                       #{conv.activeOrder.orderNumber} · {conv.activeOrder.statusLabel}
