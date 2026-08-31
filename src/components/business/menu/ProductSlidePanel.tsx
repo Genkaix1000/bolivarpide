@@ -10,10 +10,11 @@ import { saveMenuProductAction } from "@/lib/business/menuActions";
 import {
   MENU_ICON_OPTS,
   MENU_PHOTO_OPTS,
-  optimizeImageFile,
+  menuImageSizeHint,
 } from "@/lib/images/optimizeImage";
 import { MENU_IMAGE_FRAME_CLASS } from "@/lib/images/menuImageSpec";
 import { ImageSourceActions } from "@/components/menu/ImageSourceActions";
+import { MenuImageCropDialog } from "@/components/menu/MenuImageCropDialog";
 import {
   extrasGroupFromRows,
   parseMenuOptionGroups,
@@ -157,6 +158,7 @@ export function ProductSlidePanel({
   const [pending, setPending] = useState(false);
   const [iconProcessing, setIconProcessing] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [cropJob, setCropJob] = useState<null | { file: File; kind: "icon" | "photo" }>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = Boolean(editing?.id);
@@ -289,40 +291,26 @@ export function ProductSlidePanel({
     setExtras((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function applyIconFile(file: File) {
-    setIconProcessing(true);
-    setError(null);
-    try {
-      const optimized = await optimizeImageFile(file, MENU_ICON_OPTS);
-      setIconFile(optimized);
-      setIconPreview(URL.createObjectURL(optimized));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al optimizar el ícono.");
-    } finally {
-      setIconProcessing(false);
-    }
-  }
-
-  async function applyPhotoFile(file: File) {
-    setPhotoProcessing(true);
-    setError(null);
-    try {
-      const optimized = await optimizeImageFile(file, MENU_PHOTO_OPTS);
-      setPhotoFile(optimized);
-      setPhotoPreview(URL.createObjectURL(optimized));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al optimizar la foto.");
-    } finally {
-      setPhotoProcessing(false);
-    }
-  }
-
   async function handlePickIcon(file: File) {
-    await applyIconFile(file);
+    setCropJob({ file, kind: "icon" });
   }
 
   async function handlePickPhoto(file: File) {
-    await applyPhotoFile(file);
+    setCropJob({ file, kind: "photo" });
+  }
+
+  function applyCropped(kind: "icon" | "photo", optimized: File) {
+    const url = URL.createObjectURL(optimized);
+    if (kind === "icon") {
+      setIconFile(optimized);
+      setIconPreview(url);
+      setIconProcessing(false);
+    } else {
+      setPhotoFile(optimized);
+      setPhotoPreview(url);
+      setPhotoProcessing(false);
+    }
+    setCropJob(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -499,140 +487,95 @@ export function ProductSlidePanel({
                   </div>
                 </div>
 
-                {/* 2. Ícono y foto (mismo tamaño) */}
-                <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
+                {/* 2. Ícono y foto */}
+                <div className="space-y-3 rounded-2xl border border-[#e8e0d6] bg-white p-4 shadow-2xs dark:border-[#3d3732] dark:bg-[#1c1917]">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 block">
-                            Ícono del menú
-                          </label>
-                          <span className="text-[10px] font-bold text-[#9a0002] dark:text-red-400">
-                            3:2 · 600×400 px
-                          </span>
-                        </div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
+                          Ícono
+                        </label>
                         <SectionBadge isRequired={true} />
                       </div>
                       <div
                         className={cn(
                           MENU_IMAGE_FRAME_CLASS,
-                          "relative rounded-2xl border-2 border-dashed overflow-hidden group",
+                          "relative overflow-hidden rounded-2xl border border-dashed",
                           iconPreview
-                            ? "border-[#9a0002]/40 bg-[#9a0002]/5"
+                            ? "border-[#9a0002]/35 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
                         )}
                       >
                         {iconPreview ? (
-                          <>
-                            <img
-                              src={iconPreview}
-                              alt="Ícono"
-                              className="h-full w-full rounded-2xl object-cover"
-                            />
-                            {/* Guías de recorte y encuadre 3:2 */}
-                            <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.15)] flex flex-col justify-between p-1">
-                              <div className="flex justify-between items-start">
-                                <span className="rounded bg-black/60 px-1 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider backdrop-blur-xs">
-                                  Encuadre 3:2
-                                </span>
-                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">┌┐</span>
-                              </div>
-                              <div className="flex justify-between items-end">
-                                <span className="text-[8px] font-bold text-white/90 drop-shadow">600×400</span>
-                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">└┘</span>
-                              </div>
-                            </div>
-                          </>
+                          <img
+                            src={iconPreview}
+                            alt="Ícono"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <div className="flex flex-col h-full w-full items-center justify-center gap-1 text-center p-2">
-                            <MaterialSymbol icon="crop_original" size={24} className="text-stone-400" />
-                            <span className="text-[10px] font-semibold text-stone-400">600×400 px (3:2)</span>
+                          <div className="flex h-full w-full items-center justify-center">
+                            <MaterialSymbol icon="image" size={28} className="text-stone-300" />
                           </div>
                         )}
                         {iconProcessing && (
-                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 text-[10px] font-semibold text-white">
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-semibold text-white">
                             Optimizando…
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-[10px] text-stone-400 leading-tight">
-                        Centrá el plato en el marco para que no se corten los bordes.
-                      </p>
                       <ImageSourceActions
-                        disabled={iconProcessing}
+                        disabled={iconProcessing || !!cropJob}
                         compact
                         className="mt-2"
                         onPick={handlePickIcon}
                       />
+                      <p className="mt-1.5 text-[10px] text-stone-400">
+                        {menuImageSizeHint(MENU_ICON_OPTS)}
+                      </p>
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 block">
-                            Foto real
-                          </label>
-                          <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400">
-                            3:2 · 1200×800 px
-                          </span>
-                        </div>
-                        <SectionBadge
-                          isRequired={false}
-                          helpText="Foto panorámica de portada para cuando el cliente abre el detalle del plato en la carta pública."
-                        />
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
+                          Foto
+                        </label>
+                        <SectionBadge isRequired={false} />
                       </div>
                       <div
                         className={cn(
                           MENU_IMAGE_FRAME_CLASS,
-                          "relative rounded-2xl border-2 border-dashed overflow-hidden group",
+                          "relative overflow-hidden rounded-2xl border border-dashed",
                           photoPreview
                             ? "border-[#9a0002]/30 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
                         )}
                       >
                         {photoPreview ? (
-                          <>
-                            <img
-                              src={photoPreview}
-                              alt="Foto real"
-                              className="h-full w-full rounded-2xl object-cover"
-                            />
-                            {/* Guías de recorte y encuadre */}
-                            <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.15)] flex flex-col justify-between p-1">
-                              <div className="flex justify-between items-start">
-                                <span className="rounded bg-black/60 px-1 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider backdrop-blur-xs">
-                                  HD 3:2
-                                </span>
-                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">┌┐</span>
-                              </div>
-                              <div className="flex justify-between items-end">
-                                <span className="text-[8px] font-bold text-white/90 drop-shadow">1200×800</span>
-                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">└┘</span>
-                              </div>
-                            </div>
-                          </>
+                          <img
+                            src={photoPreview}
+                            alt="Foto"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <div className="flex flex-col h-full w-full items-center justify-center gap-1 text-center p-2">
-                            <MaterialSymbol icon="photo_camera" size={24} className="text-stone-400" />
-                            <span className="text-[10px] font-semibold text-stone-400">1200×800 px (3:2)</span>
+                          <div className="flex h-full w-full items-center justify-center">
+                            <MaterialSymbol icon="photo_camera" size={28} className="text-stone-300" />
                           </div>
                         )}
                         {photoProcessing && (
-                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 text-[10px] font-semibold text-white">
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-semibold text-white">
                             Optimizando…
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-[10px] text-stone-400 leading-tight">
-                        Foto panorámica que se muestra en el modal de detalle del plato.
-                      </p>
                       <ImageSourceActions
-                        disabled={photoProcessing}
+                        disabled={photoProcessing || !!cropJob}
                         compact
                         className="mt-2"
                         onPick={handlePickPhoto}
                       />
+                      <p className="mt-1.5 text-[10px] text-stone-400">
+                        {menuImageSizeHint(MENU_PHOTO_OPTS)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -960,5 +903,18 @@ export function ProductSlidePanel({
     </AnimatePresence>
   );
 
-  return createPortal(content, document.body);
+  return (
+    <>
+      {createPortal(content, document.body)}
+      {cropJob ? (
+        <MenuImageCropDialog
+          file={cropJob.file}
+          title={cropJob.kind === "icon" ? "Encuadrar ícono" : "Encuadrar foto"}
+          optimizeOpts={cropJob.kind === "icon" ? MENU_ICON_OPTS : MENU_PHOTO_OPTS}
+          onCancel={() => setCropJob(null)}
+          onDone={(optimized) => applyCropped(cropJob.kind, optimized)}
+        />
+      ) : null}
+    </>
+  );
 }

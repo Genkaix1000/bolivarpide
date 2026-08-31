@@ -59,7 +59,13 @@ export function ProductImageToggle({
     }
     return (
       <div className={cn("relative overflow-hidden w-full max-w-full", className)}>
-        <img src={displayUrl} alt="" className={cn("h-full w-full max-w-full object-cover", imageClassName)} />
+        <img
+          src={displayUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={cn("h-full w-full max-w-full object-cover", imageClassName)}
+        />
       </div>
     );
   }
@@ -94,7 +100,13 @@ export function ProductImageToggle({
           }}
           className="block h-full w-full max-w-full cursor-zoom-in"
         >
-          <img src={src} alt="" className={cn("h-full w-full max-w-full object-cover", imageClassName)} />
+          <img
+            src={src}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={cn("h-full w-full max-w-full object-cover", imageClassName)}
+          />
         </button>
         {modes.length > 1 && (
           <div

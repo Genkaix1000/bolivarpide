@@ -19,20 +19,34 @@ function extFromMime(mime: string) {
   return "jpg";
 }
 
+async function removeAsset(path: string | null | undefined) {
+  if (!path || path.startsWith("http://") || path.startsWith("https://")) return;
+  const service = createServiceClient();
+  const clean = path.replace(/^\/+/, "");
+  await service.storage.from("business-assets").remove([clean]);
+}
+
+/** Path versionado + cache largo: al reemplazar no queda pegada la imagen vieja en CDN/browser. */
 async function uploadAsset(
   businessId: string,
   relativePath: string,
   file: File,
+  previousPath?: string | null,
 ) {
   const service = createServiceClient();
   const ext = extFromMime(file.type || "image/jpeg");
-  const path = `${businessId}/${relativePath}.${ext}`;
+  const rev = randomUUID().slice(0, 8);
+  const path = `${businessId}/${relativePath}-${rev}.${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
   const { error } = await service.storage.from("business-assets").upload(path, bytes, {
-    upsert: true,
+    upsert: false,
     contentType: file.type || "image/jpeg",
+    cacheControl: "31536000",
   });
   if (error) throw new Error(formatMenuError(error));
+  if (previousPath && previousPath !== path) {
+    await removeAsset(previousPath);
+  }
   return path;
 }
 
@@ -167,10 +181,10 @@ export async function saveMenuProductAction(formData: FormData) {
   let photoPath = existingPhoto;
 
   if (iconFile && iconFile.size > 0) {
-    iconPath = await uploadAsset(businessId, `products/${productId}/icon`, iconFile);
+    iconPath = await uploadAsset(businessId, `products/${productId}/icon`, iconFile, existingIcon);
   }
   if (photoFile && photoFile.size > 0) {
-    photoPath = await uploadAsset(businessId, `products/${productId}/photo`, photoFile);
+    photoPath = await uploadAsset(businessId, `products/${productId}/photo`, photoFile, existingPhoto);
   }
 
   const row = {
@@ -202,8 +216,16 @@ export async function saveMenuProductAction(formData: FormData) {
 
 export async function deleteMenuProductAction(businessId: string, productId: string) {
   const { supabase, business } = await requireBusinessAccess(businessId);
+  const { data: product } = await supabase
+    .from("products")
+    .select("icon_path, image_path")
+    .eq("id", productId)
+    .eq("business_id", businessId)
+    .maybeSingle();
   const { error } = await supabase.from("products").delete().eq("id", productId).eq("business_id", businessId);
   if (error) throw new Error(formatMenuError(error));
+  await removeAsset(product?.icon_path);
+  await removeAsset(product?.image_path);
   revalidateMenu(businessId, business.slug);
 }
 

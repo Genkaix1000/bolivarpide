@@ -1,6 +1,8 @@
 import type { FeaturedChain, TrendingItem } from "@/lib/mockData";
 
-const HOME_CACHE_KEY = "bolivarpide_home_cache_v2";
+const HOME_CACHE_KEY = "bolivarpide_home_cache_v3";
+/** Stale-while-revalidate en cliente: pasado el TTL se ignora y se vuelve a fetchear. */
+export const HOME_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export interface HomeCacheData {
   chains: FeaturedChain[];
@@ -10,7 +12,7 @@ export interface HomeCacheData {
 }
 
 /**
- * Obtiene los datos del home desde el caché de sesión/local (Stale-While-Revalidate).
+ * Lee el caché de Home (localStorage + TTL).
  */
 export function getHomeCache(): {
   chains: FeaturedChain[];
@@ -20,26 +22,31 @@ export function getHomeCache(): {
   if (typeof window === "undefined") return null;
 
   try {
-    const raw = sessionStorage.getItem(HOME_CACHE_KEY) || localStorage.getItem(HOME_CACHE_KEY);
+    const raw = localStorage.getItem(HOME_CACHE_KEY);
     if (!raw) return null;
 
     const data: HomeCacheData = JSON.parse(raw);
-    if (data && Array.isArray(data.chains) && Array.isArray(data.trendingItems)) {
-      return {
-        chains: data.chains,
-        recommended: Array.isArray(data.recommended) && data.recommended.length > 0 ? data.recommended : data.chains,
-        trendingItems: data.trendingItems,
-      };
+    if (!data?.timestamp || Date.now() - data.timestamp > HOME_CACHE_TTL_MS) {
+      localStorage.removeItem(HOME_CACHE_KEY);
+      return null;
     }
-  } catch {
-    /* ignore corrupted cache */
-  }
+    if (!Array.isArray(data.chains) || !Array.isArray(data.trendingItems)) return null;
 
-  return null;
+    return {
+      chains: data.chains,
+      recommended:
+        Array.isArray(data.recommended) && data.recommended.length > 0
+          ? data.recommended
+          : data.chains,
+      trendingItems: data.trendingItems,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Guarda los datos del home en sessionStorage y localStorage con timestamp.
+ * Guarda el caché de Home en localStorage.
  */
 export function setHomeCache(data: {
   chains: FeaturedChain[];
@@ -48,28 +55,21 @@ export function setHomeCache(data: {
 }): void {
   if (typeof window === "undefined") return;
 
-  const payload: HomeCacheData = {
-    ...data,
-    timestamp: Date.now(),
-  };
-
   try {
-    const serialized = JSON.stringify(payload);
-    sessionStorage.setItem(HOME_CACHE_KEY, serialized);
-    localStorage.setItem(HOME_CACHE_KEY, serialized);
+    const payload: HomeCacheData = { ...data, timestamp: Date.now() };
+    localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(payload));
   } catch {
-    /* ignore quota errors */
+    /* quota */
   }
 }
 
-/**
- * Limpia el caché del home.
- */
 export function clearHomeCache(): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.removeItem(HOME_CACHE_KEY);
     localStorage.removeItem(HOME_CACHE_KEY);
+    // limpieza de claves viejas (session + v2)
+    sessionStorage.removeItem("bolivarpide_home_cache_v2");
+    localStorage.removeItem("bolivarpide_home_cache_v2");
   } catch {
     /* ignore */
   }

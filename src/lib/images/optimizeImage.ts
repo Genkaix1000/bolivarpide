@@ -2,11 +2,20 @@
 
 import { MENU_IMAGE_ASPECT } from "@/lib/images/menuImageSpec";
 
+export type SourceCrop = {
+  /** Recorte en píxeles de la imagen original. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export type OptimizeImageOptions = {
   maxWidth: number;
   maxHeight: number;
-  /** Recorte centrado a proporción menú (3:2). */
+  /** Recorte centrado a proporción menú (3:2) si no hay `crop`. */
   aspectRatio?: number;
+  crop?: SourceCrop;
   quality?: number;
 };
 
@@ -33,15 +42,22 @@ export async function optimizeImageFile(file: File, opts: OptimizeImageOptions):
   let srcW = bitmap.width;
   let srcH = bitmap.height;
 
-  const aspect = opts.aspectRatio;
-  if (aspect && aspect > 0) {
-    const current = srcW / srcH;
-    if (current > aspect) {
-      srcW = Math.round(srcH * aspect);
-      srcX = Math.floor((bitmap.width - srcW) / 2);
-    } else if (current < aspect) {
-      srcH = Math.round(srcW / aspect);
-      srcY = Math.floor((bitmap.height - srcH) / 2);
+  if (opts.crop) {
+    srcX = Math.max(0, Math.min(bitmap.width - 1, Math.round(opts.crop.x)));
+    srcY = Math.max(0, Math.min(bitmap.height - 1, Math.round(opts.crop.y)));
+    srcW = Math.max(1, Math.min(bitmap.width - srcX, Math.round(opts.crop.w)));
+    srcH = Math.max(1, Math.min(bitmap.height - srcY, Math.round(opts.crop.h)));
+  } else {
+    const aspect = opts.aspectRatio;
+    if (aspect && aspect > 0) {
+      const current = srcW / srcH;
+      if (current > aspect) {
+        srcW = Math.round(srcH * aspect);
+        srcX = Math.floor((bitmap.width - srcW) / 2);
+      } else if (current < aspect) {
+        srcH = Math.round(srcW / aspect);
+        srcY = Math.floor((bitmap.height - srcH) / 2);
+      }
     }
   }
 
@@ -68,16 +84,22 @@ export async function optimizeImageFile(file: File, opts: OptimizeImageOptions):
   return new File([blob], `${base}.webp`, { type: "image/webp" });
 }
 
+/** Ícono de carta: ~2× el tamaño en pantalla de una card. */
 export const MENU_ICON_OPTS: OptimizeImageOptions = {
+  maxWidth: 480,
+  maxHeight: 320,
+  aspectRatio: MENU_IMAGE_ASPECT,
+  quality: 0.8,
+};
+
+/** Foto de detalle: alcanza para sheet mobile a retina. */
+export const MENU_PHOTO_OPTS: OptimizeImageOptions = {
   maxWidth: 720,
   maxHeight: 480,
   aspectRatio: MENU_IMAGE_ASPECT,
   quality: 0.82,
 };
 
-export const MENU_PHOTO_OPTS: OptimizeImageOptions = {
-  maxWidth: 1200,
-  maxHeight: 800,
-  aspectRatio: MENU_IMAGE_ASPECT,
-  quality: 0.85,
-};
+export function menuImageSizeHint(opts: OptimizeImageOptions) {
+  return `${opts.maxWidth}×${opts.maxHeight}`;
+}
