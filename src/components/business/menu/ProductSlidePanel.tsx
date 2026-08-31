@@ -503,38 +503,62 @@ export function ProductSlidePanel({
                 <div className="space-y-3 rounded-2xl bg-white p-4 border border-[#e8e0d6] dark:border-[#3d3732] dark:bg-[#1c1917] shadow-2xs">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
-                          Ícono
-                        </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 block">
+                            Ícono del menú
+                          </label>
+                          <span className="text-[10px] font-bold text-[#9a0002] dark:text-red-400">
+                            3:2 · 600×400 px
+                          </span>
+                        </div>
                         <SectionBadge isRequired={true} />
                       </div>
                       <div
                         className={cn(
                           MENU_IMAGE_FRAME_CLASS,
-                          "rounded-2xl border-2 border-dashed",
+                          "relative rounded-2xl border-2 border-dashed overflow-hidden group",
                           iconPreview
                             ? "border-[#9a0002]/40 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
                         )}
                       >
                         {iconPreview ? (
-                          <img
-                            src={iconPreview}
-                            alt="Ícono"
-                            className="h-full w-full rounded-2xl object-cover"
-                          />
+                          <>
+                            <img
+                              src={iconPreview}
+                              alt="Ícono"
+                              className="h-full w-full rounded-2xl object-cover"
+                            />
+                            {/* Guías de recorte y encuadre 3:2 */}
+                            <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.15)] flex flex-col justify-between p-1">
+                              <div className="flex justify-between items-start">
+                                <span className="rounded bg-black/60 px-1 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider backdrop-blur-xs">
+                                  Encuadre 3:2
+                                </span>
+                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">┌┐</span>
+                              </div>
+                              <div className="flex justify-between items-end">
+                                <span className="text-[8px] font-bold text-white/90 drop-shadow">600×400</span>
+                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">└┘</span>
+                              </div>
+                            </div>
+                          </>
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          <div className="flex flex-col h-full w-full items-center justify-center gap-1 text-center p-2">
+                            <MaterialSymbol icon="crop_original" size={24} className="text-stone-400" />
+                            <span className="text-[10px] font-semibold text-stone-400">600×400 px (3:2)</span>
                           </div>
                         )}
                         {iconProcessing && (
-                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">
+                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 text-[10px] font-semibold text-white">
                             Optimizando…
                           </span>
                         )}
                       </div>
+                      <p className="mt-1 text-[10px] text-stone-400 leading-tight">
+                        Centrá el plato en el marco para que no se corten los bordes.
+                      </p>
                       <ImageSourceActions
                         disabled={iconProcessing}
                         compact
@@ -544,41 +568,65 @@ export function ProductSlidePanel({
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200">
-                          Foto real
-                        </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <label className="text-[12px] font-bold text-stone-800 dark:text-stone-200 block">
+                            Foto real
+                          </label>
+                          <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400">
+                            3:2 · 1200×800 px
+                          </span>
+                        </div>
                         <SectionBadge
                           isRequired={false}
-                          helpText="Foto de portada en la carta pública."
+                          helpText="Foto panorámica de portada para cuando el cliente abre el detalle del plato en la carta pública."
                         />
                       </div>
                       <div
                         className={cn(
                           MENU_IMAGE_FRAME_CLASS,
-                          "rounded-2xl border-2 border-dashed",
+                          "relative rounded-2xl border-2 border-dashed overflow-hidden group",
                           photoPreview
                             ? "border-[#9a0002]/30 bg-[#9a0002]/5"
                             : "border-stone-200 bg-stone-50 dark:border-[#3d3732] dark:bg-[#231f1c]",
                         )}
                       >
                         {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt="Foto real"
-                            className="h-full w-full rounded-2xl object-cover"
-                          />
+                          <>
+                            <img
+                              src={photoPreview}
+                              alt="Foto real"
+                              className="h-full w-full rounded-2xl object-cover"
+                            />
+                            {/* Guías de recorte y encuadre */}
+                            <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.15)] flex flex-col justify-between p-1">
+                              <div className="flex justify-between items-start">
+                                <span className="rounded bg-black/60 px-1 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider backdrop-blur-xs">
+                                  HD 3:2
+                                </span>
+                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">┌┐</span>
+                              </div>
+                              <div className="flex justify-between items-end">
+                                <span className="text-[8px] font-bold text-white/90 drop-shadow">1200×800</span>
+                                <span className="text-white/90 text-[10px] font-mono leading-none drop-shadow">└┘</span>
+                              </div>
+                            </div>
+                          </>
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <MaterialSymbol icon="add_photo_alternate" size={24} className="text-stone-400" />
+                          <div className="flex flex-col h-full w-full items-center justify-center gap-1 text-center p-2">
+                            <MaterialSymbol icon="photo_camera" size={24} className="text-stone-400" />
+                            <span className="text-[10px] font-semibold text-stone-400">1200×800 px (3:2)</span>
                           </div>
                         )}
                         {photoProcessing && (
-                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-[10px] font-semibold text-white">
+                          <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 text-[10px] font-semibold text-white">
                             Optimizando…
                           </span>
                         )}
                       </div>
+                      <p className="mt-1 text-[10px] text-stone-400 leading-tight">
+                        Foto panorámica que se muestra en el modal de detalle del plato.
+                      </p>
                       <ImageSourceActions
                         disabled={photoProcessing}
                         compact

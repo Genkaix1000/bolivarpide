@@ -58,8 +58,8 @@ export function ProductImageToggle({
       return <ProductImagePlaceholder className={className} />;
     }
     return (
-      <div className={cn("relative overflow-hidden", className)}>
-        <img src={displayUrl} alt="" className={cn("h-full w-full object-cover", imageClassName)} />
+      <div className={cn("relative overflow-hidden w-full max-w-full", className)}>
+        <img src={displayUrl} alt="" className={cn("h-full w-full max-w-full object-cover", imageClassName)} />
       </div>
     );
   }
@@ -84,7 +84,7 @@ export function ProductImageToggle({
 
   return (
     <>
-      <div className={cn("relative overflow-hidden", className)}>
+      <div className={cn("relative overflow-hidden w-full max-w-full", className)}>
         <button
           type="button"
           aria-label="Ver imagen en pantalla completa"
@@ -92,9 +92,9 @@ export function ProductImageToggle({
             e.stopPropagation();
             setLightboxOpen(true);
           }}
-          className="block h-full w-full cursor-zoom-in"
+          className="block h-full w-full max-w-full cursor-zoom-in"
         >
-          <img src={src} alt="" className={cn("h-full w-full object-cover", imageClassName)} />
+          <img src={src} alt="" className={cn("h-full w-full max-w-full object-cover", imageClassName)} />
         </button>
         {modes.length > 1 && (
           <div

@@ -85,13 +85,13 @@ export function ProductSheet({ item, onClose }: Props) {
       role="dialog"
       aria-modal
       aria-label={item.name}
-      className="fixed inset-0 z-[70] mx-auto flex w-full max-w-lg flex-col bg-white dark:bg-[#1c1917] max-h-dvh"
+      className="fixed inset-0 z-[70] mx-auto flex w-full max-w-lg flex-col bg-white dark:bg-[#1c1917] max-h-dvh overflow-x-hidden shadow-2xl"
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 28, stiffness: 320 }}
     >
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar w-full max-w-full">
         {onStoreMenuPage ? (
           <div
             className="sticky top-0 z-20 flex items-center px-3 pb-2 bg-white dark:bg-[#1c1917]"
@@ -100,7 +100,7 @@ export function ProductSheet({ item, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/5 text-gray-700 dark:bg-white/10 dark:text-gray-200"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/5 text-gray-700 dark:bg-white/10 dark:text-gray-200 hover:bg-black/10 transition-colors"
               aria-label="Cerrar"
             >
               <MaterialSymbol icon="close" size={22} />
@@ -122,12 +122,12 @@ export function ProductSheet({ item, onClose }: Props) {
         )}
 
         {/* Hero del producto */}
-        <div className={cn("relative mx-4 mb-4 overflow-hidden rounded-2xl", MENU_IMAGE_FRAME_CLASS, onStoreMenuPage && "mt-1")}>
+        <div className={cn("relative mx-4 mb-4 overflow-hidden rounded-2xl max-w-[calc(100%-2rem)]", MENU_IMAGE_FRAME_CLASS, onStoreMenuPage && "mt-1")}>
           <ProductImageToggle
             variant="expanded"
             iconUrl={item.iconImage}
             photoUrl={item.photoImage}
-            className="h-full w-full"
+            className="h-full w-full max-w-full"
             defaultMode="icon"
           />
         </div>
