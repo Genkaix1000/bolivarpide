@@ -200,7 +200,7 @@ export async function getBusinessDashboardData(
       .eq("business_id", businessId),
     supabase
       .from("products")
-      .select("id, name, image_path, available")
+      .select("id, name, icon_path, image_path, available")
       .eq("business_id", businessId)
       .order("sort_order")
       .order("name")
@@ -220,7 +220,7 @@ export async function getBusinessDashboardData(
   const driversCount = driversCountRes.count ?? 0;
 
   const stockProducts: DashboardStockProduct[] = (stockProductsRes.data ?? []).map((p) => {
-    const raw = p.image_path;
+    const raw = ("icon_path" in p && p.icon_path) ? (p.icon_path as string) : p.image_path;
     return {
       id: p.id,
       name: p.name,

@@ -32,6 +32,8 @@ type Props = {
   products: MenuProductView[];
 };
 
+type ViewMode = "list" | "grid";
+
 function money(cents: number) {
   return `$${(cents / 100).toLocaleString("es-AR")}`;
 }
@@ -64,6 +66,110 @@ function CategoryStickyNav({
             {c.name}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ProductRow({
+  product,
+  onEdit,
+  onPause,
+  onDeleteConfirmed,
+}: {
+  product: MenuProductView;
+  onEdit: () => void;
+  onPause: () => void;
+  onDeleteConfirmed: () => void;
+}) {
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const paused = !product.available;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl px-2.5 py-2 transition-colors",
+        deleteConfirm
+          ? "bg-red-600 text-white"
+          : "bg-white hover:bg-[#faf6f1] dark:bg-[#1c1917] dark:hover:bg-[#231f1c]",
+        paused && !deleteConfirm && "opacity-70",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onEdit}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+      >
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#f0ebe4] dark:bg-[#231f1c]">
+          {product.iconUrl ? (
+            <ProductImageToggle
+              iconUrl={product.iconUrl}
+              photoUrl={product.photoUrl}
+              className={cn("h-full w-full object-cover", paused && "grayscale")}
+            />
+          ) : (
+            <ProductImagePlaceholder className={cn("h-full w-full", paused && "grayscale")} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p
+              className={cn(
+                "truncate text-[13px] font-semibold",
+                deleteConfirm ? "text-white" : "text-stone-900 dark:text-stone-100",
+              )}
+            >
+              {product.name}
+            </p>
+            {paused && !deleteConfirm ? (
+              <span className="shrink-0 rounded-full bg-stone-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-stone-600 dark:bg-stone-700 dark:text-stone-300">
+                Pausado
+              </span>
+            ) : null}
+          </div>
+          <p
+            className={cn(
+              "mt-0.5 truncate text-[11px]",
+              deleteConfirm ? "text-white/80" : "text-stone-500",
+            )}
+          >
+            {product.categoryName || "Sin categoría"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "shrink-0 text-[14px] font-bold tabular-nums",
+            deleteConfirm ? "text-white" : "text-[#9a0002]",
+          )}
+        >
+          {money(product.price_cents)}
+        </span>
+      </button>
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          title={paused ? "Reanudar" : "Pausar"}
+          onClick={onPause}
+          className={cn(
+            "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors",
+            deleteConfirm
+              ? "text-white/90 hover:bg-white/15"
+              : "text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:hover:bg-stone-800 dark:hover:text-stone-100",
+          )}
+        >
+          <MaterialSymbol icon={paused ? "play_arrow" : "pause"} size={18} />
+        </button>
+        <ConfirmActionRail
+          confirm={deleteConfirm}
+          onAsk={() => setDeleteConfirm(true)}
+          onCancel={() => setDeleteConfirm(false)}
+          onConfirm={() => {
+            setDeleteConfirm(false);
+            onDeleteConfirmed();
+          }}
+          className={deleteConfirm ? "w-[72px]" : ""}
+        />
       </div>
     </div>
   );
@@ -178,6 +284,7 @@ export function CartaView({
   const [panelOpen, setPanelOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [editing, setEditing] = useState<MenuProductView | null>(null);
+  const [mode, setMode] = useState<ViewMode>("grid");
   const pendingDeletes = useRef(new Map<string, number>());
 
   useEffect(() => {
@@ -320,17 +427,31 @@ export function CartaView({
               <h3 className="mb-3 text-[14px] font-bold text-gray-900 dark:text-gray-100">
                 {section.name}
               </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {section.items.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onEdit={() => openEdit(p)}
-                    onPause={() => void handlePause(p)}
-                    onDeleteConfirmed={() => scheduleDelete(p)}
-                  />
-                ))}
-              </div>
+              {mode === "list" ? (
+                <div className="space-y-1.5">
+                  {section.items.map((p) => (
+                    <ProductRow
+                      key={p.id}
+                      product={p}
+                      onEdit={() => openEdit(p)}
+                      onPause={() => void handlePause(p)}
+                      onDeleteConfirmed={() => scheduleDelete(p)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {section.items.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onEdit={() => openEdit(p)}
+                      onPause={() => void handlePause(p)}
+                      onDeleteConfirmed={() => scheduleDelete(p)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           ))}
         </div>
@@ -344,13 +465,47 @@ export function CartaView({
         <div>
           <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">Carta</h1>
           <p className="mt-1 text-sm text-stone-500">
-            Vista como la ven tus clientes · {businessName ?? "tu local"}
+            {products.length} producto{products.length === 1 ? "" : "s"} · {categories.length}{" "}
+            categorí{categories.length === 1 ? "a" : "as"}
+            {businessName ? ` · ${businessName}` : ""}
           </p>
           <p className="mt-1 text-[12px] font-semibold text-stone-400">
             {freePlanLimitsLabel(products.length, categories.length)}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-[#e8e0d6]/70 p-0.5 dark:bg-[#2a2623]">
+            <button
+              type="button"
+              title="Lista"
+              aria-label="Formato lista"
+              aria-pressed={mode === "list"}
+              onClick={() => setMode("list")}
+              className={cn(
+                "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors",
+                mode === "list"
+                  ? "bg-white text-stone-900 shadow-sm dark:bg-[#1c1917] dark:text-stone-100"
+                  : "text-stone-500 hover:text-stone-800 dark:text-stone-400",
+              )}
+            >
+              <MaterialSymbol icon="view_list" size={18} />
+            </button>
+            <button
+              type="button"
+              title="Carta"
+              aria-label="Formato carta"
+              aria-pressed={mode === "grid"}
+              onClick={() => setMode("grid")}
+              className={cn(
+                "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors",
+                mode === "grid"
+                  ? "bg-white text-stone-900 shadow-sm dark:bg-[#1c1917] dark:text-stone-100"
+                  : "text-stone-500 hover:text-stone-800 dark:text-stone-400",
+              )}
+            >
+              <MaterialSymbol icon="grid_view" size={18} />
+            </button>
+          </div>
           <button
             type="button"
             onClick={openCategories}
