@@ -150,7 +150,7 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { items: notifications, unreadCount, markRead } = useNotifications({
+  const { items: notifications, unreadCount, markRead, remove } = useNotifications({
     enabled: isAuthenticated,
   });
 
@@ -186,6 +186,7 @@ export default function Navbar({
       variant="customer"
       activeOrder={activeOrder}
       onMarkRead={markRead}
+      onRemove={remove}
       onClose={() => setShowNotifications(false)}
       settingsHref="/?tab=profile&section=notifications"
     />

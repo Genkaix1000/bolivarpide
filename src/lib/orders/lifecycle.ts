@@ -193,7 +193,7 @@ export function trackingCopy(
         };
       case "rejected":
         return {
-          title: "Pedido rechazado",
+          title: "Pedido cancelado",
           subtitle: "El local no pudo completar tu pedido.",
         };
     }
@@ -221,7 +221,7 @@ export function trackingCopy(
       };
     case "rejected":
       return {
-        title: "Pedido rechazado",
+        title: "Pedido cancelado",
         subtitle: "El local no pudo completar tu pedido.",
       };
   }

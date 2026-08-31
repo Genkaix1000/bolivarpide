@@ -152,7 +152,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/orders/active");
       if (!res.ok) return;
       const j = (await res.json()) as { active: ActiveCustomerOrder | null };
-      setActiveOrder(j.active);
+      setActiveOrder((prev) => {
+        if (
+          j.active?.status === "rejected" &&
+          prev?.orderId === j.active.orderId &&
+          prev.status !== "rejected"
+        ) {
+          sessionStorage.removeItem(BAR_DISMISS_KEY);
+          setBarDismissedId(null);
+        }
+        return j.active;
+      });
     } catch {
       /* ignore */
     }
@@ -272,8 +282,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const activeOrderBarVisible = Boolean(
     activeOrder &&
       activeOrder.orderId !== barDismissedId &&
-      cart.lines.length === 0 &&
-      !pendingOrder,
+      (activeOrder.status === "rejected" || (cart.lines.length === 0 && !pendingOrder)),
   );
 
   const value = useMemo(

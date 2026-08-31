@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
@@ -177,14 +178,35 @@ type Mode = "customer" | "owner";
 
 type StockItem = Pick<PanelProduct, "id" | "name" | "image" | "available" | "soldCount">;
 
+function QuickStockImage({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (!src || error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-[#ede4d9] dark:bg-[#231f1c] text-xl select-none">
+        🍽
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-full w-full object-cover"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 /** Grid compacto estilo media picker — carta rápida del dashboard */
 export function StoreQuickStock({
   items,
   onToggle,
+  cartaHref = "/negocio/carta",
   className,
 }: {
   items: StockItem[];
   onToggle: (id: string) => void;
+  cartaHref?: string;
   className?: string;
 }) {
   const sorted = [...items].sort((a, b) => (b.soldCount ?? 0) - (a.soldCount ?? 0));
@@ -198,7 +220,7 @@ export function StoreQuickStock({
           <MaterialSymbol icon="menu_book" size={18} className="text-gray-500 shrink-0" />
           <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">Carta rápida</p>
         </div>
-        <Link href="/negocio/carta" className="text-[11px] font-semibold text-[#9a0002] shrink-0 hover:underline">
+        <Link href={cartaHref} className="text-[11px] font-semibold text-[#9a0002] shrink-0 hover:underline">
           Ver carta
         </Link>
       </div>
@@ -223,13 +245,7 @@ export function StoreQuickStock({
                 paused && "opacity-50 grayscale"
               )}
             >
-              {item.image ? (
-                <img src={item.image} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#ede4d9] dark:bg-[#231f1c] text-xl">
-                  🍽
-                </div>
-              )}
+              <QuickStockImage src={item.image} alt={item.name} />
 
               {isTop && (
                 <span className="absolute left-1 top-1 rounded-md bg-[#9a0002] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white shadow-sm">
@@ -455,6 +471,7 @@ export function StoreSidePanel({
           <StoreQuickStock
             items={stockItems}
             onToggle={onStockToggle}
+            cartaHref={profile.chainId ? `/negocio/${profile.chainId}/carta` : "/negocio/carta"}
             className={compact ? "mt-3" : "mt-4"}
           />
         )}

@@ -17,6 +17,7 @@ export interface CartLine {
   iconImage?: string;
   photoImage?: string;
   emoji: string;
+  basePrice: number;
   unitPrice: number;
   qty: number;
   note?: string;
@@ -138,6 +139,7 @@ export function addLine(
           iconImage: item.iconImage,
           photoImage: item.photoImage,
           emoji: item.emoji,
+          basePrice: item.price,
           unitPrice: price,
           qty,
           note: note || undefined,

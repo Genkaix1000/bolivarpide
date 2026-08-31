@@ -17,7 +17,7 @@ import {
 } from "@/lib/payments/pricing";
 import type { PendingCustomerOrder } from "@/lib/orders/pending";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, safeRandomUUID } from "@/lib/utils";
 import { listUserAddressesAction } from "@/lib/addresses/actions";
 import { formatAddressLabel } from "@/lib/addresses/display";
 import type { UserAddress } from "@/lib/addresses/types";
@@ -268,7 +268,7 @@ export function CheckoutSheet({
           lines: linesToPayload(cart.lines),
           paymentMethod,
           couponCode: discountCents > 0 ? couponCode.trim() : undefined,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: safeRandomUUID(),
           fulfillmentType: pickupLocal ? "pickup" : "delivery",
           deliveryAddressId: pickupLocal ? undefined : selectedAddressId ?? undefined,
         }),

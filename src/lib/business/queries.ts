@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 import { BUSINESS_PLANS } from "@/lib/business/plans";
 import {
   computeMetrics,
@@ -218,12 +219,15 @@ export async function getBusinessDashboardData(
   const productsCount = productsCountRes.count ?? 0;
   const driversCount = driversCountRes.count ?? 0;
 
-  const stockProducts: DashboardStockProduct[] = (stockProductsRes.data ?? []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    image: p.image_path ?? undefined,
-    available: p.available,
-  }));
+  const stockProducts: DashboardStockProduct[] = (stockProductsRes.data ?? []).map((p) => {
+    const raw = p.image_path;
+    return {
+      id: p.id,
+      name: p.name,
+      image: resolveBusinessAssetUrl(raw) ?? raw ?? undefined,
+      available: p.available,
+    };
+  });
 
   const tasks = await getOnboardingTasks(
     businessId,

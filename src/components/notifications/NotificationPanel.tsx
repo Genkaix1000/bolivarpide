@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { animate, motion, useMotionValue } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { flashToastUndo } from "@/components/FlashToast";
 import { cn } from "@/lib/utils";
 import { buildCustomerNotificationList } from "@/lib/notifications/customerList";
 import {
@@ -18,10 +20,14 @@ import {
 import type { ActiveCustomerOrder } from "@/lib/orders/active";
 import type { AppNotification, NotificationTab } from "@/lib/notifications/types";
 
+const DELETE_DELAY_MS = 4500;
+const SWIPE_DELETE_PX = 88;
+
 type NotificationPanelProps = {
   items: AppNotification[];
   variant: "business" | "customer";
   onMarkRead: (input?: { id?: string; all?: boolean }) => void | Promise<void>;
+  onRemove?: (input?: { id?: string; all?: boolean }) => void | Promise<void>;
   onClose?: () => void;
   settingsHref?: string;
   activeOrder?: ActiveCustomerOrder | null;
@@ -32,6 +38,7 @@ export function NotificationPanel({
   items,
   variant,
   onMarkRead,
+  onRemove,
   onClose,
   settingsHref,
   activeOrder,
@@ -39,12 +46,20 @@ export function NotificationPanel({
 }: NotificationPanelProps) {
   const tabs = BUSINESS_TABS;
   const [activeTab, setActiveTab] = useState<NotificationTab>("all");
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  const pendingDeletes = useRef<Map<string, number>>(new Map());
   const isCustomer = variant === "customer";
 
   const displayItems = useMemo(() => {
-    if (isCustomer) return buildCustomerNotificationList(items, activeOrder);
-    return sortNotifications(filterByTab(items, activeTab));
-  }, [items, activeOrder, isCustomer, activeTab]);
+    const base = isCustomer
+      ? buildCustomerNotificationList(items, activeOrder)
+      : sortNotifications(filterByTab(items, activeTab));
+    return base.filter((n) => {
+      if (hiddenIds.has(n.id)) return false;
+      if (n.entityId && hiddenIds.has(`active-${n.entityId}`)) return false;
+      return true;
+    });
+  }, [items, activeOrder, isCustomer, activeTab, hiddenIds]);
 
   const counts = useMemo(
     () => countUnreadByTab(items, tabIds(tabs)),
@@ -58,10 +73,52 @@ export function NotificationPanel({
     ? displayItems.some((n) => !n.readAt)
     : counts.all > 0;
 
+  function hideItem(item: AppNotification) {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(item.id);
+      if (item.entityId) next.add(`active-${item.entityId}`);
+      return next;
+    });
+  }
+
+  function unhideItem(item: AppNotification) {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      if (item.entityId) next.delete(`active-${item.entityId}`);
+      return next;
+    });
+  }
+
+  function scheduleRemove(item: AppNotification) {
+    if (!onRemove) return;
+    hideItem(item);
+
+    const prev = pendingDeletes.current.get(item.id);
+    if (prev) window.clearTimeout(prev);
+
+    const timeout = window.setTimeout(() => {
+      pendingDeletes.current.delete(item.id);
+      if (!item.id.startsWith("active-")) void onRemove({ id: item.id });
+    }, DELETE_DELAY_MS);
+    pendingDeletes.current.set(item.id, timeout);
+
+    flashToastUndo({
+      message: "Notificación eliminada",
+      onUndo: () => {
+        const t = pendingDeletes.current.get(item.id);
+        if (t) window.clearTimeout(t);
+        pendingDeletes.current.delete(item.id);
+        unhideItem(item);
+      },
+    });
+  }
+
   return (
     <div
       className={cn(
-        "w-[min(100vw-2rem,360px)] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]",
+        "w-[min(100vw-2rem,380px)] rounded-2xl border border-[#e8e0d6] bg-white p-3 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c] dark:text-[#ece8e2]",
         className,
       )}
     >
@@ -116,7 +173,7 @@ export function NotificationPanel({
         </div>
       ) : null}
 
-      <div className="max-h-[min(60vh,360px)] space-y-1 overflow-y-auto pr-0.5">
+      <div className="max-h-[min(60vh,400px)] space-y-0.5 overflow-y-auto overflow-x-hidden pr-0.5">
         {displayItems.length === 0 ? (
           <p className="px-1 py-6 text-center text-[11px] text-gray-500">Sin novedades por ahora.</p>
         ) : (
@@ -138,6 +195,7 @@ export function NotificationPanel({
                         if (!item.id.startsWith("active-")) void onMarkRead({ id: item.id });
                         onClose?.();
                       }}
+                      onRemove={onRemove ? () => scheduleRemove(item) : undefined}
                     />
                   ) : (
                     <BusinessNotificationRow
@@ -148,6 +206,7 @@ export function NotificationPanel({
                         void onMarkRead({ id: item.id });
                         onClose?.();
                       }}
+                      onRemove={onRemove ? () => scheduleRemove(item) : undefined}
                     />
                   ),
                 )}
@@ -156,6 +215,60 @@ export function NotificationPanel({
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function SwipeToDelete({
+  enabled,
+  onDelete,
+  children,
+}: {
+  enabled: boolean;
+  onDelete: () => void;
+  children: (opts: { suppressClick: boolean }) => ReactNode;
+}) {
+  const x = useMotionValue(0);
+  const dragged = useRef(false);
+  const [suppressClick, setSuppressClick] = useState(false);
+
+  if (!enabled) return <>{children({ suppressClick: false })}</>;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <div
+        className="absolute inset-y-0 right-0 flex w-24 items-center justify-end bg-[#9a0002] px-4"
+        aria-hidden
+      >
+        <MaterialSymbol icon="delete" size={20} className="text-white" />
+      </div>
+      <motion.div
+        drag="x"
+        dragDirectionLock
+        dragConstraints={{ left: -120, right: 0 }}
+        dragElastic={0.08}
+        style={{ x }}
+        className="relative z-10 touch-pan-y bg-white dark:bg-[#231f1c]"
+        onDragStart={() => {
+          dragged.current = true;
+          setSuppressClick(true);
+        }}
+        onDragEnd={(_, info) => {
+          const shouldDelete = info.offset.x < -SWIPE_DELETE_PX || info.velocity.x < -600;
+          if (shouldDelete) {
+            void animate(x, -420, { type: "spring", stiffness: 380, damping: 36 });
+            onDelete();
+            return;
+          }
+          void animate(x, 0, { type: "spring", stiffness: 420, damping: 34 });
+          window.setTimeout(() => {
+            dragged.current = false;
+            setSuppressClick(false);
+          }, 40);
+        }}
+      >
+        {children({ suppressClick })}
+      </motion.div>
     </div>
   );
 }
@@ -179,12 +292,17 @@ function BusinessNotificationRow({
   item,
   showDivider,
   onOpen,
+  onRemove,
 }: {
   item: AppNotification;
   showDivider: boolean;
   onOpen: () => void;
+  onRemove?: () => void;
 }) {
   const unread = !item.readAt;
+  const rowClass =
+    "flex w-full gap-2.5 rounded-xl px-1.5 py-2 text-left transition-colors hover:bg-[#f5f1eb]/70 dark:hover:bg-[#2a2623]/50";
+
   const inner = (
     <>
       <BusinessAvatar item={item} />
@@ -200,25 +318,43 @@ function BusinessNotificationRow({
         </div>
       </div>
       {unread ? (
-        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#9a0002]" aria-label="No leída" />
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#9a0002]" aria-label="No leída" />
       ) : null}
     </>
   );
 
-  const rowClass =
-    "flex w-full gap-2.5 rounded-xl px-1.5 py-2 text-left transition-colors hover:bg-[#f5f1eb]/70 dark:hover:bg-[#2a2623]/50";
-
   return (
     <div>
-      {item.actionUrl ? (
-        <Link href={item.actionUrl} className={rowClass} onClick={onOpen}>
-          {inner}
-        </Link>
-      ) : (
-        <button type="button" className={cn(rowClass, "cursor-pointer")} onClick={onOpen}>
-          {inner}
-        </button>
-      )}
+      <SwipeToDelete enabled={Boolean(onRemove)} onDelete={() => onRemove?.()}>
+        {({ suppressClick }) =>
+          item.actionUrl ? (
+            <Link
+              href={item.actionUrl}
+              className={rowClass}
+              onClick={(e) => {
+                if (suppressClick) {
+                  e.preventDefault();
+                  return;
+                }
+                onOpen();
+              }}
+            >
+              {inner}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={cn(rowClass, "cursor-pointer")}
+              onClick={() => {
+                if (suppressClick) return;
+                onOpen();
+              }}
+            >
+              {inner}
+            </button>
+          )
+        }
+      </SwipeToDelete>
       {showDivider ? <Divider /> : null}
     </div>
   );
@@ -228,17 +364,22 @@ function CustomerNotificationRow({
   item,
   showDivider,
   onOpen,
+  onRemove,
 }: {
   item: AppNotification;
   showDivider: boolean;
   onOpen: () => void;
+  onRemove?: () => void;
 }) {
   const unread = !item.readAt;
   const p = item.payload;
   const businessName = p.businessName ?? item.title;
   const statusLabel = p.statusLabel ?? item.title;
-  const summary = p.summary ?? item.body;
-  const cta = p.ctaLabel ?? "Ver seguimiento";
+  const cancelled =
+    statusLabel.toLowerCase().includes("cancel") || Boolean(p.rejectionReason);
+  const bubbleText = cancelled
+    ? p.rejectionReason || item.body || "El local canceló tu pedido."
+    : p.itemsSummary || p.summary || item.body;
   const href = item.actionUrl ?? (p.orderId ? `/pedido/${p.orderId}` : null);
 
   const content = (
@@ -246,51 +387,77 @@ function CustomerNotificationRow({
       <div className="flex gap-2.5">
         <StoreLogo name={businessName} url={p.businessLogoUrl} />
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] leading-snug text-gray-800 dark:text-[#d4cfc9]">
-            <span className={cn(unread && "font-semibold")}>{statusLabel}</span>
-            <span className="text-gray-500"> en </span>
-            <span className="font-semibold">{businessName}</span>
-          </p>
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 text-[12px] leading-snug text-gray-800 dark:text-[#d4cfc9]">
+              <span className={cn("font-semibold", cancelled && "text-red-700 dark:text-red-300")}>
+                {statusLabel}
+              </span>
+              <span className="text-gray-500"> en </span>
+              <span className="mt-0.5 inline-flex max-w-full align-middle">
+                <span className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-[#e8e0d6] bg-[#faf6f1] px-1.5 py-0.5 text-[11px] font-semibold text-gray-800 dark:border-[#3d3732] dark:bg-[#2a2623] dark:text-gray-100">
+                  <MaterialSymbol icon="storefront" size={12} className="shrink-0 text-[#9a0002]" />
+                  <span className="truncate">{businessName}</span>
+                </span>
+              </span>
+            </p>
+            {unread ? (
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#9a0002]" aria-label="Nueva" title="Nueva" />
+            ) : null}
+          </div>
           <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-400">
             <span>{absoluteTime(item.createdAt)}</span>
             <span>{relativeTime(item.createdAt)}</span>
           </div>
         </div>
-        {unread ? (
-          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#9a0002]" aria-label="No leída" />
-        ) : null}
       </div>
 
-      {(summary || href) && (
-        <div className="mt-2.5 ml-[46px] rounded-xl border border-[#ebe4da] bg-[#f5f1eb]/90 px-3 py-2.5 dark:border-[#3d3732] dark:bg-[#2a2623]/90">
-          {summary ? (
-            <p className="text-[11px] leading-snug text-gray-600 dark:text-gray-400">{summary}</p>
-          ) : null}
-          {item.body && item.body !== summary ? (
-            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{item.body}</p>
-          ) : null}
-          {href ? (
-            <span className="mt-1.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#9a0002]">
-              {cta}
-              <MaterialSymbol icon="arrow_forward" size={14} />
-            </span>
-          ) : null}
+      {bubbleText ? (
+        <div
+          className={cn(
+            "mt-2 ml-[46px] rounded-2xl px-3.5 py-2.5 text-[12px] leading-relaxed",
+            cancelled
+              ? "bg-red-50 text-red-800 dark:bg-red-950/35 dark:text-red-200"
+              : "bg-[#f0ebe4] text-gray-700 dark:bg-[#2a2623] dark:text-gray-300",
+          )}
+        >
+          {bubbleText}
         </div>
-      )}
+      ) : null}
     </div>
   );
 
   return (
-    <div className="transition-colors hover:bg-[#f5f1eb]/40 dark:hover:bg-[#2a2623]/30 rounded-xl">
-      {href ? (
-        <Link href={href} className="block" onClick={onOpen}>
-          {content}
-        </Link>
-      ) : (
-        <button type="button" className="block w-full cursor-pointer text-left" onClick={onOpen}>
-          {content}
-        </button>
-      )}
+    <div>
+      <SwipeToDelete enabled={Boolean(onRemove)} onDelete={() => onRemove?.()}>
+        {({ suppressClick }) =>
+          href ? (
+            <Link
+              href={href}
+              className="block rounded-xl transition-colors hover:bg-[#f5f1eb]/35 dark:hover:bg-[#2a2623]/25"
+              onClick={(e) => {
+                if (suppressClick) {
+                  e.preventDefault();
+                  return;
+                }
+                onOpen();
+              }}
+            >
+              {content}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className="block w-full cursor-pointer rounded-xl text-left transition-colors hover:bg-[#f5f1eb]/35 dark:hover:bg-[#2a2623]/25"
+              onClick={() => {
+                if (suppressClick) return;
+                onOpen();
+              }}
+            >
+              {content}
+            </button>
+          )
+        }
+      </SwipeToDelete>
       {showDivider ? <Divider /> : null}
     </div>
   );

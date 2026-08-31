@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { cn } from "@/lib/utils";
 import { useCart } from "@/components/CartProvider";
 import {
   FEATURED_CHAINS,
@@ -318,11 +319,26 @@ function CartDrawer({ onClose }: { onClose: () => void }) {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{l.name}</p>
-                  {l.optionLabels && (
-                    <p className="truncate text-[11px] text-gray-400">{l.optionLabels.join(" · ")}</p>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{l.name}</p>
+                    {l.optionsDetail?.some((o) => o.priceCents > 0) && (
+                      <span className="text-[11px] font-medium text-stone-400 shrink-0">
+                        Base: {money(l.basePrice ?? l.unitPrice)}
+                      </span>
+                    )}
+                  </div>
+                  {l.optionsDetail && l.optionsDetail.some((o) => o.priceCents > 0) && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {l.optionsDetail
+                        .filter((o) => o.priceCents > 0)
+                        .map((extra, ei) => (
+                          <p key={ei} className="text-[11px] text-stone-600 dark:text-stone-300 font-medium">
+                            + {extra.label} <span className="text-[#9a0002] dark:text-red-400 font-semibold">(+${(extra.priceCents / 100).toLocaleString("es-AR")})</span>
+                          </p>
+                        ))}
+                    </div>
                   )}
-                  {l.note && <p className="truncate text-[11px] text-[#9a0002] dark:text-red-400 font-medium">Nota: {l.note}</p>}
+                  {l.note && <p className="truncate text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-0.5">Nota: {l.note}</p>}
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-[13px] font-bold text-[#9a0002]">{money(l.unitPrice * l.qty)}</span>
                     <div className="flex items-center gap-1.5 rounded-full border border-black/10 dark:border-[#3d3732] px-1.5 bg-stone-50 dark:bg-[#231f1c]">
@@ -461,6 +477,7 @@ function FloatingCartBar() {
   }
 
   if (activeOrderBarVisible && activeOrder) {
+    const cancelled = activeOrder.status === "rejected";
     return (
       <motion.button
         type="button"
@@ -470,18 +487,29 @@ function FloatingCartBar() {
         }}
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-[#e8e0d6] bg-white px-4 py-3 shadow-xl cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]"
+        className={cn(
+          "fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl cursor-pointer",
+          cancelled
+            ? "border-red-200 bg-white dark:border-red-900/50 dark:bg-[#231f1c]"
+            : "border-[#e8e0d6] bg-white dark:border-[#3d3732] dark:bg-[#231f1c]",
+        )}
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#9a0002]/10 text-[#9a0002]">
+        <span
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+            cancelled ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" : "bg-[#9a0002]/10 text-[#9a0002]",
+          )}
+        >
           <MaterialSymbol icon={statusIcon(activeOrder.status)} size={22} />
         </span>
         <span className="min-w-0 flex-1 text-left">
           <span className="block text-[13px] font-bold text-stone-900 dark:text-stone-100">
-            Pedido en curso
+            {cancelled ? "Tu pedido fue cancelado" : "Pedido en curso"}
           </span>
           <span className="block truncate text-[11px] text-stone-500 dark:text-stone-400">
-            {statusShortLabel(activeOrder.status)} · #{activeOrder.orderNumber} ·{" "}
-            {activeOrder.businessName}
+            {cancelled
+              ? activeOrder.rejectionReason || "El local canceló tu pedido"
+              : `${statusShortLabel(activeOrder.status)} · ${activeOrder.itemsSummary || `#${activeOrder.orderNumber}`} · ${activeOrder.businessName}`}
           </span>
         </span>
         <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />

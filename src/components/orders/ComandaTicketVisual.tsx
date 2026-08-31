@@ -86,7 +86,7 @@ function ComandaItemLines({ items, roomy }: { items: OrderItemDetail[]; roomy?: 
       ) : (
         items.map((item, i) => {
           const lineTotal = item.quantity * item.unitPriceCents;
-          const addons = item.optionsDetail ?? [];
+          const addons = (item.optionsDetail ?? []).filter((opt) => opt.priceCents > 0);
           const baseUnit = item.unitPriceCents - itemAddonsCents(item);
           return (
             <li key={i} className="leading-snug">

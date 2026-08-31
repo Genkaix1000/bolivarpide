@@ -16,6 +16,8 @@ function parsePayload(raw: unknown): NotificationPayload {
     orderId: typeof p.orderId === "string" ? p.orderId : undefined,
     statusLabel: typeof p.statusLabel === "string" ? p.statusLabel : undefined,
     summary: typeof p.summary === "string" ? p.summary : undefined,
+    itemsSummary: typeof p.itemsSummary === "string" ? p.itemsSummary : undefined,
+    rejectionReason: typeof p.rejectionReason === "string" ? p.rejectionReason : undefined,
     ctaLabel: typeof p.ctaLabel === "string" ? p.ctaLabel : undefined,
   };
 }
@@ -117,6 +119,23 @@ export async function markNotificationsRead(input: {
   const svc = createServiceClient();
   const now = new Date().toISOString();
   let q = svc.from("notifications").update({ read_at: now }).eq("user_id", input.userId).is("read_at", null);
+
+  if (input.id) q = q.eq("id", input.id);
+  if (input.businessId) q = q.eq("business_id", input.businessId);
+  if (!input.id && !input.all) return;
+
+  const { error } = await q;
+  if (error) throw error;
+}
+
+export async function deleteNotifications(input: {
+  userId: string;
+  id?: string;
+  all?: boolean;
+  businessId?: string | null;
+}): Promise<void> {
+  const svc = createServiceClient();
+  let q = svc.from("notifications").delete().eq("user_id", input.userId);
 
   if (input.id) q = q.eq("id", input.id);
   if (input.businessId) q = q.eq("business_id", input.businessId);

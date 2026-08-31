@@ -7,6 +7,8 @@ export type NotificationPayload = {
   orderId?: string;
   statusLabel?: string;
   summary?: string;
+  itemsSummary?: string;
+  rejectionReason?: string;
   ctaLabel?: string;
 };
 

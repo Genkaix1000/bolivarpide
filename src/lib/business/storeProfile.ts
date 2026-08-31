@@ -1,4 +1,5 @@
 import type { StoreProfile } from "@/components/StoreShowcase";
+import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 
 export type DbBusinessProfile = {
   id: string;
@@ -21,9 +22,9 @@ export function profileFromDbBusiness(
   return {
     name: b.name,
     bannerText: b.tagline ?? b.name,
-    bannerImage: b.banner_path ?? undefined,
+    bannerImage: resolveBusinessAssetUrl(b.banner_path) ?? b.banner_path ?? undefined,
     bannerBgClass: "bg-[#5d4037]",
-    logoImage: b.logo_path ?? undefined,
+    logoImage: resolveBusinessAssetUrl(b.logo_path) ?? b.logo_path ?? undefined,
     logoEmoji: b.name.slice(0, 1).toUpperCase(),
     rating: Number(b.rating) || 0,
     followersLabel: "0",
@@ -34,6 +35,6 @@ export function profileFromDbBusiness(
     address: b.address ?? "",
     lat: -36.2295,
     lng: -61.1168,
-    chainId: b.slug,
+    chainId: b.id || b.slug,
   };
 }

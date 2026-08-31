@@ -39,6 +39,7 @@ export function BusinessSidebar({
       href: `${base}/pedidos`,
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
+    { id: "whatsapp", label: "WhatsApp", icon: "chat", href: `${base}/whatsapp` },
     { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
     { id: "pagos", label: "Pagos", icon: "payments", href: `${base}/pagos` },
   ];

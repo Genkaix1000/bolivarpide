@@ -34,7 +34,7 @@ export function BusinessTopbar({
   onMenuClick,
 }: BusinessTopbarProps) {
   const { profile, logout, isAuthenticated } = useUserProfile();
-  const { items: notifications, unreadCount, markRead } = useNotifications({ businessId });
+  const { items: notifications, unreadCount, markRead, remove } = useNotifications({ businessId });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -69,6 +69,7 @@ export function BusinessTopbar({
       items={notifications}
       variant="business"
       onMarkRead={markRead}
+      onRemove={remove}
       onClose={() => setShowNotifDropdown(false)}
     />
   );

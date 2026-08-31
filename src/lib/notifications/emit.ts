@@ -19,15 +19,24 @@ function customerOrderPayload(input: {
   orderNumber: number;
   totalCents: number;
   statusLabel: string;
+  itemsSummary?: string;
+  rejectionReason?: string | null;
+  ctaLabel?: string;
 }): NotificationInput["payload"] {
+  const money = formatTotal(input.totalCents);
+  const summary = input.itemsSummary
+    ? `${input.itemsSummary} · ${money}`
+    : `Pedido #${input.orderNumber} · ${money}`;
   return {
     businessName: input.businessName,
     businessLogoUrl: input.businessLogoUrl,
     orderId: input.orderId,
     orderNumber: input.orderNumber,
     statusLabel: input.statusLabel,
-    summary: `Pedido #${input.orderNumber} · ${formatTotal(input.totalCents)}`,
-    ctaLabel: "Ver seguimiento",
+    summary,
+    itemsSummary: input.itemsSummary,
+    rejectionReason: input.rejectionReason ?? undefined,
+    ctaLabel: input.ctaLabel ?? "Ver seguimiento",
   };
 }
 
@@ -162,18 +171,22 @@ export async function notifyCustomerOrderStatus(input: {
   totalCents: number;
   status: OrderLifecycleStatus;
   fulfillmentType?: "delivery" | "pickup";
+  itemsSummary?: string;
+  rejectionReason?: string | null;
 }): Promise<void> {
   const ft = input.fulfillmentType ?? "delivery";
   const { title, subtitle } = trackingCopy(input.status, undefined, ft);
+  const cancelled = input.status === "rejected";
   const priority: 0 | 1 | 2 =
     input.status === "rejected" ? 0 : input.status === "delivered" ? 2 : 1;
+  const body = cancelled && input.rejectionReason ? input.rejectionReason : subtitle;
 
   await insertNotification({
     userId: input.userId,
     category: "orders",
     priority,
     title,
-    body: subtitle,
+    body,
     actionUrl: `/pedido/${input.orderId}`,
     entityType: "order",
     entityId: input.orderId,
@@ -184,6 +197,9 @@ export async function notifyCustomerOrderStatus(input: {
       orderNumber: input.orderNumber,
       totalCents: input.totalCents,
       statusLabel: title,
+      itemsSummary: input.itemsSummary,
+      rejectionReason: input.rejectionReason,
+      ctaLabel: cancelled ? undefined : "Ver seguimiento",
     }),
     dedupeKey: `order_status:${input.orderId}:${input.status}`,
   });
@@ -196,6 +212,7 @@ export async function notifyCustomerOrderReceived(input: {
   businessName: string;
   businessLogoUrl?: string;
   totalCents: number;
+  itemsSummary?: string;
 }): Promise<void> {
   await insertNotification({
     userId: input.userId,
@@ -213,6 +230,7 @@ export async function notifyCustomerOrderReceived(input: {
       orderNumber: input.orderNumber,
       totalCents: input.totalCents,
       statusLabel: "Pedido recibido",
+      itemsSummary: input.itemsSummary,
     }),
     dedupeKey: `customer_received:${input.orderId}`,
   });
@@ -225,17 +243,19 @@ export async function notifyCustomerPaymentConfirmed(input: {
   businessName: string;
   businessLogoUrl?: string;
   totalCents: number;
+  itemsSummary?: string;
 }): Promise<void> {
   await notifyCustomerOrderReceived(input);
 }
 
 async function loadOrderContext(orderId: string) {
   const { createServiceClient } = await import("@/lib/supabase/service");
+  const { formatOrderItemsSummary } = await import("@/lib/orders/active");
   const svc = createServiceClient();
   const { data } = await svc
     .from("orders")
     .select(
-      "id, business_id, customer_user_id, customer_name, order_number, total_cents, payment_method, fulfillment_type, businesses(name, logo_path)",
+      "id, business_id, customer_user_id, customer_name, order_number, total_cents, payment_method, fulfillment_type, rejection_reason, businesses(name, logo_path), order_items(name, quantity, note)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -243,6 +263,7 @@ async function loadOrderContext(orderId: string) {
   const business = (Array.isArray(data.businesses) ? data.businesses[0] : data.businesses) as
     | { name: string; logo_path: string | null }
     | null;
+  const items = (data.order_items as { name: string; quantity: number; note?: string | null }[] | null) ?? [];
   return {
     orderId: data.id,
     businessId: data.business_id,
@@ -256,6 +277,8 @@ async function loadOrderContext(orderId: string) {
       | "pickup",
     businessName: business?.name ?? "Local",
     businessLogoUrl: resolveBusinessAssetUrl(business?.logo_path ?? null),
+    rejectionReason: (data.rejection_reason as string | null) ?? null,
+    itemsSummary: formatOrderItemsSummary(items),
   };
 }
 
@@ -279,6 +302,7 @@ export async function emitOrderPaidNotifications(orderId: string): Promise<void>
       businessName: ctx.businessName,
       businessLogoUrl: ctx.businessLogoUrl,
       totalCents: ctx.totalCents,
+      itemsSummary: ctx.itemsSummary,
     });
   }
 }
@@ -304,6 +328,7 @@ export async function emitCashOrderNotifications(orderId: string): Promise<void>
       businessName: ctx.businessName,
       businessLogoUrl: ctx.businessLogoUrl,
       totalCents: ctx.totalCents,
+      itemsSummary: ctx.itemsSummary,
     });
   }
 }
@@ -324,6 +349,8 @@ export async function emitCustomerStatusNotification(
     totalCents: ctx.totalCents,
     status,
     fulfillmentType: ctx.fulfillmentType,
+    itemsSummary: ctx.itemsSummary,
+    rejectionReason: ctx.rejectionReason,
   });
 }
 

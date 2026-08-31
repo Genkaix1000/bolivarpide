@@ -11,13 +11,20 @@ function formatTotal(cents: number): string {
   });
 }
 
+function orderSummary(order: ActiveCustomerOrder): string {
+  const money = formatTotal(order.totalCents);
+  if (order.itemsSummary) return `${order.itemsSummary} · ${money}`;
+  return `Pedido #${order.orderNumber} · ${money}`;
+}
+
 export function activeOrderToNotification(order: ActiveCustomerOrder): AppNotification {
+  const cancelled = order.status === "rejected";
   return {
     id: `active-${order.orderId}`,
     category: "orders",
     priority: 0,
-    title: "Pedido recibido",
-    body: null,
+    title: cancelled ? "Pedido cancelado" : "Pedido recibido",
+    body: cancelled ? (order.rejectionReason ?? "El local canceló tu pedido.") : null,
     emoji: null,
     icon: null,
     actionUrl: `/pedido/${order.orderId}`,
@@ -30,21 +37,53 @@ export function activeOrderToNotification(order: ActiveCustomerOrder): AppNotifi
       orderNumber: order.orderNumber,
       orderId: order.orderId,
       statusLabel: statusShortLabel(order.status),
-      summary: `Pedido #${order.orderNumber} · ${formatTotal(order.totalCents)}`,
-      ctaLabel: "Ver seguimiento",
+      summary: orderSummary(order),
+      itemsSummary: order.itemsSummary || undefined,
+      rejectionReason: order.rejectionReason ?? undefined,
+      ctaLabel: cancelled ? undefined : "Ver seguimiento",
     },
     readAt: null,
     createdAt: order.createdAt,
   };
 }
 
-/** Cliente: prioridad primero, sin tabs; pedido activo arriba si no hay notif del mismo pedido. */
+/** Fusiona estado en vivo del pedido activo sobre una notif del mismo pedido. */
+export function mergeActiveIntoNotification(
+  item: AppNotification,
+  order: ActiveCustomerOrder,
+): AppNotification {
+  const cancelled = order.status === "rejected";
+  return {
+    ...item,
+    title: cancelled ? "Pedido cancelado" : item.title,
+    body: cancelled ? (order.rejectionReason ?? item.body) : item.body,
+    payload: {
+      ...item.payload,
+      businessName: order.businessName,
+      businessLogoUrl: order.businessLogoUrl ?? item.payload.businessLogoUrl,
+      orderNumber: order.orderNumber,
+      orderId: order.orderId,
+      statusLabel: statusShortLabel(order.status),
+      summary: orderSummary(order),
+      itemsSummary: order.itemsSummary || item.payload.itemsSummary,
+      rejectionReason: order.rejectionReason ?? item.payload.rejectionReason,
+      ctaLabel: cancelled ? undefined : (item.payload.ctaLabel ?? "Ver seguimiento"),
+    },
+  };
+}
+
+/** Cliente: prioridad primero; pedido activo arriba (merge si ya hay notif del mismo id). */
 export function buildCustomerNotificationList(
   items: AppNotification[],
   activeOrder?: ActiveCustomerOrder | null,
 ): AppNotification[] {
   const sorted = sortNotifications(items);
   if (!activeOrder) return sorted;
-  if (sorted.some((n) => n.entityId === activeOrder.orderId)) return sorted;
-  return sortNotifications([activeOrderToNotification(activeOrder), ...sorted]);
+
+  const idx = sorted.findIndex((n) => n.entityId === activeOrder.orderId);
+  if (idx >= 0) {
+    const merged = mergeActiveIntoNotification(sorted[idx], activeOrder);
+    return [merged, ...sorted.filter((_, i) => i !== idx)];
+  }
+  return [activeOrderToNotification(activeOrder), ...sorted];
 }

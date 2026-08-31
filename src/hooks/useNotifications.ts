@@ -54,6 +54,27 @@ export function useNotifications(opts?: { businessId?: string; enabled?: boolean
     [enabled, opts?.businessId],
   );
 
+  const remove = useCallback(
+    async (input?: { id?: string; all?: boolean }) => {
+      if (!enabled) return;
+      await fetch("/api/notifications/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: input?.id,
+          all: input?.all,
+          businessId: opts?.businessId,
+        }),
+      });
+      if (input?.all) {
+        setItems([]);
+      } else if (input?.id) {
+        setItems((prev) => prev.filter((n) => n.id !== input.id));
+      }
+    },
+    [enabled, opts?.businessId],
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -83,5 +104,5 @@ export function useNotifications(opts?: { businessId?: string; enabled?: boolean
 
   const unreadCount = items.filter((n) => !n.readAt).length;
 
-  return { items, unreadCount, loading, refresh, markRead };
+  return { items, unreadCount, loading, refresh, markRead, remove };
 }
