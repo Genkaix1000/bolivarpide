@@ -17,28 +17,36 @@ export function useOrderAlerts(businessId: string) {
   const [pendingCount, setPendingCount] = useState(0);
   const alerted = useRef(new Set<string>());
 
-  const refreshPendingCount = useCallback(async () => {
+  const refreshPending = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase
       .from("orders")
-      .select("id, status, payment_status, payment_method")
+      .select("id, status, payment_status, payment_method, order_number, customer_name, total_cents")
       .eq("business_id", businessId)
       .eq("status", "pending");
-    setPendingCount((data ?? []).filter((o) => isKitchenEligible(o)).length);
+
+    const orders = data ?? [];
+    setPendingCount(orders.filter((o) => isKitchenEligible(o)).length);
+
+    const alertOrders = orders.filter((o) => shouldAlertBusiness(o));
+    setAlerts(
+      alertOrders.map((o) => ({
+        id: o.id,
+        orderNumber: o.order_number ?? 0,
+        customerName: o.customer_name ?? "Cliente",
+        totalCents: o.total_cents ?? 0,
+      }))
+    );
   }, [businessId]);
 
   const dismiss = useCallback((orderId?: string) => {
+    // Left for backwards compatibility if needed, but alerts are driven by order status
     if (orderId) {
       setAlerts((a) => a.filter((x) => x.id !== orderId));
-      alerted.current.add(orderId);
     } else {
-      setAlerts((prev) => {
-        for (const a of prev) alerted.current.add(a.id);
-        return [];
-      });
+      setAlerts([]);
     }
-    void refreshPendingCount();
-  }, [refreshPendingCount]);
+  }, []);
 
   useEffect(() => {
     unlockOrderChime();
@@ -46,14 +54,24 @@ export function useOrderAlerts(businessId: string) {
 
     void supabase
       .from("orders")
-      .select("id, status, payment_status, payment_method, order_number, customer_name")
+      .select("id, status, payment_status, payment_method, order_number, customer_name, total_cents")
       .eq("business_id", businessId)
       .eq("status", "pending")
       .then(({ data }) => {
-        for (const o of data ?? []) {
+        const orders = data ?? [];
+        for (const o of orders) {
           if (shouldAlertBusiness(o)) alerted.current.add(o.id);
         }
-        setPendingCount((data ?? []).filter((o) => isKitchenEligible(o)).length);
+        setPendingCount(orders.filter((o) => isKitchenEligible(o)).length);
+        const alertOrders = orders.filter((o) => shouldAlertBusiness(o));
+        setAlerts(
+          alertOrders.map((o) => ({
+            id: o.id,
+            orderNumber: o.order_number ?? 0,
+            customerName: o.customer_name ?? "Cliente",
+            totalCents: o.total_cents ?? 0,
+          }))
+        );
       });
 
     const maybeAlert = (row: {
@@ -65,21 +83,26 @@ export function useOrderAlerts(businessId: string) {
       customer_name: string | null;
       total_cents: number;
     }) => {
-      if (!shouldAlertBusiness(row)) return;
-      if (alerted.current.has(row.id)) return;
-      alerted.current.add(row.id);
-      playOrderChime();
+      if (!shouldAlertBusiness(row)) {
+        setAlerts((prev) => prev.filter((a) => a.id !== row.id));
+        return;
+      }
+      if (!alerted.current.has(row.id)) {
+        alerted.current.add(row.id);
+        playOrderChime();
+      }
       setAlerts((prev) => {
-        if (prev.some((a) => a.id === row.id)) return prev;
-        return [
-          ...prev,
-          {
-            id: row.id,
-            orderNumber: row.order_number ?? 0,
-            customerName: row.customer_name ?? "Cliente",
-            totalCents: row.total_cents,
-          },
-        ];
+        const exists = prev.find((a) => a.id === row.id);
+        const nextItem: NewOrderAlert = {
+          id: row.id,
+          orderNumber: row.order_number ?? 0,
+          customerName: row.customer_name ?? "Cliente",
+          totalCents: row.total_cents,
+        };
+        if (exists) {
+          return prev.map((a) => (a.id === row.id ? nextItem : a));
+        }
+        return [...prev, nextItem];
       });
     };
 
@@ -105,12 +128,15 @@ export function useOrderAlerts(businessId: string) {
           };
           if (!row?.id) return;
 
-          void refreshPendingCount();
+          void refreshPending();
 
-          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-            maybeAlert(row);
+          if (payload.eventType === "DELETE") {
+            setAlerts((prev) => prev.filter((a) => a.id !== row.id));
+          } else if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
             if (row.status !== "pending") {
               setAlerts((prev) => prev.filter((a) => a.id !== row.id));
+            } else {
+              maybeAlert(row);
             }
           }
         },
@@ -120,7 +146,7 @@ export function useOrderAlerts(businessId: string) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [businessId, refreshPendingCount]);
+  }, [businessId, refreshPending]);
 
   return { alerts, pendingCount, dismiss };
 }

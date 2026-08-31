@@ -35,6 +35,12 @@ export type KitchenOrderTicket = {
   customerName: string;
   customerVerified: boolean;
   customerPhone: string | null;
+  /** Avatar del perfil (symbol/emoji/initials) desde user_profiles. */
+  customerAvatar: {
+    type: "initials" | "symbol" | "emoji";
+    value: string;
+    gradientId: string;
+  };
   whatsappUrl: string | null;
   fulfillmentType: "delivery" | "pickup";
   deliveryAddress: string | null;
@@ -298,6 +304,11 @@ export function mapKitchenTicket(row: {
     customerName: row.customer_name ?? "Cliente",
     customerVerified: false,
     customerPhone: null,
+    customerAvatar: {
+      type: "initials",
+      value: "?",
+      gradientId: "cherry",
+    },
     whatsappUrl: null,
     fulfillmentType: row.fulfillment_type === "pickup" ? "pickup" : "delivery",
     deliveryAddress: row.delivery_address,

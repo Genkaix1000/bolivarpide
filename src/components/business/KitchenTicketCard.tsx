@@ -3,27 +3,11 @@
 import { useState, useTransition } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { ComandaTicketVisual } from "@/components/orders/ComandaTicketVisual";
-import { STUB_ACCENT } from "@/components/orders/comandaTicketShared";
 import { advanceOrderStatus } from "@/lib/orders/actions";
 import { stubLabel, type KitchenOrderTicket, type OrderLifecycleStatus } from "@/lib/orders/lifecycle";
 import { cn } from "@/lib/utils";
 import { PinConfirmInput } from "./PinConfirmInput";
 import { RejectOrderModal } from "./RejectOrderModal";
-
-function BarcodeDecor({ orderNumber }: { orderNumber: number }) {
-  const seed = orderNumber % 97;
-  return (
-    <div className="flex h-14 items-end justify-center gap-[3px] opacity-90" aria-hidden>
-      {Array.from({ length: 7 }, (_, i) => (
-        <div
-          key={i}
-          className="w-[3px] rounded-sm bg-white/90"
-          style={{ height: `${12 + ((seed + i * 7) % 5) * 6}px` }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export function KitchenTicketCard({
   ticket,
@@ -69,61 +53,50 @@ export function KitchenTicketCard({
     });
   }
 
-  const actionStub =
+  const primaryIcon =
+    ticket.status === "pending"
+      ? "skillet"
+      : ticket.status === "preparing"
+        ? "moped"
+        : "check_circle";
+
+  const actions =
     !terminal && stub ? (
-      <div
-        className={cn(
-          "relative flex w-[84px] shrink-0 flex-col items-center justify-between py-3 text-white",
-          STUB_ACCENT[ticket.status],
-        )}
-      >
-        <div className="flex flex-col items-center gap-0.5 opacity-75" aria-hidden>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i} className="text-[9px] leading-none">
-              ★
-            </span>
-          ))}
-        </div>
-
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-1">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              if (ticket.status === "delivering") setPinOpen(true);
-              else if (forwardTarget) runAdvance(forwardTarget);
-            }}
-            className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-lg bg-white/15 px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide hover:bg-white/25 disabled:opacity-50"
-          >
-            <MaterialSymbol
-              icon={
-                ticket.status === "pending"
-                  ? "skillet"
-                  : ticket.status === "preparing"
-                    ? "moped"
-                    : "check_circle"
-              }
-              size={22}
-            />
-            {stub}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setRejectOpen(true)}
-            className="cursor-pointer text-[9px] font-semibold text-white/80 underline disabled:opacity-50"
-          >
-            Rechazar
-          </button>
-        </div>
-
-        <BarcodeDecor orderNumber={ticket.orderNumber} />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (ticket.status === "delivering") setPinOpen(true);
+            else if (forwardTarget) runAdvance(forwardTarget);
+          }}
+          className={cn(
+            "inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[12px] font-bold text-white disabled:opacity-50",
+            ticket.status === "pending"
+              ? "bg-[#9a0002] hover:bg-[#850002]"
+              : ticket.status === "preparing"
+                ? "bg-amber-600 hover:bg-amber-700"
+                : "bg-stone-900 hover:bg-stone-800",
+          )}
+        >
+          <MaterialSymbol icon={primaryIcon} size={18} />
+          {stub}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => setRejectOpen(true)}
+          className="shrink-0 cursor-pointer rounded-xl px-3 py-2.5 text-[11px] font-semibold text-stone-500 hover:bg-stone-200/80 hover:text-red-700 disabled:opacity-50"
+        >
+          Rechazar
+        </button>
       </div>
-    ) : (
-      <div className="flex w-[84px] shrink-0 flex-col items-center justify-center bg-stone-300/50 py-3 text-stone-500">
-        <MaterialSymbol icon="done_all" size={28} />
+    ) : terminal ? (
+      <div className="flex items-center justify-center gap-1.5 py-0.5 text-[11px] font-semibold text-stone-400">
+        <MaterialSymbol icon="done_all" size={16} />
+        {ticket.status === "rejected" ? "Rechazado" : "Finalizado"}
       </div>
-    );
+    ) : null;
 
   return (
     <>
@@ -134,6 +107,7 @@ export function KitchenTicketCard({
             status: ticket.status,
             nameLine: ticket.customerName,
             nameVerified: ticket.customerVerified,
+            buyerAvatar: ticket.customerAvatar,
             fulfillmentType: ticket.fulfillmentType,
             deliveryAddress: ticket.deliveryAddress,
             items: ticket.items,
@@ -145,8 +119,9 @@ export function KitchenTicketCard({
             rejectionReason: ticket.rejectionReason,
             whatsappUrl: ticket.whatsappUrl,
           }}
-          stub={actionStub}
+          variant="kitchen"
           highlightPending
+          actions={actions}
         />
         {error ? <p className="mt-1 text-[11px] text-red-600">{error}</p> : null}
       </div>

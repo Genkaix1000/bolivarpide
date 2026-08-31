@@ -5,6 +5,7 @@ import {
   mapKitchenTicket,
   type KitchenOrderTicket,
 } from "@/lib/orders/lifecycle";
+import { DEFAULT_USER_PROFILE, type UserAvatar } from "@/lib/userProfile";
 
 const KITCHEN_FIELDS =
   "id, order_number, status, customer_user_id, customer_name, customer_phone, fulfillment_type, payment_method, payment_status, total_cents, notes, created_at, rejection_reason, delivery_address";
@@ -16,7 +17,35 @@ type ProfileRow = {
   display_name: string | null;
   identity_verified: boolean | null;
   phone: string | null;
+  avatar_type: string | null;
+  avatar_value: string | null;
+  avatar_gradient_id: string | null;
 };
+
+function normalizeAvatarType(type: string): UserAvatar["type"] {
+  if (type === "symbol" || type === "emoji" || type === "initials") return type;
+  return "initials";
+}
+
+function profileAvatar(profile: ProfileRow | undefined, fallbackName: string): UserAvatar {
+  if (profile?.avatar_type || profile?.avatar_value) {
+    return {
+      type: normalizeAvatarType(profile.avatar_type ?? "initials"),
+      value: profile.avatar_value?.trim() || "?",
+      gradientId: profile.avatar_gradient_id || DEFAULT_USER_PROFILE.avatar.gradientId,
+    };
+  }
+  const parts = fallbackName.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    parts.length >= 2
+      ? `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase()
+      : (parts[0]?.slice(0, 2).toUpperCase() ?? "?");
+  return {
+    type: "initials",
+    value: initials,
+    gradientId: DEFAULT_USER_PROFILE.avatar.gradientId,
+  };
+}
 
 export function customerDisplayName(
   profile: ProfileRow | undefined,
@@ -73,7 +102,9 @@ export async function listKitchenOrders(businessId: string): Promise<{
   if (userIds.length > 0) {
     const { data: profs } = await svc
       .from("user_profiles")
-      .select("user_id, first_name, last_name, display_name, identity_verified, phone")
+      .select(
+        "user_id, first_name, last_name, display_name, identity_verified, phone, avatar_type, avatar_value, avatar_gradient_id",
+      )
       .in("user_id", userIds);
     for (const p of profs ?? []) profiles.set(p.user_id, p as ProfileRow);
   }
@@ -86,11 +117,13 @@ export async function listKitchenOrders(businessId: string): Promise<{
       if (!base) return null;
       const prof = row.customer_user_id ? profiles.get(row.customer_user_id) : undefined;
       const phone = customerPhone(prof, row.customer_phone);
+      const customerName = customerDisplayName(prof, row.customer_name);
       return {
         ...base,
-        customerName: customerDisplayName(prof, row.customer_name),
+        customerName,
         customerVerified: !!prof?.identity_verified,
         customerPhone: phone,
+        customerAvatar: profileAvatar(prof, customerName),
         whatsappUrl:
           whatsappConnected && phone
             ? whatsAppUrl(phone, `Hola, te escribo por tu pedido #${base.orderNumber} en BolivarPide.`)

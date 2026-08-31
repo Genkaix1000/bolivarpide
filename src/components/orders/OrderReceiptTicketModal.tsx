@@ -43,6 +43,7 @@ export function OrderReceiptTicketModal({
     setBusy(true);
     try {
       const result = await shareComandaJpeg(ticketRef.current, view.orderNumber);
+      if (result === "cancelled") return;
       if (mode === "whatsapp") {
         if (result === "shared") {
           flashToast("Elegí WhatsApp para enviar la comanda.");
@@ -55,7 +56,8 @@ export function OrderReceiptTicketModal({
       } else {
         flashToast("Comanda guardada en tu dispositivo.");
       }
-    } catch {
+    } catch (err) {
+      console.error("shareComandaJpeg failed", err);
       flashToast("No pudimos generar la imagen. Intentá de nuevo.");
     } finally {
       setBusy(false);
