@@ -286,32 +286,37 @@ export function ComandaTicketVisual({
   const pending = highlightPending && data.status === "pending";
 
   if (variant === "body" || variant === "kitchen") {
+    const pendingKitchen = pending && variant === "kitchen";
     return (
       <article
         ref={innerRef}
         className={cn(
-          "flex w-[min(340px,88vw)] shrink-0 flex-col overflow-hidden rounded-2xl bg-[#fffef8] text-stone-900 shadow-[0_12px_32px_-14px_rgba(61,43,31,0.4)]",
-          pending && variant === "kitchen" && "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-[#f3efe8]",
+          "flex w-[min(340px,88vw)] shrink-0 flex-col rounded-2xl",
+          // Shadow + ring live on the outer shell so overflow-hidden inside doesn't clip them
+          "shadow-[0_12px_32px_-14px_rgba(61,43,31,0.4)]",
+          pendingKitchen && "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-[#f3efe8]",
           className,
         )}
       >
-        {pending && variant === "kitchen" ? (
-          <div className="flex items-center justify-between bg-[#9a0002] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-            <span>Nuevo · sin aceptar</span>
-            <span className="font-mono tabular-nums opacity-90">{elapsed} min</span>
+        <div className="overflow-hidden rounded-2xl bg-[#fffef8] text-stone-900">
+          {pendingKitchen ? (
+            <div className="flex items-center justify-between bg-[#9a0002] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+              <span>Nuevo · sin aceptar</span>
+              <span className="font-mono tabular-nums opacity-90">{elapsed} min</span>
+            </div>
+          ) : null}
+          <div className="flex flex-col px-4 pb-4 pt-3">
+            <ComandaTicketBody
+              data={data}
+              elapsed={elapsed}
+              showStatusBadge={variant === "body"}
+              compactItems={variant === "kitchen"}
+            />
           </div>
-        ) : null}
-        <div className="flex flex-col px-4 pb-4 pt-3">
-          <ComandaTicketBody
-            data={data}
-            elapsed={elapsed}
-            showStatusBadge={variant === "body"}
-            compactItems={variant === "kitchen"}
-          />
+          {variant === "kitchen" && actions ? (
+            <div className="border-t border-dashed border-stone-300 bg-[#f7f3ea] px-3 py-2.5">{actions}</div>
+          ) : null}
         </div>
-        {variant === "kitchen" && actions ? (
-          <div className="border-t border-dashed border-stone-300 bg-[#f7f3ea] px-3 py-2.5">{actions}</div>
-        ) : null}
       </article>
     );
   }

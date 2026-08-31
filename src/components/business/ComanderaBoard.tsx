@@ -19,9 +19,9 @@ function TicketRow({ title, tickets, businessId, onUpdated }: {
       <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
         {title} ({tickets.length})
       </h2>
-      <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
+      <div className="flex gap-5 overflow-x-auto px-1 py-3 pb-5 snap-x snap-mandatory">
         {tickets.map((t) => (
-          <div key={t.id} className="snap-start">
+          <div key={t.id} className="snap-start shrink-0 py-0.5">
             <KitchenTicketCard ticket={t} businessId={businessId} onUpdated={onUpdated} />
           </div>
         ))}
@@ -108,9 +108,11 @@ export function ComanderaBoard({
               <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
                 Finalizados ({done.length})
               </h2>
-              <div className="flex gap-5 overflow-x-auto pb-4">
+              <div className="flex gap-5 overflow-x-auto px-1 py-3 pb-5">
                 {done.slice(-10).map((t) => (
-                  <KitchenTicketCard key={t.id} ticket={t} businessId={businessId} onUpdated={refresh} />
+                  <div key={t.id} className="shrink-0 py-0.5">
+                    <KitchenTicketCard ticket={t} businessId={businessId} onUpdated={refresh} />
+                  </div>
                 ))}
               </div>
             </section>

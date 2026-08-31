@@ -30,6 +30,7 @@ export function BusinessTopbar({
   shell,
   businessId,
   orderAlerts,
+  onDismissOrderAlerts,
   onMenuClick,
 }: BusinessTopbarProps) {
   const { profile, logout, isAuthenticated } = useUserProfile();
@@ -112,10 +113,21 @@ export function BusinessTopbar({
             <p className="min-w-0 flex-1 truncate text-sm font-bold md:text-base">{alertMessage}</p>
             <Link
               href={`/negocio/${businessId}/pedidos`}
-              className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#9a0002] hover:bg-white/90 transition-transform active:scale-95"
+              className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#9a0002] hover:bg-white/90 transition-transform active:scale-95 cursor-pointer shadow-sm"
             >
               Ir a pedidos
             </Link>
+            {onDismissOrderAlerts && (
+              <button
+                type="button"
+                onClick={() => onDismissOrderAlerts()}
+                aria-label="Cerrar notificación"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/20 hover:bg-black/35 text-white transition-all active:scale-90 cursor-pointer"
+                title="Cerrar alerta"
+              >
+                <MaterialSymbol icon="close" size={18} />
+              </button>
+            )}
           </div>
         </motion.div>
       ) : (
