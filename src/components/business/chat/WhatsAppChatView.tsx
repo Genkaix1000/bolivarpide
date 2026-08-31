@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChatListPane } from "./ChatListPane";
+import { ChatListPane, type ListFilter } from "./ChatListPane";
 import { ChatConversationPane } from "./ChatConversationPane";
 import { ChatContextPane } from "./ChatContextPane";
 import {
@@ -12,37 +12,35 @@ import {
   type ChatMessage,
 } from "@/lib/business/mockChatData";
 import { flashToast } from "@/components/FlashToast";
-import { cn } from "@/lib/utils";
 
-interface WhatsAppChatViewProps {
-  businessId: string;
-}
-
-export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
+export function WhatsAppChatView({ businessId: _businessId }: { businessId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
-  const [selectedId, setSelectedId] = useState<string>(MOCK_CONVERSATIONS[0].id);
+  const [selectedId, setSelectedId] = useState<string>(MOCK_CONVERSATIONS[0]?.id ?? "");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "preparing" | "delivering" | "ready" | "inquiry">("all");
+  const [activeFilter, setActiveFilter] = useState<ListFilter>("all");
   const [showContextPane, setShowContextPane] = useState(true);
   const [mobileScreen, setMobileScreen] = useState<"list" | "chat">("list");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const selectedConversation = useMemo(() => {
-    return conversations.find((c) => c.id === selectedId) || conversations[0];
-  }, [conversations, selectedId]);
+  const selectedConversation = useMemo(
+    () => conversations.find((c) => c.id === selectedId) ?? conversations[0],
+    [conversations, selectedId],
+  );
 
-  const handleSelectConversation = (id: string) => {
+  function handleSelectConversation(id: string) {
     setSelectedId(id);
     setMobileScreen("chat");
-    // Mark as read
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
+      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)),
     );
-  };
+  }
 
-  const handleSendMessage = (text: string) => {
+  function handleSendMessage(text: string) {
     const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
 
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -58,20 +56,19 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
         if (conv.id !== selectedId) return conv;
         return {
           ...conv,
-          lastMessage: {
-            text,
-            timestamp: timeStr,
-            sender: "business",
-          },
+          lastMessage: { text, timestamp: timeStr, sender: "business" },
           messages: [...conv.messages, newMsg],
         };
-      })
+      }),
     );
-  };
+  }
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: ChatOrderStatus) => {
+  function handleUpdateOrderStatus(orderId: string, newStatus: ChatOrderStatus) {
     const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
 
     const statusLabels: Record<ChatOrderStatus, string> = {
       pending: "Nuevo",
@@ -83,7 +80,6 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
     };
 
     const newLabel = statusLabels[newStatus];
-
     const systemEventMsg: ChatMessage = {
       id: `sys-${Date.now()}`,
       sender: "business",
@@ -108,51 +104,68 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
           },
           messages: [...conv.messages, systemEventMsg],
         };
-      })
+      }),
     );
 
     flashToast(`Comanda actualizada a "${newLabel}"`);
-  };
+  }
+
+  if (!selectedConversation) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-stone-500">
+        Sin conversaciones
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full h-[calc(100dvh-6.5rem)] min-h-[560px] max-h-[880px] bg-white dark:bg-[#161413] rounded-2xl border border-black/5 dark:border-[#3d3732] shadow-[0_8px_30px_-12px_rgba(61,43,31,0.14)] overflow-hidden flex relative">
-      {/* DESKTOP LAYOUT (3 Columns) */}
-      <div className="hidden lg:grid h-full w-full grid-cols-[330px_1fr_auto] min-w-0">
-        {/* Column 1: Chat List */}
-        <ChatListPane
-          conversations={conversations}
-          selectedId={selectedId}
-          onSelect={handleSelectConversation}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-        />
+    <div className="flex min-h-0 flex-1 flex-col bg-[#f3efe8] dark:bg-[#1c1917]">
+      <div className="hidden min-h-0 flex-1 lg:flex">
+        <div className="flex h-full w-[300px] shrink-0 flex-col border-r border-[#e8e0d6] bg-[#fdfcfb] dark:border-[#2a2623] dark:bg-[#161413]">
+          <ChatListPane
+            conversations={conversations}
+            selectedId={selectedId}
+            onSelect={handleSelectConversation}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+          />
+        </div>
 
-        {/* Column 2: Active Conversation */}
-        <ChatConversationPane
-          conversation={selectedConversation}
-          onSendMessage={handleSendMessage}
-          onOpenContext={() => setShowContextPane((s) => !s)}
-          showContextPane={showContextPane}
-          onToggleContextPane={() => setShowContextPane((s) => !s)}
-        />
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <ChatConversationPane
+            conversation={selectedConversation}
+            onSendMessage={handleSendMessage}
+            onOpenContext={() => setShowContextPane(true)}
+            showContextPane={showContextPane}
+            onToggleContextPane={() => setShowContextPane((s) => !s)}
+          />
 
-        {/* Column 3: Context & Comanda */}
-        {showContextPane && (
-          <div className="w-[340px] xl:w-[360px] h-full shrink-0">
-            <ChatContextPane
-              conversation={selectedConversation}
-              onUpdateOrderStatus={handleUpdateOrderStatus}
-            />
-          </div>
-        )}
+          <AnimatePresence>
+            {showContextPane ? (
+              <motion.div
+                key="context-desktop"
+                initial={{ x: 24, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 24, opacity: 0 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="absolute inset-y-0 right-0 z-20 w-[min(100%,340px)] border-l border-[#e8e0d6] bg-[#fdfcfb] shadow-[-12px_0_32px_-18px_rgba(61,43,31,0.35)] dark:border-[#2a2623] dark:bg-[#161413]"
+              >
+                <ChatContextPane
+                  conversation={selectedConversation}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onClose={() => setShowContextPane(false)}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* MOBILE / TABLET TELEGRAM-STYLE LAYOUT */}
-      <div className="lg:hidden flex h-full w-full relative overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden lg:hidden">
         {mobileScreen === "list" ? (
-          <div className="w-full h-full">
+          <div className="h-full w-full bg-[#fdfcfb] dark:bg-[#161413]">
             <ChatListPane
               conversations={conversations}
               selectedId={selectedId}
@@ -161,11 +174,10 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
               onSearchChange={setSearchQuery}
               activeFilter={activeFilter}
               onFilterChange={setActiveFilter}
-              className="border-r-0 w-full"
             />
           </div>
         ) : (
-          <div className="w-full h-full relative">
+          <div className="relative h-full w-full">
             <ChatConversationPane
               conversation={selectedConversation}
               onSendMessage={handleSendMessage}
@@ -175,23 +187,24 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
               onToggleContextPane={() => setMobileDrawerOpen((o) => !o)}
             />
 
-            {/* Mobile Bottom Drawer / Slide-Over for Context & Comanda */}
             <AnimatePresence>
-              {mobileDrawerOpen && (
+              {mobileDrawerOpen ? (
                 <>
-                  <motion.div
+                  <motion.button
+                    type="button"
+                    aria-label="Cerrar detalles"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setMobileDrawerOpen(false)}
-                    className="absolute inset-0 bg-black/50 backdrop-blur-xs z-40"
+                    className="absolute inset-0 z-40 bg-black/45"
                   />
                   <motion.div
                     initial={{ x: "100%" }}
                     animate={{ x: 0 }}
                     exit={{ x: "100%" }}
-                    transition={{ type: "spring", damping: 25, stiffness: 220 }}
-                    className="absolute top-0 right-0 bottom-0 w-[85%] max-w-[360px] bg-white dark:bg-[#161413] z-50 shadow-2xl"
+                    transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                    className="absolute inset-y-0 right-0 z-50 w-[min(92vw,360px)] bg-[#fdfcfb] shadow-2xl dark:bg-[#161413]"
                   >
                     <ChatContextPane
                       conversation={selectedConversation}
@@ -200,7 +213,7 @@ export function WhatsAppChatView({ businessId }: WhatsAppChatViewProps) {
                     />
                   </motion.div>
                 </>
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
         )}

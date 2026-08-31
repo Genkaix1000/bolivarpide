@@ -43,7 +43,7 @@ interface CartContextValue {
   scheduleOrderCancel: (orderId: string) => void;
   refreshPendingOrder: () => Promise<void>;
   refreshActiveOrder: () => Promise<void>;
-  dismissActiveOrderBar: () => void;
+  dismissActiveOrderBar: (orderId?: string) => void;
   setPendingOrder: (order: PendingCustomerOrder | null) => void;
   setQty: (key: string, qty: number) => void;
   clear: () => void;
@@ -52,15 +52,53 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 const ORDER_CANCEL_DELAY_MS = 4500;
-const BAR_DISMISS_KEY = "bp_order_bar_dismissed";
+const BAR_DISMISS_KEY = "bp_order_bar_dismissed_v2";
+const SEEN_CANCELLED_KEY = "bp_seen_cancelled_orders_v2";
 
-function readDismissedOrderId(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(BAR_DISMISS_KEY);
+function getDismissedOrderIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(BAR_DISMISS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
 }
 
 function writeDismissedOrderId(orderId: string) {
-  sessionStorage.setItem(BAR_DISMISS_KEY, orderId);
+  if (typeof window === "undefined" || !orderId) return;
+  try {
+    const set = getDismissedOrderIds();
+    set.add(orderId);
+    localStorage.setItem(BAR_DISMISS_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function getSeenCancelledOrderIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(SEEN_CANCELLED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function addSeenCancelledOrderId(orderId: string) {
+  if (typeof window === "undefined" || !orderId) return;
+  try {
+    const set = getSeenCancelledOrderIds();
+    set.add(orderId);
+    localStorage.setItem(SEEN_CANCELLED_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    /* ignore */
+  }
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -68,7 +106,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [ui, setUi] = useState<Ui>({ kind: "idle" });
   const [pendingOrder, setPendingOrder] = useState<PendingCustomerOrder | null>(null);
   const [activeOrder, setActiveOrder] = useState<ActiveCustomerOrder | null>(null);
-  const [barDismissedId, setBarDismissedId] = useState<string | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => getDismissedOrderIds());
+  const [seenCancelledIds, setSeenCancelledIds] = useState<Set<string>>(() => getSeenCancelledOrderIds());
   const pendingCancelRef = useRef<number | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<{
     item: TrendingItem;
@@ -91,7 +130,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart((c) => addLine(c, item, qty, selected, note));
       if (activeOrder) {
         writeDismissedOrderId(activeOrder.orderId);
-        setBarDismissedId(activeOrder.orderId);
+        setDismissedIds((prev) => new Set([...prev, activeOrder.orderId]));
       }
       setUi({ kind: "upsell", item });
     },
@@ -125,7 +164,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(addLine(clearCart(), pendingSwitch.item, pendingSwitch.qty, pendingSwitch.selected, pendingSwitch.note));
     if (activeOrder) {
       writeDismissedOrderId(activeOrder.orderId);
-      setBarDismissedId(activeOrder.orderId);
+      setDismissedIds((prev) => new Set([...prev, activeOrder.orderId]));
     }
     setUi({ kind: "upsell", item: pendingSwitch.item });
     setPendingSwitch(null);
@@ -152,17 +191,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/orders/active");
       if (!res.ok) return;
       const j = (await res.json()) as { active: ActiveCustomerOrder | null };
-      setActiveOrder((prev) => {
-        if (
-          j.active?.status === "rejected" &&
-          prev?.orderId === j.active.orderId &&
-          prev.status !== "rejected"
-        ) {
-          sessionStorage.removeItem(BAR_DISMISS_KEY);
-          setBarDismissedId(null);
-        }
-        return j.active;
-      });
+      setActiveOrder(j.active);
     } catch {
       /* ignore */
     }
@@ -173,7 +202,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPendingOrder, refreshActiveOrder]);
 
   useEffect(() => {
-    setBarDismissedId(readDismissedOrderId());
+    setDismissedIds(getDismissedOrderIds());
+    setSeenCancelledIds(getSeenCancelledOrderIds());
   }, []);
 
   useEffect(() => {
@@ -273,16 +303,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setUi({ kind: "idle" });
   }, []);
 
-  const dismissActiveOrderBar = useCallback(() => {
-    if (!activeOrder) return;
-    writeDismissedOrderId(activeOrder.orderId);
-    setBarDismissedId(activeOrder.orderId);
+  const dismissActiveOrderBar = useCallback((orderIdOverride?: string) => {
+    const targetId = orderIdOverride ?? activeOrder?.orderId;
+    if (!targetId) return;
+    writeDismissedOrderId(targetId);
+    addSeenCancelledOrderId(targetId);
+    setDismissedIds((prev) => new Set([...prev, targetId]));
+    setSeenCancelledIds((prev) => new Set([...prev, targetId]));
   }, [activeOrder]);
 
   const activeOrderBarVisible = Boolean(
     activeOrder &&
-      activeOrder.orderId !== barDismissedId &&
-      (activeOrder.status === "rejected" || (cart.lines.length === 0 && !pendingOrder)),
+      !dismissedIds.has(activeOrder.orderId) &&
+      !seenCancelledIds.has(activeOrder.orderId) &&
+      (activeOrder.status === "rejected"
+        ? !seenCancelledIds.has(activeOrder.orderId) && !dismissedIds.has(activeOrder.orderId)
+        : (cart.lines.length === 0 && !pendingOrder)),
   );
 
   const value = useMemo(

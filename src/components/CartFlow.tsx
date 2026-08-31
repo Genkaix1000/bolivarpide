@@ -479,19 +479,19 @@ function FloatingCartBar() {
   if (activeOrderBarVisible && activeOrder) {
     const cancelled = activeOrder.status === "rejected";
     return (
-      <motion.button
-        type="button"
-        onClick={() => {
-          dismissActiveOrderBar();
-          router.push(`/pedido/${activeOrder.orderId}`);
-        }}
+      <motion.div
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 80, opacity: 0 }}
+        onClick={() => {
+          dismissActiveOrderBar(activeOrder.orderId);
+          router.push(`/pedido/${activeOrder.orderId}`);
+        }}
         className={cn(
-          "fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl cursor-pointer",
+          "fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl cursor-pointer bg-white dark:bg-[#231f1c]",
           cancelled
-            ? "border-red-200 bg-white dark:border-red-900/50 dark:bg-[#231f1c]"
-            : "border-[#e8e0d6] bg-white dark:border-[#3d3732] dark:bg-[#231f1c]",
+            ? "border-red-200 dark:border-red-900/50"
+            : "border-[#e8e0d6] dark:border-[#3d3732]",
         )}
       >
         <span
@@ -502,7 +502,7 @@ function FloatingCartBar() {
         >
           <MaterialSymbol icon={statusIcon(activeOrder.status)} size={22} />
         </span>
-        <span className="min-w-0 flex-1 text-left">
+        <div className="min-w-0 flex-1 text-left">
           <span className="block text-[13px] font-bold text-stone-900 dark:text-stone-100">
             {cancelled ? "Tu pedido fue cancelado" : "Pedido en curso"}
           </span>
@@ -511,9 +511,25 @@ function FloatingCartBar() {
               ? activeOrder.rejectionReason || "El local canceló tu pedido"
               : `${statusShortLabel(activeOrder.status)} · ${activeOrder.itemsSummary || `#${activeOrder.orderNumber}`} · ${activeOrder.businessName}`}
           </span>
-        </span>
-        <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
-      </motion.button>
+        </div>
+        <div className="flex items-center gap-1">
+          {cancelled ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissActiveOrderBar(activeOrder.orderId);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+              aria-label="Cerrar aviso"
+            >
+              <MaterialSymbol icon="close" size={16} />
+            </button>
+          ) : (
+            <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
+          )}
+        </div>
+      </motion.div>
     );
   }
 

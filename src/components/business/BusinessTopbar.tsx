@@ -36,12 +36,13 @@ export function BusinessTopbar({
   const { profile, logout, isAuthenticated } = useUserProfile();
   const { items: notifications, unreadCount, markRead, remove } = useNotifications({ businessId });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [notifsViewed, setNotifsViewed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const alertMode = orderAlerts.length > 0;
-  const hasNotifications = unreadCount > 0 || alertMode;
+  const hasNotifications = (!notifsViewed && unreadCount > 0) || alertMode;
 
   const alertMessage =
     orderAlerts.length === 1
@@ -162,7 +163,14 @@ export function BusinessTopbar({
             <div className="relative">
               <CherryBtn
                 onClick={() => {
-                  setShowNotifDropdown((o) => !o);
+                  setShowNotifDropdown((o) => {
+                    const next = !o;
+                    if (next) {
+                      setNotifsViewed(true);
+                      void markRead({ all: true });
+                    }
+                    return next;
+                  });
                   setShowUserMenu(false);
                 }}
                 aria-label="Notificaciones"

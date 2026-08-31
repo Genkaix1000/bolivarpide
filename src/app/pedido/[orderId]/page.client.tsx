@@ -27,6 +27,19 @@ export function OrderTrackingClient({
   }, [orderId]);
 
   useEffect(() => {
+    if (view.status === "rejected") {
+      try {
+        const raw = localStorage.getItem("bp_seen_cancelled_orders_v2");
+        const set = new Set(raw ? JSON.parse(raw) : []);
+        set.add(orderId);
+        localStorage.setItem("bp_seen_cancelled_orders_v2", JSON.stringify(Array.from(set)));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [view.status, orderId]);
+
+  useEffect(() => {
     const supabase = createClient();
     const channel = supabase
       .channel(`track-${orderId}`)

@@ -8,6 +8,7 @@ import { BusinessTopbar } from "./BusinessTopbar";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
 import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
 import { useOrderAlerts } from "@/hooks/useOrderAlerts";
+import { cn } from "@/lib/utils";
 import type { BusinessShellData } from "@/lib/business/queries";
 
 export function BusinessLayout({
@@ -24,9 +25,15 @@ export function BusinessLayout({
   const pathname = usePathname();
   const { show: showSplash, skip: skipSplash } = useBrandSplash(SPLASH_NEGOCIO);
   const { alerts, pendingCount, dismiss } = useOrderAlerts(businessId);
+  const isChatWorkspace = pathname.includes("/whatsapp");
 
   return (
-    <div className="flex min-h-screen bg-[#f3efe8] dark:bg-[#1c1917]">
+    <div
+      className={cn(
+        "flex bg-[#f3efe8] dark:bg-[#1c1917]",
+        isChatWorkspace ? "h-dvh overflow-hidden" : "min-h-screen",
+      )}
+    >
       <BrandSplash show={showSplash} onSkip={skipSplash} />
 
       <BusinessSidebar
@@ -40,7 +47,7 @@ export function BusinessLayout({
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={cn("flex min-w-0 flex-1 flex-col", isChatWorkspace && "min-h-0 overflow-hidden")}>
         <BusinessTopbar
           shell={shell}
           businessId={businessId}
@@ -49,12 +56,20 @@ export function BusinessLayout({
           onMenuClick={() => setMobileOpen(true)}
         />
 
-        <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-7">
+        <main
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            isChatWorkspace
+              ? "overflow-hidden p-0"
+              : "overflow-x-hidden px-4 py-5 md:px-8 md:py-7",
+          )}
+        >
           <motion.div
             key={pathname}
             initial={showSplash ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
+            className={cn(isChatWorkspace && "flex min-h-0 flex-1 flex-col")}
           >
             {children}
           </motion.div>

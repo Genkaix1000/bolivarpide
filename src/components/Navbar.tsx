@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -150,9 +150,52 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifsViewed, setNotifsViewed] = useState(false);
   const { items: notifications, unreadCount, markRead, remove } = useNotifications({
     enabled: isAuthenticated,
   });
+
+  const handleToggleNotifications = useCallback(() => {
+    setShowNotifications((prev) => {
+      const next = !prev;
+      if (next) {
+        setNotifsViewed(true);
+        void markRead({ all: true });
+        if (activeOrder) {
+          try {
+            localStorage.setItem(
+              "bp_active_order_notif_seen",
+              `${activeOrder.orderId}_${activeOrder.status}`,
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return next;
+    });
+  }, [markRead, activeOrder]);
+
+  useEffect(() => {
+    if (showNotifications) {
+      setNotifsViewed(true);
+      void markRead({ all: true });
+    }
+  }, [showNotifications, markRead]);
+
+  const isNewActiveOrder = useMemo(() => {
+    if (!activeOrder) return false;
+    if (notifsViewed) return false;
+    if (typeof window === "undefined") return false;
+    try {
+      const seenKey = localStorage.getItem("bp_active_order_notif_seen");
+      return seenKey !== `${activeOrder.orderId}_${activeOrder.status}`;
+    } catch {
+      return false;
+    }
+  }, [activeOrder, notifsViewed]);
+
+  const hasOrderNotification = (!notifsViewed && unreadCount > 0) || isNewActiveOrder;
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -191,8 +234,6 @@ export default function Navbar({
       settingsHref="/?tab=profile&section=notifications"
     />
   );
-
-  const hasOrderNotification = unreadCount > 0 || Boolean(activeOrder);
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 md:sticky">
@@ -355,7 +396,7 @@ export default function Navbar({
               <>
                 <div className="relative">
                   <CherryBtn
-                    onClick={() => setShowNotifications((o) => !o)}
+                    onClick={handleToggleNotifications}
                     aria-label="Notificaciones"
                   >
                     <MaterialSymbol icon="notifications" size={17} className="text-white" />
