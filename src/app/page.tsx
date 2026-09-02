@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import {
   type FeaturedChain,
   type TrendingItem,
+  type PromoBanner,
+  PROMO_BANNERS,
 } from "@/lib/mockData";
 import { getHomeCache, setHomeCache } from "@/lib/cache/homeCache";
 import { useCart } from "@/components/CartProvider";
@@ -59,6 +61,7 @@ function HomeContent() {
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
   const [currentChainPage, setCurrentChainPage] = useState(0);
   const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
+  const [promoBanners, setPromoBanners] = useState<PromoBanner[]>(PROMO_BANNERS);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Menús del Momento Dynamic Scroll Mask State
@@ -83,6 +86,9 @@ function HomeContent() {
       setRandomizedChains(cached.chains);
       setRandomizedRecommended(cached.recommended);
       setTrendingItems(cached.trendingItems);
+      if (cached.promoBanners && cached.promoBanners.length > 0) {
+        setPromoBanners(cached.promoBanners);
+      }
       setIsDataLoading(false);
     }
 
@@ -182,10 +188,38 @@ function HomeContent() {
             setTrendingItems([]);
           }
 
+          let bannersToUse: PromoBanner[] = PROMO_BANNERS;
+          try {
+            const { data: promoRows } = await supabase
+              .from("promo_banners")
+              .select("id, title, subtitle, badge, cta_text, cta_link, image, icon, sort_order, is_active")
+              .eq("is_active", true)
+              .order("sort_order", { ascending: true });
+
+            if (!cancelled && promoRows && promoRows.length > 0) {
+              bannersToUse = promoRows.map((r) => ({
+                id: r.id,
+                title: r.title,
+                subtitle: r.subtitle,
+                badge: r.badge || undefined,
+                ctaText: r.cta_text || undefined,
+                ctaLink: r.cta_link || undefined,
+                image: r.image || undefined,
+                icon: r.icon || "local_offer",
+                sortOrder: r.sort_order,
+                active: r.is_active,
+              }));
+              setPromoBanners(bannersToUse);
+            }
+          } catch {
+            /* use PROMO_BANNERS fallback */
+          }
+
           setHomeCache({
             chains: shuffledChains,
             recommended: shuffledRec,
             trendingItems: items,
+            promoBanners: bannersToUse,
           });
           if (!cancelled) setIsDataLoading(false);
           return;
@@ -197,6 +231,7 @@ function HomeContent() {
             chains: [],
             recommended: [],
             trendingItems: [],
+            promoBanners: PROMO_BANNERS,
           });
           setIsDataLoading(false);
           return;
@@ -371,7 +406,7 @@ function HomeContent() {
           <div className="space-y-8 text-gray-800 dark:text-gray-200 animate-fade-in">
             {/* Menús del momento */}
             {(isDataLoading || trendingItems.length > 0) && (
-              <section className="space-y-4">
+              <section id="trending" className="space-y-4">
                 <div className="flex items-end justify-between gap-3">
                   <div>
                     <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Menús del momento</h3>
@@ -704,6 +739,7 @@ function HomeContent() {
               onCategoryChange={setActiveCategory}
               activeSpecialty={activeSpecialty}
               onSpecialtyChange={setActiveSpecialty}
+              promoBanners={promoBanners}
             />
           )}
         </div>

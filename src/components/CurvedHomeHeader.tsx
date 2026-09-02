@@ -12,11 +12,13 @@ import {
 } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   CATEGORIES,
   PROMO_BANNERS,
   RESTAURANT_SPECIALTIES,
+  type PromoBanner,
 } from "@/lib/mockData";
 
 interface CurvedHomeHeaderProps {
@@ -24,6 +26,7 @@ interface CurvedHomeHeaderProps {
   onCategoryChange: (id: string | null) => void;
   activeSpecialty: string | null;
   onSpecialtyChange: (id: string | null) => void;
+  promoBanners?: PromoBanner[];
   className?: string;
 }
 
@@ -60,14 +63,15 @@ const OVAL_OVERSCAN_RATIO = 0.07;
 /** Vertical pad at the left/right ends so the promo carousel & controls sit comfortably inside the red. */
 const MIN_EDGE_HEIGHT = 165;
 
-function HeaderFullBleedPromoCarousel() {
+function HeaderFullBleedPromoCarousel({ banners }: { banners?: PromoBanner[] }) {
+  const items = banners && banners.length > 0 ? banners : PROMO_BANNERS;
   const viewportRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [dragging, setDragging] = useState(false);
   const x = useMotionValue(0);
-  const n = PROMO_BANNERS.length;
+  const n = items.length;
 
   useLayoutEffect(() => {
     const el = viewportRef.current;
@@ -91,7 +95,7 @@ function HeaderFullBleedPromoCarousel() {
   }, [index, width, dragging, x]);
 
   useEffect(() => {
-    if (isPaused || dragging || !width) return;
+    if (isPaused || dragging || !width || n <= 1) return;
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % n);
     }, 4500);
@@ -136,7 +140,7 @@ function HeaderFullBleedPromoCarousel() {
             window.setTimeout(() => setIsPaused(false), 2600);
           }}
         >
-          {PROMO_BANNERS.map((banner, i) => (
+          {items.map((banner, i) => (
             <div
               key={banner.id}
               className="relative h-full flex-shrink-0 overflow-hidden"
@@ -178,16 +182,33 @@ function HeaderFullBleedPromoCarousel() {
                     {banner.subtitle}
                   </p>
                   {banner.ctaText && (
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => alert(`Promo: ${banner.title}`)}
-                      className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[#faf6f1] px-5 text-sm font-black text-[#9a0002] shadow-lg shadow-black/25 transition-all hover:bg-white active:scale-[0.97]"
-                    >
-                      <MaterialSymbol icon={banner.icon || "arrow_forward"} size={18} fill />
-                      <span>{banner.ctaText}</span>
-                      <MaterialSymbol icon="arrow_forward" size={16} />
-                    </button>
+                    banner.ctaLink && banner.ctaLink.startsWith("/") ? (
+                      <Link
+                        href={banner.ctaLink}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[#faf6f1] px-5 text-sm font-black text-[#9a0002] shadow-lg shadow-black/25 transition-all hover:bg-white active:scale-[0.97]"
+                      >
+                        <MaterialSymbol icon={banner.icon || "arrow_forward"} size={18} fill />
+                        <span>{banner.ctaText}</span>
+                        <MaterialSymbol icon="arrow_forward" size={16} />
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => {
+                          if (banner.ctaLink && banner.ctaLink.startsWith("#")) {
+                            const el = document.getElementById(banner.ctaLink.slice(1));
+                            if (el) el.scrollIntoView({ behavior: "smooth" });
+                          }
+                        }}
+                        className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[#faf6f1] px-5 text-sm font-black text-[#9a0002] shadow-lg shadow-black/25 transition-all hover:bg-white active:scale-[0.97]"
+                      >
+                        <MaterialSymbol icon={banner.icon || "arrow_forward"} size={18} fill />
+                        <span>{banner.ctaText}</span>
+                        <MaterialSymbol icon="arrow_forward" size={16} />
+                      </button>
+                    )
                   )}
                 </div>
               </motion.div>
@@ -197,7 +218,7 @@ function HeaderFullBleedPromoCarousel() {
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-0.5 pt-3">
-        {PROMO_BANNERS.map((_, idx) => {
+        {items.map((_, idx) => {
           const active = idx === index;
           return (
             <button
@@ -675,6 +696,7 @@ export default function CurvedHomeHeader({
   onCategoryChange,
   activeSpecialty,
   onSpecialtyChange,
+  promoBanners,
   className,
 }: CurvedHomeHeaderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
@@ -762,7 +784,7 @@ export default function CurvedHomeHeader({
           className="absolute inset-0"
           style={{ clipPath: `url(#${clipId})` }}
         >
-          <HeaderFullBleedPromoCarousel />
+          <HeaderFullBleedPromoCarousel banners={promoBanners} />
         </div>
       </div>
 

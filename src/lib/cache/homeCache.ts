@@ -1,4 +1,4 @@
-import type { FeaturedChain, TrendingItem } from "@/lib/mockData";
+import type { FeaturedChain, PromoBanner, TrendingItem } from "@/lib/mockData";
 
 const HOME_CACHE_KEY = "bolivarpide_home_cache_v3";
 /** Stale-while-revalidate en cliente: pasado el TTL se ignora y se vuelve a fetchear. */
@@ -8,6 +8,7 @@ export interface HomeCacheData {
   chains: FeaturedChain[];
   recommended: FeaturedChain[];
   trendingItems: TrendingItem[];
+  promoBanners?: PromoBanner[];
   timestamp: number;
 }
 
@@ -18,6 +19,7 @@ export function getHomeCache(): {
   chains: FeaturedChain[];
   recommended: FeaturedChain[];
   trendingItems: TrendingItem[];
+  promoBanners?: PromoBanner[];
 } | null {
   if (typeof window === "undefined") return null;
 
@@ -39,6 +41,7 @@ export function getHomeCache(): {
           ? data.recommended
           : data.chains,
       trendingItems: data.trendingItems,
+      promoBanners: Array.isArray(data.promoBanners) ? data.promoBanners : undefined,
     };
   } catch {
     return null;
@@ -52,6 +55,7 @@ export function setHomeCache(data: {
   chains: FeaturedChain[];
   recommended: FeaturedChain[];
   trendingItems: TrendingItem[];
+  promoBanners?: PromoBanner[];
 }): void {
   if (typeof window === "undefined") return;
 

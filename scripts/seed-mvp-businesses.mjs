@@ -385,6 +385,111 @@ const MVP_BUSINESSES = [
   }
 ];
 
+export const MVP_PROMO_BANNERS = [
+  {
+    title: "Envíos gratis en Bolívar",
+    subtitle: "En locales adheridos en pedidos a partir de $4.000",
+    badge: "PROMO",
+    cta_text: "Pedir ahora",
+    cta_link: "#trending",
+    image: "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1400&q=80",
+    icon: "local_shipping",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    title: "Burger Week en Bolívar",
+    subtitle: "Doble smash beef, cheddar ahumado y panceta crocante",
+    badge: "HOT DEALS",
+    cta_text: "Pedir en Burger Boz",
+    cta_link: "/c/burgerboz",
+    image: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1400&q=80",
+    icon: "lunch_dining",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    title: "Noche de Pizza a la Leña",
+    subtitle: "Masa madre crocante con muzzarella fior di latte artesanal",
+    badge: "2X1 MARTES Y JUEVES",
+    cta_text: "Pedir en Pizza Store",
+    cta_link: "/c/pizzastore",
+    image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1400&q=80",
+    icon: "local_pizza",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    title: "Hora del almuerzo",
+    subtitle: "Hasta 25% OFF en menús ejecutivos y platos del día",
+    badge: "12 A 15 HS",
+    cta_text: "Ver empanadas",
+    cta_link: "/c/empanadas-bolivar",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1400&q=80",
+    icon: "lunch_dining",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    title: "Café de Especialidad & Bakery",
+    subtitle: "Cappuccinos cremosos, medialunas de manteca y croissants tibios",
+    badge: "DESAYUNOS & MERIENDAS",
+    cta_text: "Ver McCafé",
+    cta_link: "/c/mccafe",
+    image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1400&q=80",
+    icon: "local_cafe",
+    sort_order: 5,
+    is_active: true,
+  },
+  {
+    title: "Sushi World Bolívar",
+    subtitle: "Combinados de salmón fresco, rolls tempura y wok oriental",
+    badge: "PREMIUM ROLLS",
+    cta_text: "Pedir Sushi",
+    cta_link: "/c/sushiworld",
+    image: "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=1400&q=80",
+    icon: "set_meal",
+    sort_order: 6,
+    is_active: true,
+  },
+  {
+    title: "Helados Artesanales Dolce",
+    subtitle: "Potes de 1 Kg con cucuruchos de regalo directo a tu puerta",
+    badge: "POSTRES",
+    cta_text: "Pedir Helado",
+    cta_link: "/c/helados-dolce",
+    image: "https://images.unsplash.com/photo-1505394033641-40c6ad1178d7?auto=format&fit=crop&w=1400&q=80",
+    icon: "icecream",
+    sort_order: 7,
+    is_active: true,
+  },
+];
+
+export async function seedPromoBanners(sb) {
+  console.log("\n📢 Sembrando publicidades y banners de portada...");
+
+  const { error: checkErr } = await sb.from("promo_banners").select("id").limit(1);
+
+  if (checkErr) {
+    console.log(
+      "   ℹ️  La tabla 'promo_banners' no está creada aún en Supabase (" + checkErr.message + ").\n" +
+      "   👉 Para crear la tabla en BD, ejecutá la migración en el SQL Editor de Supabase:\n" +
+      "      supabase/migrations/20260902_promo_banners.sql\n" +
+      "   ⚡ Nota: El frontend ya tiene precargada la seed enriquecida con fotos HD como fallback."
+    );
+    return;
+  }
+
+  await sb.from("promo_banners").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+  const { error: insErr } = await sb.from("promo_banners").insert(MVP_PROMO_BANNERS);
+  if (insErr) {
+    console.error("   ❌ Error al insertar publicidades en 'promo_banners':", insErr.message);
+  } else {
+    console.log(`   ✅ ¡${MVP_PROMO_BANNERS.length} publicidades con imágenes HD insertadas en 'promo_banners'!`);
+  }
+}
+
 async function main() {
   console.log("🌱 Insertando comercios, categorías y productos para MVP...");
 
@@ -470,10 +575,18 @@ async function main() {
     }
   }
 
-  console.log("\n🎉 ¡Seed MVP completada exitosamente! Todos los comercios y cartas están listos.");
+  // 4. Sembrar publicidades / banners de portada
+  await seedPromoBanners(supabase);
+
+  console.log("\n🎉 ¡Seed MVP completada exitosamente! Todos los comercios, cartas y publicidades están listos.");
 }
 
-main().catch((err) => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+import { fileURLToPath } from "node:url";
+
+const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error("Fatal:", err);
+    process.exit(1);
+  });
+}
