@@ -18,28 +18,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": { "typeValidation": "loose" },
-          "conditions": [
-            {
-              "id": "cond-verification",
-              "leftValue": "={{ $json.query != null && $json.query['hub.mode'] === 'subscribe' }}",
-              "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true" }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "node-if-verification",
-      "name": "¿Verificación de Meta?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [-380, 80]
-    },
-    {
-      "parameters": {
         "operation": "respondWithTextOrJson",
         "respondWith": "text",
         "responseBody": "={{ $json.query['hub.challenge'] }}",
@@ -54,7 +32,8 @@
     {
       "parameters": {
         "operation": "respondWithTextOrJson",
-        "respondWith": "noResponse",
+        "respondWith": "json",
+        "responseBody": "{\"success\":true}",
         "options": {}
       },
       "id": "node-respond-ok",
@@ -137,9 +116,6 @@
   ],
   "connections": {
     "Meta Webhook": {
-      "main": [[{ "node": "¿Verificación de Meta?", "type": "main", "index": 0 }]]
-    },
-    "¿Verificación de Meta?": {
       "main": [
         [{ "node": "Responder Challenge", "type": "main", "index": 0 }],
         [{ "node": "Responder 200 OK", "type": "main", "index": 0 }]

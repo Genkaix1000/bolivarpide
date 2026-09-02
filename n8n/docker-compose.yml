@@ -3,6 +3,8 @@ services:
     image: n8nio/n8n:latest
     container_name: bolivarpide-n8n
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5678:5678"
     environment:
@@ -10,10 +12,16 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
+      # Allow the WhatsApp workflow's Code nodes to read $env.N8N_* vars
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:?set a strong password}
-      - WEBHOOK_URL=https://${N8N_PUBLIC_DOMAIN}
+      # Env vars consumed by the BolivarPide WhatsApp workflow ($env.N8N_*)
+      - N8N_SUPABASE_URL=${N8N_SUPABASE_URL}
+      - N8N_SUPABASE_SERVICE_KEY=${N8N_SUPABASE_SERVICE_KEY}
+      - N8N_APP_URL=${N8N_APP_URL:-http://host.docker.internal:3000}
+      - N8N_WHATSAPP_WEBHOOK_SECRET=${N8N_WHATSAPP_WEBHOOK_SECRET}
     volumes:
       - n8n_data:/home/node/.n8n
 volumes:
