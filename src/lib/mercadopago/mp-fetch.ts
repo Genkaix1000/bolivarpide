@@ -13,21 +13,41 @@ export class MpApiError extends Error {
   }
 }
 
+type MpErrorItem = {
+  code?: string;
+  message?: string;
+  description?: string;
+  details?: string[];
+};
+
 type MpErrorBody = {
   message?: string;
   error?: string;
+  code?: string;
   causes?: { code?: string | number; description?: string }[];
+  /** Orders API (QR / in-person) — formato nuevo */
+  errors?: MpErrorItem[];
 };
 
-function parseMpError(body: MpErrorBody, status: number): MpApiError {
-  const causes = (body.causes ?? [])
+/** Exported for the self-check; also used by mpFetch. */
+export function parseMpError(body: MpErrorBody, status: number): MpApiError {
+  const fromErrors = (body.errors ?? []).flatMap((e) => {
+    const head = e.message ?? e.description ?? e.code ?? "";
+    const details = (e.details ?? []).filter(Boolean);
+    if (head && details.length) return [`${head}: ${details.join("; ")}`];
+    if (head) return [head];
+    return details;
+  });
+  const fromCauses = (body.causes ?? [])
     .map((c) => c.description ?? String(c.code ?? ""))
     .filter(Boolean);
+  const causes = fromErrors.length ? fromErrors : fromCauses;
   const detail = causes[0] ?? body.message ?? body.error;
   const code =
-    causes.find((c) => /point_of_sale|already exists|duplicate/i.test(c)) != null
+    body.errors?.[0]?.code ??
+    (causes.find((c) => /point_of_sale|already exists|duplicate/i.test(c)) != null
       ? "point_of_sale_exists"
-      : body.error;
+      : body.error ?? body.code);
   return new MpApiError(detail ?? "Error Mercado Pago", status, code, causes);
 }
 
@@ -54,7 +74,7 @@ export async function mpFetch<T>(
     throw new MpApiError(`Mercado Pago no respondió a tiempo (${path})`);
   }
 
-  const body = await response.json().catch(() => ({})) as MpErrorBody;
+  const body = (await response.json().catch(() => ({}))) as MpErrorBody;
   if (!response.ok) {
     throw parseMpError(body, response.status);
   }

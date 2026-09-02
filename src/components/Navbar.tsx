@@ -137,7 +137,7 @@ export default function Navbar({
   showLocationDropdown,
   onLocationClick,
 }: NavbarProps) {
-  const { profile, isAuthenticated, hasActiveBusiness, logout } = useUserProfile();
+  const { profile, isAuthenticated, isAuthLoading, hasActiveBusiness, logout } = useUserProfile();
   const { activeOrder } = useCart();
   const handleTabChange = useCallback((id: string) => {
     if (id === "profile" && !isAuthenticated) return;
@@ -188,6 +188,12 @@ export default function Navbar({
     if (notifsViewed) return false;
     if (typeof window === "undefined") return false;
     try {
+      if (localStorage.getItem(`bp_dismissed_order_${activeOrder.orderId}`)) {
+        return false;
+      }
+      if (localStorage.getItem(`bp_read_order_${activeOrder.orderId}`) === activeOrder.status) {
+        return false;
+      }
       const seenKey = localStorage.getItem("bp_active_order_notif_seen");
       return seenKey !== `${activeOrder.orderId}_${activeOrder.status}`;
     } catch {
@@ -392,7 +398,9 @@ export default function Navbar({
 
           {/* ── Right: auth actions ── */}
           <div className="relative z-50 flex shrink-0 items-center gap-2.5 md:gap-3">
-            {isAuthenticated ? (
+            {isAuthLoading ? (
+              <div className="h-10 w-24 shrink-0 rounded-full bg-black/5 dark:bg-white/5 animate-pulse" />
+            ) : isAuthenticated ? (
               <>
                 <div className="relative">
                   <CherryBtn
@@ -750,7 +758,12 @@ export default function Navbar({
                         : "border-[#e8e0d6] dark:border-[#3d3732]",
                     )}
                   >
-                    {isAuthenticated ? (
+                    {isAuthLoading ? (
+                      <div className="flex items-center gap-3 animate-pulse">
+                        <div className="h-9 w-9 rounded-full bg-black/5 dark:bg-white/5" />
+                        <div className="h-4 w-28 rounded bg-black/5 dark:bg-white/5" />
+                      </div>
+                    ) : isAuthenticated ? (
                       <div className="flex items-center gap-3">
                         <UserAvatarView avatar={profile.avatar} size="md" />
                         <div className="min-w-0 flex-1">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { animate, motion, useMotionValue } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { flashToastUndo } from "@/components/FlashToast";
@@ -73,6 +73,18 @@ export function NotificationPanel({
     ? displayItems.some((n) => !n.readAt)
     : counts.all > 0;
 
+  useEffect(() => {
+    // Apenas se abre el panel de notificaciones, se marcan todas como leídas
+    void onMarkRead({ all: true });
+    if (activeOrder?.orderId && activeOrder?.status) {
+      try {
+        localStorage.setItem(`bp_read_order_${activeOrder.orderId}`, activeOrder.status);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [onMarkRead, activeOrder]);
+
   function hideItem(item: AppNotification) {
     setHiddenIds((prev) => {
       const next = new Set(prev);
@@ -89,6 +101,13 @@ export function NotificationPanel({
       if (item.entityId) next.delete(`active-${item.entityId}`);
       return next;
     });
+    if (item.entityId) {
+      try {
+        localStorage.removeItem(`bp_dismissed_order_${item.entityId}`);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   function scheduleRemove(item: AppNotification) {
@@ -100,6 +119,14 @@ export function NotificationPanel({
 
     const timeout = window.setTimeout(() => {
       pendingDeletes.current.delete(item.id);
+      if (item.id.startsWith("active-") || item.entityId) {
+        const orderId = item.entityId || item.id.replace("active-", "");
+        try {
+          localStorage.setItem(`bp_dismissed_order_${orderId}`, "true");
+        } catch {
+          /* ignore */
+        }
+      }
       if (!item.id.startsWith("active-")) void onRemove({ id: item.id });
     }, DELETE_DELAY_MS);
     pendingDeletes.current.set(item.id, timeout);
@@ -125,16 +152,6 @@ export function NotificationPanel({
       <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
         <h3 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Notificaciones</h3>
         <div className="flex items-center gap-1">
-          {hasUnread ? (
-            <button
-              type="button"
-              aria-label="Marcar todo como leído"
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-[#f5f1eb] dark:hover:bg-[#2a2623]"
-              onClick={() => void onMarkRead({ all: true })}
-            >
-              <MaterialSymbol icon="done_all" size={17} />
-            </button>
-          ) : null}
           {settingsHref ? (
             <Link
               href={settingsHref}

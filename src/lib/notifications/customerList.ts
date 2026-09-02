@@ -80,10 +80,40 @@ export function buildCustomerNotificationList(
   const sorted = sortNotifications(items);
   if (!activeOrder) return sorted;
 
+  // Si el usuario descartó permanentemente la notificación de este pedido
+  if (typeof window !== "undefined") {
+    try {
+      const dismissed = localStorage.getItem(`bp_dismissed_order_${activeOrder.orderId}`);
+      if (dismissed) return sorted;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Verificar si la notificación sintética ya fue leída
+  let activeReadAt: string | null = null;
+  if (typeof window !== "undefined") {
+    try {
+      const readKey = localStorage.getItem(`bp_read_order_${activeOrder.orderId}`);
+      if (readKey === activeOrder.status) {
+        activeReadAt = new Date().toISOString();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   const idx = sorted.findIndex((n) => n.entityId === activeOrder.orderId);
   if (idx >= 0) {
     const merged = mergeActiveIntoNotification(sorted[idx], activeOrder);
+    if (activeReadAt && !merged.readAt) {
+      merged.readAt = activeReadAt;
+    }
     return [merged, ...sorted.filter((_, i) => i !== idx)];
   }
-  return [activeOrderToNotification(activeOrder), ...sorted];
+  const notif = activeOrderToNotification(activeOrder);
+  if (activeReadAt) {
+    notif.readAt = activeReadAt;
+  }
+  return [notif, ...sorted];
 }

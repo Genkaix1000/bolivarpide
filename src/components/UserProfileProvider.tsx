@@ -16,6 +16,7 @@ import { flashToast } from "@/components/FlashToast";
 interface UserProfileContextValue {
   profile: UserProfile;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   hasActiveBusiness: boolean;
   updateProfile: (partial: Partial<UserProfile>) => void;
   updateAvatar: (avatar: UserAvatar) => void;
@@ -40,6 +41,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [hasActiveBusiness, setHasActiveBusiness] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
   const skipNextSave = useRef(true);
@@ -56,38 +58,52 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     const supabase = createClient();
 
     const syncUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setIsAuthenticated(false);
-        setHasActiveBusiness(false);
-        setProfile(DEFAULT_USER_PROFILE);
-        skipNextSave.current = true;
-        return;
-      }
-
-      setIsAuthenticated(true);
-      const name =
-        (user.user_metadata?.full_name as string | undefined) ||
-        (user.user_metadata?.name as string | undefined) ||
-        user.email?.split("@")[0] ||
-        "Usuario";
-      const email = user.email ?? "";
-
-      const { count } = await supabase
-        .from("business_members")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "active");
-      setHasActiveBusiness((count ?? 0) > 0);
-
       try {
-        const row = await fetchUserProfile(user.id);
-        skipNextSave.current = true;
-        if (row) {
-          setProfile(rowToProfile(row, { name, email }));
-        } else {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setIsAuthenticated(false);
+          setHasActiveBusiness(false);
+          setProfile(DEFAULT_USER_PROFILE);
+          skipNextSave.current = true;
+          return;
+        }
+
+        setIsAuthenticated(true);
+        const name =
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.name as string | undefined) ||
+          user.email?.split("@")[0] ||
+          "Usuario";
+        const email = user.email ?? "";
+
+        const { count } = await supabase
+          .from("business_members")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "active");
+        setHasActiveBusiness((count ?? 0) > 0);
+
+        try {
+          const row = await fetchUserProfile(user.id);
+          skipNextSave.current = true;
+          if (row) {
+            setProfile(rowToProfile(row, { name, email }));
+          } else {
+            setProfile({
+              ...DEFAULT_USER_PROFILE,
+              id: user.id,
+              name,
+              email,
+              avatar: {
+                type: "initials",
+                value: initialsFrom(name, email),
+                gradientId: "cherry",
+              },
+            });
+          }
+        } catch {
           setProfile({
             ...DEFAULT_USER_PROFILE,
             id: user.id,
@@ -100,18 +116,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             },
           });
         }
-      } catch {
-        setProfile({
-          ...DEFAULT_USER_PROFILE,
-          id: user.id,
-          name,
-          email,
-          avatar: {
-            type: "initials",
-            value: initialsFrom(name, email),
-            gradientId: "cherry",
-          },
-        });
+      } finally {
+        setIsAuthLoading(false);
       }
     };
 
@@ -204,6 +210,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     () => ({
       profile,
       isAuthenticated,
+      isAuthLoading,
       hasActiveBusiness,
       updateProfile,
       updateAvatar,
@@ -217,6 +224,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     [
       profile,
       isAuthenticated,
+      isAuthLoading,
       hasActiveBusiness,
       updateProfile,
       updateAvatar,

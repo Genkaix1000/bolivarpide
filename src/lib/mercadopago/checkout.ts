@@ -434,39 +434,54 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const amountStr = (amountCents / 100).toFixed(2);
   const externalRef = `BP-${order.id}`.slice(0, 64);
 
-  const mpOrder = await mpFetch<{
+  let mpOrder: {
     id: string;
     type_response?: { qr_data?: string };
     transactions?: { payments?: { id?: string }[] };
-  }>(token, "/v1/orders", {
-    method: "POST",
-    idempotencyKey,
-    body: JSON.stringify({
-      type: "qr",
-      external_reference: externalRef,
-      total_amount: amountStr,
-      description: `Pedido BolivarPide · ${business.name}`,
-      expiration_time: "PT15M",
-      config: {
-        qr: {
-          external_pos_id: pos.external_pos_id,
-          mode: "dynamic",
+  };
+  try {
+    mpOrder = await mpFetch(token, "/v1/orders", {
+      method: "POST",
+      idempotencyKey,
+      body: JSON.stringify({
+        type: "qr",
+        external_reference: externalRef,
+        total_amount: amountStr,
+        description: `Pedido BolivarPide · ${business.name}`,
+        expiration_time: "PT15M",
+        config: {
+          qr: {
+            external_pos_id: pos.external_pos_id,
+            mode: "dynamic",
+          },
         },
-      },
-      transactions: { payments: [{ amount: amountStr }] },
-      items: [
-        {
-          title: `Pedido · ${business.name}`.slice(0, 150),
-          unit_price: amountStr,
-          quantity: 1,
-          unit_measure: "unit",
-        },
-      ],
-    }),
-  });
+        transactions: { payments: [{ amount: amountStr }] },
+        items: [
+          {
+            title: `Pedido · ${business.name}`.slice(0, 150),
+            unit_price: amountStr,
+            quantity: 1,
+            unit_measure: "unit",
+          },
+        ],
+      }),
+    });
+  } catch (err) {
+    await svc
+      .from("orders")
+      .update({ payment_status: "failed", status: "cancelled" })
+      .eq("id", order.id);
+    throw err;
+  }
 
   const qrData = mpOrder.type_response?.qr_data?.trim();
-  if (!qrData) throw new Error("Mercado Pago no devolvió qr_data");
+  if (!qrData) {
+    await svc
+      .from("orders")
+      .update({ payment_status: "failed", status: "cancelled" })
+      .eq("id", order.id);
+    throw new Error("Mercado Pago no devolvió qr_data");
+  }
 
   const expiresAt = new Date(Date.now() + QR_EXPIRATION_MS).toISOString();
   const { data: session, error: sessErr } = await svc

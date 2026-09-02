@@ -45,12 +45,13 @@ async function findStoreByExternalId(token: string, userId: string, externalId: 
 
 async function findPosByExternalId(token: string, externalId: string) {
   try {
-    const listed = await mpFetch<{ results?: { id: number | string; external_id?: string; qr?: { image?: string } }[] }>(
-      token,
-      `/v2/pos?external_id=${encodeURIComponent(externalId)}`,
-      { method: "GET" },
-    );
-    return listed.results?.find((p) => p.external_id === externalId) ?? listed.results?.[0] ?? null;
+    const listed = await mpFetch<{
+      results?: { id: number | string; external_id?: string; qr?: { image?: string } }[];
+      data?: { id: number | string; external_id?: string; qr?: { image?: string } }[];
+    }>(token, `/v2/pos?external_id=${encodeURIComponent(externalId)}`, { method: "GET" });
+    // MP a veces devuelve `data`, a veces `results`
+    const rows = listed.data ?? listed.results ?? [];
+    return rows.find((p) => p.external_id === externalId) ?? rows[0] ?? null;
   } catch {
     return null;
   }
