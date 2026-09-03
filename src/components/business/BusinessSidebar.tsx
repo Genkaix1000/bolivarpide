@@ -41,14 +41,13 @@ export function BusinessSidebar({
     },
     { id: "whatsapp", label: "WhatsApp", icon: "chat", href: `${base}/whatsapp` },
     { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
-    { id: "pagos", label: "Pagos", icon: "payments", href: `${base}/pagos` },
-  ];
-  const SUPPORT_NAV = [
-    { id: "equipo", label: "Equipo", icon: "group", href: `${base}/equipo` },
   ];
 
   const renderNavItem = (item: { id: string; label: string; icon: string; href: string; badge?: number }, isMobile: boolean) => {
-    const isActive = pathname === item.href;
+    const isActive =
+      item.id === "configuracion"
+        ? pathname.startsWith(`${base}/configuracion`)
+        : pathname === item.href;
     const isIconOnly = collapsed && !isMobile;
     return (
       <Link
@@ -164,12 +163,18 @@ export function BusinessSidebar({
         >
           {sectionLabel("General", isIconOnly)}
           {GENERAL_NAV.map((item) => renderNavItem(item, isMobile))}
-          {sectionLabel("Soporte", isIconOnly)}
-          {SUPPORT_NAV.map((item) => renderNavItem(item, isMobile))}
         </nav>
 
         <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>
-          {renderNavItem({ id: "configuracion", label: "Configuración", icon: "settings", href: `${base}/configuracion` }, isMobile)}
+          {renderNavItem(
+            {
+              id: "configuracion",
+              label: "Configuración",
+              icon: "settings",
+              href: `${base}/configuracion/general`,
+            },
+            isMobile,
+          )}
           {renderNavItem({ id: "hub", label: "Mis locales", icon: "storefront", href: "/negocio" }, isMobile)}
           {renderNavItem({ id: "home", label: "Ir al inicio", icon: "home", href: "/" }, isMobile)}
 

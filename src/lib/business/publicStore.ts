@@ -84,8 +84,6 @@ export function publicStoreToFeaturedChain(
   return {
     ...chain,
     id: b.slug,
-    bannerImage: b.banner_path ?? undefined,
-    logoImage: b.logo_path ?? undefined,
     logoEmoji: b.name.slice(0, 1).toUpperCase(),
     bannerBg: "from-[#9a0002] to-[#6b0001]",
     deliveryFee: 0,

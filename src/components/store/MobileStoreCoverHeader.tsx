@@ -39,7 +39,7 @@ export function MobileStoreCoverHeader({
 
   return (
     <header className="shrink-0 bg-white dark:bg-[#141210]">
-      <div className="relative h-[148px] w-full overflow-hidden bg-[#2a201c]">
+      <div className="relative aspect-[8/3] w-full overflow-hidden bg-[#2a201c]">
         {bannerUrl ? (
           <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
         ) : (

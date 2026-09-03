@@ -319,7 +319,7 @@ export function StoreSidePanel({
         className
       )}
     >
-      <div className={cn("relative shrink-0 overflow-hidden bg-[#2a201c]", compact ? "h-32" : "h-44")}>
+      <div className="relative aspect-[8/3] w-full shrink-0 overflow-hidden bg-[#2a201c]">
         {profile.bannerImage ? (
           <img src={profile.bannerImage} alt="" className="h-full w-full object-cover" />
         ) : (

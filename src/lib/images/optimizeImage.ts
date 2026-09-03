@@ -100,6 +100,22 @@ export const MENU_PHOTO_OPTS: OptimizeImageOptions = {
   quality: 0.82,
 };
 
+/** Logo del local: círculo 76px → export exacto 512×512 (1:1). */
+export const BUSINESS_LOGO_OPTS: OptimizeImageOptions = {
+  maxWidth: 512,
+  maxHeight: 512,
+  aspectRatio: 1,
+  quality: 0.85,
+};
+
+/** Portada: cover cliente aspect 8:3 (= ~390×146 CSS). Export exacto 1200×450. */
+export const BUSINESS_BANNER_OPTS: OptimizeImageOptions = {
+  maxWidth: 1200,
+  maxHeight: 450,
+  aspectRatio: 1200 / 450,
+  quality: 0.82,
+};
+
 export function menuImageSizeHint(opts: OptimizeImageOptions) {
   return `${opts.maxWidth}×${opts.maxHeight}`;
 }

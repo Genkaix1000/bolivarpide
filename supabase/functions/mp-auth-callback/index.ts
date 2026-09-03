@@ -43,7 +43,7 @@ function redirectTarget(redirectUrl: string | null | undefined, businessId: stri
       /* fall through */
     }
   }
-  return `${fallback}/negocio/${businessId}/pagos`;
+  return `${fallback}/negocio/${businessId}/configuracion/pagos`;
 }
 
 serve(async (req: Request) => {

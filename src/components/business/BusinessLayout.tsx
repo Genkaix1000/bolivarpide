@@ -65,7 +65,6 @@ export function BusinessLayout({
           )}
         >
           <motion.div
-            key={pathname}
             initial={showSplash ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}

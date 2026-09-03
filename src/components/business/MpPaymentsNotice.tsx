@@ -46,7 +46,7 @@ export function MpPaymentsNotice({ businessId }: { businessId: string }) {
 
   return (
     <Link
-      href={`/negocio/${businessId}/pagos`}
+      href={`/negocio/${businessId}/configuracion/pagos`}
       className={cn(
         CARD,
         "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#faf8f5] dark:hover:bg-[#231f1c]/50 group",

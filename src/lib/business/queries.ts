@@ -23,6 +23,7 @@ export type BusinessRow = {
   rating: number;
   reviews_count: number;
   prep_time_minutes: number;
+  phone: string | null;
   address: string | null;
   city: string;
 };
@@ -62,7 +63,7 @@ export type DashboardStockProduct = {
 };
 
 const BUSINESS_FIELDS =
-  "id, name, slug, published, is_open, plan, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, address, city";
+  "id, name, slug, published, is_open, plan, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, phone, address, city";
 
 export const requireUser = cache(async () => {
   const supabase = await createClient();

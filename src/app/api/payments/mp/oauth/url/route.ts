@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if ("error" in auth && auth.error) return auth.error;
 
   const origin = req.headers.get("origin") ?? req.nextUrl.origin;
-  const redirectPath = `/negocio/${businessId}/pagos`;
+  const redirectPath = `/negocio/${businessId}/configuracion/pagos`;
 
   const oauthConfig = getMpOAuthConfigStatus();
   if (!oauthConfig.configured) {

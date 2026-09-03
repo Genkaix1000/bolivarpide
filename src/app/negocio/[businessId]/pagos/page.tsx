@@ -1,27 +1,19 @@
-import { Suspense } from "react";
-import { requireBusinessAccess } from "@/lib/business/queries";
-import { PagosSection } from "@/components/business/PagosSection";
-import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { redirect } from "next/navigation";
 
-export default async function PagosPage({
+export default async function PagosRedirectPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ businessId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { businessId } = await params;
-  await requireBusinessAccess(businessId);
-
-  return (
-    <div className="max-w-3xl mx-auto">
-      <Suspense
-        fallback={
-          <div className="flex justify-center py-16">
-            <MaterialSymbol icon="progress_activity" size={32} className="animate-spin text-gray-400" />
-          </div>
-        }
-      >
-        <PagosSection businessId={businessId} />
-      </Suspense>
-    </div>
-  );
+  const sp = await searchParams;
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") qs.set(k, v);
+    else if (Array.isArray(v)) for (const x of v) qs.append(k, x);
+  }
+  const q = qs.toString();
+  redirect(`/negocio/${businessId}/configuracion/pagos${q ? `?${q}` : ""}`);
 }
