@@ -22,6 +22,8 @@ services:
       - N8N_SUPABASE_SERVICE_KEY=${N8N_SUPABASE_SERVICE_KEY}
       - N8N_APP_URL=${N8N_APP_URL:-http://host.docker.internal:3000}
       - N8N_WHATSAPP_WEBHOOK_SECRET=${N8N_WHATSAPP_WEBHOOK_SECRET}
+      # OpenRouter (optional AI intent/order parsing in the WhatsApp bot)
+      - N8N_OPENROUTER_API_KEY=${N8N_OPENROUTER_API_KEY:-}
     volumes:
       - n8n_data:/home/node/.n8n
 volumes:
