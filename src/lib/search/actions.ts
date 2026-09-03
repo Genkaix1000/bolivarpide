@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 import type {
   CatalogSearchResult,
   SearchResultCategory,
@@ -72,7 +73,7 @@ export async function searchCatalogAction(rawQuery: string): Promise<CatalogSear
           name: s.name,
           tagline: s.tagline,
           category: s.category,
-          logoImage: s.logo_path ?? undefined,
+          logoImage: resolveBusinessAssetUrl(s.logo_path) ?? undefined,
           logoEmoji: s.name.slice(0, 1).toUpperCase(),
           rating: ratingNum,
           reviewsCount: reviewsNum,
@@ -87,7 +88,7 @@ export async function searchCatalogAction(rawQuery: string): Promise<CatalogSear
     const { data: dbProducts } = await supabase
       .from("products")
       .select(`
-        id, name, description, category, price_cents, image_path, available,
+        id, name, description, category, price_cents, image_path, icon_path, available,
         businesses!inner(id, slug, name, logo_path, is_open, published)
       `)
       .eq("available", true)
@@ -107,13 +108,14 @@ export async function searchCatalogAction(rawQuery: string): Promise<CatalogSear
           published: boolean | null;
         } | null;
         if (b && b.published) {
+          const rawImg = (p as any).icon_path || p.image_path;
           productsMap.set(p.id, {
             id: p.id,
             name: p.name,
             description: p.description,
             category: p.category,
             priceCents: p.price_cents,
-            image: p.image_path ?? undefined,
+            image: resolveBusinessAssetUrl(rawImg) ?? undefined,
             storeId: b.id,
             storeSlug: b.slug,
             storeName: b.name,

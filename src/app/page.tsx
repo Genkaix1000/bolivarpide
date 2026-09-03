@@ -59,6 +59,7 @@ function HomeContent() {
 
   // Carousels State
   const [randomizedChains, setRandomizedChains] = useState<FeaturedChain[]>([]);
+  const [latestAdditions, setLatestAdditions] = useState<FeaturedChain[]>([]);
   const [currentChainPage, setCurrentChainPage] = useState(0);
   const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
   const [promoBanners, setPromoBanners] = useState<PromoBanner[]>(PROMO_BANNERS);
@@ -112,13 +113,14 @@ function HomeContent() {
         const { data: pubs } = await supabase
           .from("businesses")
           .select(
-            "id, slug, name, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, is_open, address",
+            "id, slug, name, tagline, logo_path, banner_path, rating, reviews_count, prep_time_minutes, is_open, address, created_at",
           )
           .eq("published", true)
-          .order("name");
+          .order("created_at", { ascending: false });
         if (cancelled) return;
         if (pubs && pubs.length > 0) {
           const mapped = pubs.map(toFeaturedChain);
+          setLatestAdditions(mapped);
           const shuffledChains = [...mapped].sort(() => Math.random() - 0.5);
           const shuffledRec = [...mapped].sort(() => Math.random() - 0.5);
           setRandomizedChains(shuffledChains);
@@ -520,15 +522,19 @@ function HomeContent() {
               </section>
             )}
 
-            {/* Populares — quiet strip */}
-            {randomizedChains.length > 0 && (
+            {/* Últimas adiciones — locales dados de alta recientemente */}
+            {(latestAdditions.length > 0 ? latestAdditions : randomizedChains).length > 0 && (
               <section className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">Más populares</h3>
-                  <p className="text-[12px] text-gray-400 mt-0.5">Los favoritos de la zona</p>
+                  <h3 className="font-semibold text-lg tracking-tight text-gray-900 dark:text-gray-100">
+                    Últimas adiciones
+                  </h3>
+                  <p className="text-[12px] text-gray-400 mt-0.5">
+                    Nuevos comercios que se sumaron a BolivarPide
+                  </p>
                 </div>
                 <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-1">
-                  {randomizedChains.map((chain) => (
+                  {(latestAdditions.length > 0 ? latestAdditions : randomizedChains).map((chain) => (
                     <Link
                       key={chain.id}
                       href={`/c/${chain.id}`}

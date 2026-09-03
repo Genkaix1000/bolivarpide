@@ -431,7 +431,7 @@ export function StoreSidePanel({
           {mode === "owner" && (
             <div className={cn("flex w-full gap-2", compact ? "mt-3" : "mt-5")}>
               <Link
-                href="/negocio/configuracion"
+                href={profile.chainId ? `/negocio/${profile.chainId}/configuracion/general` : "/negocio"}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#9a0002] py-2.5 text-[13px] font-semibold text-white hover:bg-[#6b0001]"
               >
                 <MaterialSymbol icon="edit" size={16} />

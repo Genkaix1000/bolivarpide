@@ -9,15 +9,21 @@ const GROUPS = [
   {
     label: "Local",
     items: [
-      { id: "general", label: "General", icon: "storefront", href: "general" },
-      { id: "operacion", label: "Operación", icon: "schedule", href: "operacion" },
+      { id: "general", label: "General & Perfil", icon: "storefront", href: "general" },
+      { id: "operacion", label: "Operación & Horarios", icon: "schedule", href: "operacion" },
     ],
   },
   {
-    label: "Negocio",
+    label: "Comercial",
     items: [
-      { id: "pagos", label: "Pagos", icon: "payments", href: "pagos" },
-      { id: "equipo", label: "Equipo", icon: "group", href: "equipo" },
+      { id: "pagos", label: "Pagos & Facturación", icon: "payments", href: "pagos" },
+      { id: "canales", label: "WhatsApp & Canales", icon: "chat", href: "canales" },
+    ],
+  },
+  {
+    label: "Organización",
+    items: [
+      { id: "equipo", label: "Equipo & Permisos", icon: "group", href: "equipo" },
     ],
   },
 ] as const;

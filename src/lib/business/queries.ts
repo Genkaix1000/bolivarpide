@@ -40,6 +40,14 @@ export type MembershipRow = {
     published: boolean;
     is_open: boolean;
     plan: string;
+    logo_path?: string | null;
+    banner_path?: string | null;
+    tagline?: string | null;
+    address?: string | null;
+    city?: string | null;
+    rating?: number;
+    reviews_count?: number;
+    products?: { count: number }[];
   } | null;
 };
 
@@ -359,7 +367,7 @@ export async function listMyMemberships() {
   const { data, error } = await supabase
     .from("business_members")
     .select(
-      "id, role, status, business_id, businesses(id, name, slug, published, is_open, plan)",
+      "id, role, status, business_id, businesses(id, name, slug, published, is_open, plan, logo_path, banner_path, tagline, address, city, rating, reviews_count, products(count))",
     )
     .eq("user_id", user.id)
     .in("status", ["active", "invited"])

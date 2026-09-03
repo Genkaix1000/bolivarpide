@@ -116,13 +116,9 @@ function ImageRow({
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{label}</p>
           <p className="mt-0.5 text-[11px] text-gray-500">
-            Exacto {sizeHint}px
-            {kind === "logo" ? " (cuadrado 1:1)" : " (horizontal 8:3)"}
+            {kind === "logo" ? "Formato cuadrado recomendado (1:1)" : "Formato horizontal recomendado (8:3)"}
             {" · "}
-            WebP automático
-          </p>
-          <p className="mt-0.5 text-[10px] text-gray-400">
-            Si no coincide, se recorta al centro · PNG/JPEG/GIF/WebP · máx. 2 MB
+            PNG o JPEG hasta 2 MB
           </p>
           {error ? <p className="mt-1 text-[11px] font-medium text-red-600">{error}</p> : null}
         </div>

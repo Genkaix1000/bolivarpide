@@ -23,18 +23,24 @@ Transformar el listado actual en un tablero visual moderno inspirado en la refer
 - **Subtexto**: *"Abrí una nueva sucursal o suma otro negocio a tu cuenta"*
 - **Comportamiento**: Al hacer clic, navega a `/negocio/registro` donde inicia el wizard de onboarding.
 
-#### B. Tarjetas de Comercio Activo
-- **Cabecera**: 
-  - Avatar circular centrado con el logotipo del local (o inicial con gradiente de marca si no tiene logo cargado).
-  - Indicador de estado operativo en tiempo real: punto/píldora verde (*Abierto*) o gris (*Cerrado*).
+#### B. Tarjetas de Comercio Activo (Estilo Menú / Showcase)
+- **Portada / Banner Superior**:
+  - Imagen de portada (`banner_path`) en formato horizontal con overlay de degradado oscuro.
+  - Insignia de estado operativo en tiempo real: *Abierto* (verde pulsante) o *Cerrado* (gris) en la esquina superior izquierda.
+  - Badge de plan (*Free*, *Impulso*, *Líder*) en la esquina superior derecha.
+  - Eslogan / Tagline centrado en la parte inferior de la portada si está configurado.
+- **Avatar de Marca Central**:
+  - Logotipo circular (`logo_path`) de 72px que solapa la portada con borde blanco y sombra suave.
 - **Identidad**:
-  - Nombre del local en tipografía semibold / bold.
-  - Rol del usuario en dicho local (ej. *Dueño*, *Encargado*, *Cajero*).
-  - Dirección o ciudad.
-- **Badges de Canales & Plan**:
-  - Badge del plan activo (*Free*, *Impulso*, *Líder*).
-  - Píldoras compactas que indican integraciones activas (ej. icono de WhatsApp conectado, icono de Mercado Pago activo).
-- **Acción**: Clic en la tarjeta redirige al dashboard del comercio (`/negocio/[businessId]/dashboard`).
+  - Nombre del local en tipografía bold (`text-base`).
+- **Métricas Clave (Estilo Showcase del Menú)**:
+  - Tres columnas con divisores verticales:
+    1. **Seguidores** (conteo de seguidores).
+    2. **Productos** (total de platos/ítems en la carta).
+    3. **Rating** (calificación numérica acompañada de estrella dorada).
+- **Pie de Tarjeta**:
+  - Rol asignado al usuario (*Dueño / Titular*, *Encargado*, etc.).
+  - Botón de acción *"Gestionar →"* que redirige al dashboard del comercio (`/negocio/[businessId]/dashboard`).
 
 #### C. Sección de Invitaciones Pendientes
 - Si el usuario tiene invitaciones con estado `invited`, se muestran arriba del grid como tarjetas de atención destacada con acciones inmediatas: *Aceptar* o *Rechazar*.

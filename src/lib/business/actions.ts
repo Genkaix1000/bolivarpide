@@ -132,22 +132,126 @@ export async function setOrderStatus(formData: FormData) {
   if (!res.ok) throw new Error(res.error);
 }
 
+export async function searchUsersForInviteAction(
+  businessId: string,
+  rawQuery: string,
+): Promise<
+  Array<{
+    userId: string;
+    email: string;
+    displayName: string;
+    avatar: { type: "initials" | "symbol" | "emoji"; value: string; gradientId: string };
+  }>
+> {
+  const q = rawQuery.trim();
+  if (!businessId || q.length < 2) return [];
+
+  await requireBusinessAccess(businessId);
+  const service = createServiceClient();
+
+  const [{ data: members }, { data: listed }, { data: profiles }] = await Promise.all([
+    service.from("business_members").select("user_id").eq("business_id", businessId),
+    service.auth.admin.listUsers({ perPage: 1000 }),
+    service
+      .from("user_profiles")
+      .select(
+        "user_id, display_name, first_name, last_name, avatar_type, avatar_value, avatar_gradient_id",
+      ),
+  ]);
+
+  const alreadyIn = new Set((members ?? []).map((m) => m.user_id));
+  const profileById = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+  const needle = q
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const hits: Array<{
+    userId: string;
+    email: string;
+    displayName: string;
+    avatar: { type: "initials" | "symbol" | "emoji"; value: string; gradientId: string };
+    score: number;
+  }> = [];
+
+  for (const u of listed?.users ?? []) {
+    if (!u.email || alreadyIn.has(u.id)) continue;
+    const p = profileById.get(u.id);
+    const email = u.email;
+    const displayName =
+      [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
+      p?.display_name?.trim() ||
+      email.split("@")[0];
+    const hay = `${displayName} ${email} ${p?.first_name ?? ""} ${p?.last_name ?? ""} ${p?.display_name ?? ""}`
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!hay.includes(needle)) continue;
+
+    const nameNorm = displayName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const emailNorm = email.toLowerCase();
+    // Prefer name prefix matches, then email prefix, then substring.
+    let score = 3;
+    if (nameNorm.startsWith(needle)) score = 0;
+    else if (emailNorm.startsWith(needle)) score = 1;
+    else if (nameNorm.includes(needle)) score = 2;
+
+    const initials = displayName.slice(0, 2).toUpperCase() || "?";
+    hits.push({
+      userId: u.id,
+      email,
+      displayName,
+      avatar: {
+        type: (p?.avatar_type as "initials" | "symbol" | "emoji") || "initials",
+        value: p?.avatar_value || initials,
+        gradientId: p?.avatar_gradient_id || "cherry",
+      },
+      score,
+    });
+  }
+
+  return hits
+    .sort((a, b) => a.score - b.score || a.displayName.localeCompare(b.displayName))
+    .slice(0, 8)
+    .map(({ score: _s, ...rest }) => rest);
+}
+
 export async function inviteMember(formData: FormData) {
   const businessId = String(formData.get("businessId") || "");
+  const userId = String(formData.get("userId") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const role = String(formData.get("role") || "staff");
   if (!["staff", "driver"].includes(role)) throw new Error("Rol inválido");
   const { supabase, user } = await requireBusinessAccess(businessId);
 
   const service = createServiceClient();
-  const { data: listed } = await service.auth.admin.listUsers({ perPage: 1000 });
-  const invitee = listed?.users.find((u) => u.email?.toLowerCase() === email);
-  if (!invitee) throw new Error("Usuario no encontrado — debe haber iniciado sesión al menos una vez");
+  let inviteeId = userId;
+
+  if (!inviteeId && email) {
+    const { data: listed } = await service.auth.admin.listUsers({ perPage: 1000 });
+    const invitee = listed?.users.find((u) => u.email?.toLowerCase() === email);
+    if (!invitee) throw new Error("Usuario no encontrado — debe haber iniciado sesión al menos una vez");
+    inviteeId = invitee.id;
+  }
+
+  if (!inviteeId) throw new Error("Seleccioná un usuario de la búsqueda");
+  if (inviteeId === user.id) throw new Error("No podés invitarte a vos mismo");
+
+  const { data: existing } = await supabase
+    .from("business_members")
+    .select("id, status")
+    .eq("business_id", businessId)
+    .eq("user_id", inviteeId)
+    .maybeSingle();
+  if (existing?.status === "active") throw new Error("Esa persona ya está en el equipo");
 
   const { error } = await supabase.from("business_members").upsert(
     {
       business_id: businessId,
-      user_id: invitee.id,
+      user_id: inviteeId,
       role,
       status: "invited",
       invited_by: user.id,
@@ -390,4 +494,122 @@ export async function claimBusinessOwnership(formData: FormData) {
     .eq("id", lead.id);
 
   redirect(`/negocio/${lead.approved_business_id}/dashboard`);
+}
+
+export async function updateBusinessGeneralSettings(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const name = String(formData.get("name") || "").trim();
+  const slug = String(formData.get("slug") || "").trim();
+  const tagline = String(formData.get("tagline") || "").trim() || null;
+  const address = String(formData.get("address") || "").trim() || null;
+  const city = String(formData.get("city") || "").trim() || "Bolívar";
+  const phone = String(formData.get("phone") || "").trim() || null;
+
+  if (!businessId || !name || !slug) {
+    throw new Error("Nombre y URL son requeridos");
+  }
+
+  const { supabase, business } = await requireBusinessAccess(businessId);
+  const cleanSlug = slugify(slug);
+
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      name,
+      slug: cleanSlug,
+      tagline,
+      address,
+      city,
+      phone,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", businessId);
+
+  if (error) {
+    if (error.code === "23505") throw new Error("La URL / slug ya está en uso por otro comercio");
+    throw error;
+  }
+
+  revalidatePath(`/negocio/${businessId}/configuracion`);
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath(`/c/${cleanSlug}`);
+  if (business.slug !== cleanSlug) {
+    revalidatePath(`/c/${business.slug}`);
+  }
+}
+
+export async function updateBusinessOperationSettings(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const isOpen = formData.get("isOpen") === "true";
+  const prepTimeMinutes = parseInt(String(formData.get("prepTimeMinutes") || "30"), 10);
+
+  if (!businessId) throw new Error("ID de negocio inválido");
+
+  const { supabase, business } = await requireBusinessAccess(businessId);
+
+  const { error } = await supabase
+    .from("businesses")
+    .update({
+      is_open: isOpen,
+      prep_time_minutes: isNaN(prepTimeMinutes) ? 30 : prepTimeMinutes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", businessId);
+
+  if (error) throw error;
+
+  revalidatePath(`/negocio/${businessId}/configuracion`);
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath(`/c/${business.slug}`);
+}
+
+export async function updateBusinessHoursSchedule(
+  businessId: string,
+  hours: { weekday: number; open_time: string; close_time: string; closed: boolean }[]
+) {
+  const { supabase, business } = await requireBusinessAccess(businessId);
+
+  for (const h of hours) {
+    const { error } = await supabase
+      .from("business_hours")
+      .upsert(
+        {
+          business_id: businessId,
+          weekday: h.weekday,
+          open_time: h.open_time,
+          close_time: h.close_time,
+          closed: h.closed,
+        },
+        { onConflict: "business_id,weekday" }
+      );
+    if (error) throw error;
+  }
+
+  revalidatePath(`/negocio/${businessId}/configuracion`);
+  revalidatePath(`/negocio/${businessId}/dashboard`);
+  revalidatePath(`/c/${business.slug}`);
+}
+
+export async function deleteBusinessAction(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const confirmation = String(formData.get("confirmation") || "").trim();
+
+  if (!businessId) throw new Error("ID de local inválido");
+
+  const { supabase, user, member, business } = await requireBusinessAccess(businessId);
+  if (!member || member.role !== "owner") {
+    throw new Error("Solo el Titular puede dar de baja el comercio");
+  }
+
+  if (confirmation.toLowerCase() !== business.name.toLowerCase().trim()) {
+    throw new Error("El nombre ingresado para confirmar la baja no coincide exactamente");
+  }
+
+  const service = createServiceClient();
+  const { error } = await service.from("businesses").delete().eq("id", businessId);
+  if (error) throw error;
+
+  revalidatePath("/negocio");
+  revalidatePath("/");
+  redirect("/negocio");
 }
