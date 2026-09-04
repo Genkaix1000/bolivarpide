@@ -98,7 +98,7 @@ export async function listKitchenOrders(businessId: string): Promise<{
   const rows = data ?? [];
   const userIds = [...new Set(rows.map((r) => r.customer_user_id).filter(Boolean))] as string[];
 
-  let profiles = new Map<string, ProfileRow>();
+  const profiles = new Map<string, ProfileRow>();
   if (userIds.length > 0) {
     const { data: profs } = await svc
       .from("user_profiles")

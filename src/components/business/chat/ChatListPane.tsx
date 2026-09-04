@@ -2,7 +2,7 @@
 
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
-import type { Conversation } from "@/lib/business/mockChatData";
+import { isLiveOrder, type Conversation } from "@/lib/business/chatTypes";
 
 export type ListFilter = "all" | "orders" | "inquiry";
 
@@ -24,9 +24,7 @@ const FILTER_TABS: { id: ListFilter; label: string }[] = [
 ];
 
 function hasLiveOrder(c: Conversation) {
-  return Boolean(
-    c.activeOrder && c.activeOrder.status !== "delivered" && c.activeOrder.status !== "cancelled",
-  );
+  return isLiveOrder(c.activeOrder);
 }
 
 export function ChatListPane({

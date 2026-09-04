@@ -108,7 +108,10 @@ export async function searchCatalogAction(rawQuery: string): Promise<CatalogSear
           published: boolean | null;
         } | null;
         if (b && b.published) {
-          const rawImg = (p as any).icon_path || p.image_path;
+          const rawImg =
+            "icon_path" in p && typeof p.icon_path === "string"
+              ? p.icon_path
+              : p.image_path;
           productsMap.set(p.id, {
             id: p.id,
             name: p.name,

@@ -3,13 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
-import { type Conversation, QUICK_RESPONSES } from "@/lib/business/mockChatData";
+import { isLiveOrder, type Conversation, QUICK_RESPONSES } from "@/lib/business/chatTypes";
 
 interface ChatConversationPaneProps {
   conversation: Conversation;
+  businessName: string;
   onSendMessage: (text: string) => void;
+  sending?: boolean;
   onOpenContext: () => void;
   onBackMobile?: () => void;
+  onNewComanda: () => void;
+  onLinkOrder: () => void;
   showContextPane: boolean;
   onToggleContextPane: () => void;
   className?: string;
@@ -21,9 +25,13 @@ function formatCents(cents: number) {
 
 export function ChatConversationPane({
   conversation,
+  businessName,
   onSendMessage,
+  sending,
   onOpenContext,
   onBackMobile,
+  onNewComanda,
+  onLinkOrder,
   showContextPane,
   onToggleContextPane,
   className,
@@ -36,21 +44,17 @@ export function ChatConversationPane({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation.messages]);
 
+  const liveOrder = isLiveOrder(conversation.activeOrder) ? conversation.activeOrder : null;
+
   function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const clean = inputText.trim();
-    if (!clean) return;
+    if (!clean || sending) return;
     onSendMessage(clean);
     setInputText("");
   }
 
   const cleanPhone = conversation.customer.phone.replace(/[^0-9]/g, "");
-  const liveOrder =
-    conversation.activeOrder &&
-    conversation.activeOrder.status !== "delivered" &&
-    conversation.activeOrder.status !== "cancelled"
-      ? conversation.activeOrder
-      : null;
 
   return (
     <section
@@ -73,24 +77,15 @@ export function ChatConversationPane({
           ) : null}
 
           <button type="button" onClick={onOpenContext} className="relative shrink-0 cursor-pointer">
-            {conversation.customer.avatarUrl ? (
-              <img
-                src={conversation.customer.avatarUrl}
-                alt=""
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8e0d6] text-sm font-bold text-gray-700 dark:bg-[#2b2521] dark:text-gray-200">
-                {conversation.customer.name.slice(0, 2).toUpperCase()}
-              </span>
-            )}
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8e0d6] text-sm font-bold text-gray-700 dark:bg-[#2b2521] dark:text-gray-200">
+              {conversation.customer.name.slice(0, 2).toUpperCase()}
+            </span>
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#fdfcfb] dark:ring-[#181513]" />
           </button>
 
           <button type="button" onClick={onOpenContext} className="min-w-0 cursor-pointer text-left">
             <p className="truncate text-sm font-bold text-gray-900 dark:text-gray-100">
               {conversation.customer.name}
-              {conversation.customer.isFavorite ? <span className="ml-1 text-amber-500">★</span> : null}
             </p>
             <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">
               {conversation.customer.phone}
@@ -142,27 +137,32 @@ export function ChatConversationPane({
           </span>
           <MaterialSymbol icon="chevron_right" size={18} className="shrink-0 text-gray-400" />
         </button>
-      ) : null}
+      ) : (
+        <div className="z-10 flex shrink-0 items-center gap-2 border-b border-[#e8e0d6]/80 bg-white/95 px-3 py-1.5 backdrop-blur dark:border-[#2a2623] dark:bg-[#181513]/95">
+          <button
+            type="button"
+            onClick={onNewComanda}
+            className="shrink-0 rounded-full bg-[#9a0002] px-2.5 py-1 text-[10px] font-bold text-white hover:bg-[#7e0002]"
+          >
+            + Nueva comanda
+          </button>
+          <button
+            type="button"
+            onClick={onLinkOrder}
+            className="shrink-0 rounded-full bg-[#f0ebe3] px-2.5 py-1 text-[10px] font-bold text-gray-700 hover:bg-[#e4dcd1] dark:bg-[#231f1c] dark:text-gray-300"
+          >
+            Vincular pedido
+          </button>
+          {conversation.unreadCount > 0 ? (
+            <span className="ml-auto rounded-full bg-[#9a0002] px-2 py-0.5 text-[10px] font-black text-white">
+              {conversation.unreadCount} nuevos
+            </span>
+          ) : null}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-        <div className="flex justify-center">
-          <span className="rounded-full bg-black/5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:bg-white/10 dark:text-gray-400">
-            Hoy
-          </span>
-        </div>
-
         {conversation.messages.map((msg) => {
-          if (msg.type === "system_order_event" && msg.systemEvent) {
-            return (
-              <div key={msg.id} className="flex justify-center">
-                <div className="max-w-sm rounded-2xl border border-amber-500/20 bg-white/90 px-3 py-2 text-center text-[11px] shadow-xs dark:bg-[#1e1a17]/90">
-                  <p className="font-bold text-gray-900 dark:text-gray-100">{msg.systemEvent.title}</p>
-                  <p className="text-gray-500">{msg.systemEvent.description}</p>
-                </div>
-              </div>
-            );
-          }
-
           const isMe = msg.sender === "business";
           return (
             <div key={msg.id} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
@@ -192,6 +192,13 @@ export function ChatConversationPane({
                     </button>
                     <span className="text-[11px] opacity-80">{msg.audioDuration ?? "0:15"}</span>
                   </div>
+                ) : null}
+                {msg.imageUrl ? (
+                  <img
+                    src={msg.imageUrl}
+                    alt={msg.text ?? "Imagen"}
+                    className="mb-1.5 max-h-56 w-full rounded-lg object-cover"
+                  />
                 ) : null}
                 {msg.text ? (
                   <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{msg.text}</p>
@@ -231,33 +238,47 @@ export function ChatConversationPane({
         ))}
       </div>
 
-      <form
-        onSubmit={handleSend}
-        className="flex shrink-0 items-center gap-2 border-t border-[#e8e0d6] bg-[#fdfcfb] p-3 dark:border-[#2a2623] dark:bg-[#181513]"
-      >
-        <button type="button" className="rounded-xl p-2 text-gray-500 hover:bg-black/5" title="Adjuntar">
-          <MaterialSymbol icon="attach_file" size={20} />
-        </button>
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Escribí un mensaje…"
-          className="min-w-0 flex-1 rounded-full border border-transparent bg-[#f0ebe3] px-3.5 py-2.5 text-[13px] outline-none focus:border-[#9a0002]/35 dark:bg-[#221e1b] dark:text-gray-100"
-        />
-        <button
-          type="submit"
-          disabled={!inputText.trim()}
-          className={cn(
-            "rounded-full p-2.5",
-            inputText.trim()
-              ? "bg-[#9a0002] text-white hover:bg-[#7e0002]"
-              : "cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-stone-800",
-          )}
+      {conversation.canReply ? (
+        <form
+          onSubmit={handleSend}
+          className="flex shrink-0 items-center gap-2 border-t border-[#e8e0d6] bg-[#fdfcfb] p-3 dark:border-[#2a2623] dark:bg-[#181513]"
         >
-          <MaterialSymbol icon="send" size={18} />
-        </button>
-      </form>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={`Escribí como ${businessName}…`}
+            className="min-w-0 flex-1 rounded-full border border-transparent bg-[#f0ebe3] px-3.5 py-2.5 text-[13px] outline-none focus:border-[#9a0002]/35 dark:bg-[#221e1b] dark:text-gray-100"
+          />
+          <button
+            type="submit"
+            disabled={!inputText.trim() || sending}
+            className={cn(
+              "rounded-full p-2.5",
+              !inputText.trim() || sending
+                ? "cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-stone-800"
+                : "bg-[#9a0002] text-white hover:bg-[#7e0002]",
+            )}
+          >
+            <MaterialSymbol icon="send" size={18} />
+          </button>
+        </form>
+      ) : (
+        <div className="flex shrink-0 flex-col gap-2 border-t border-[#e8e0d6] bg-[#fff7e6] px-3 py-3 dark:border-[#2a2623] dark:bg-[#1c1503]">
+          <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+            La ventana de respuestas de 24 h venció. Solo podés responder desde WhatsApp.
+          </p>
+          <a
+            href={`https://wa.me/${cleanPhone}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 rounded-full bg-[#25d366] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#1ebe5b]"
+          >
+            <MaterialSymbol icon="open_in_new" size={14} />
+            Contestar desde WhatsApp
+          </a>
+        </div>
+      )}
     </section>
   );
 }

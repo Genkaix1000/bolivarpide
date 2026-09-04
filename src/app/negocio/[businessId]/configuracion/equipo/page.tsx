@@ -30,7 +30,7 @@ export default async function ConfiguracionEquipoPage({
     avatar_gradient_id: string | null;
   };
   let profiles: ProfileRow[] = [];
-  let userEmailMap: Record<string, string> = {};
+  const userEmailMap: Record<string, string> = {};
 
   try {
     const service = createServiceClient();

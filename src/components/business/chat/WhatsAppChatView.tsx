@@ -1,121 +1,180 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChatListPane, type ListFilter } from "./ChatListPane";
 import { ChatConversationPane } from "./ChatConversationPane";
 import { ChatContextPane } from "./ChatContextPane";
+import { ComandaBuilder } from "./ComandaBuilder";
+import { LinkOrderModal } from "./LinkOrderModal";
+import type { Conversation } from "@/lib/business/chatTypes";
+import type { OrderLifecycleStatus } from "@/lib/orders/lifecycle";
 import {
-  MOCK_CONVERSATIONS,
-  type Conversation,
-  type ChatOrderStatus,
-  type ChatMessage,
-} from "@/lib/business/mockChatData";
+  sendWhatsAppText,
+  createWhatsAppOrder,
+  linkOrderToChat,
+  markChatRead,
+} from "@/lib/whatsapp/actions";
+import { advanceOrderStatus } from "@/lib/orders/actions";
 import { flashToast } from "@/components/FlashToast";
+import { createClient } from "@/lib/supabase/client";
+import { MaterialSymbol } from "@/components/ui/material-symbol";
 
-export function WhatsAppChatView({ businessId: _businessId }: { businessId: string }) {
-  const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
-  const [selectedId, setSelectedId] = useState<string>(MOCK_CONVERSATIONS[0]?.id ?? "");
+type ChatProduct = {
+  id: string;
+  name: string;
+  price_cents: number;
+  available: boolean | null;
+  description?: string | null;
+};
+
+interface WhatsAppChatViewProps {
+  businessId: string;
+  businessName: string;
+  initialConversations: Conversation[];
+  products: ChatProduct[];
+  whatsappConnected: boolean;
+}
+
+async function fetchConversations(businessId: string): Promise<Conversation[]> {
+  const res = await fetch(
+  `/api/whatsapp/conversations?businessId=${encodeURIComponent(businessId)}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) return [];
+  const j = (await res.json()) as { conversations?: Conversation[] };
+  return j.conversations ?? [];
+}
+
+const STATUS_LABEL: Record<OrderLifecycleStatus, string> = {
+  pending: "Nuevo",
+  preparing: "En Cocina",
+  delivering: "En Camino",
+  delivered: "Entregado",
+  rejected: "Rechazado",
+};
+
+export function WhatsAppChatView({
+  businessId,
+  businessName,
+  initialConversations,
+  products,
+  whatsappConnected,
+}: WhatsAppChatViewProps) {
+  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
+  const [selectedId, setSelectedId] = useState<string>(initialConversations[0]?.id ?? "");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ListFilter>("all");
   const [showContextPane, setShowContextPane] = useState(false);
   const [mobileScreen, setMobileScreen] = useState<"list" | "chat">("list");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [comandaOpen, setComandaOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const next = await fetchConversations(businessId);
+    setConversations(next);
+    setSelectedId((cur) => (cur && next.some((c) => c.id === cur) ? cur : next[0]?.id ?? ""));
+  }, [businessId]);
+
+  // Realtime: new messages => refresh list; orders => refresh linked comandas.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`whatsapp-chat-${businessId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "whatsapp_messages",
+          filter: `business_id=eq.${businessId}`,
+        },
+        () => void refresh(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `business_id=eq.${businessId}`,
+        },
+        () => void refresh(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [businessId, refresh]);
 
   const selectedConversation = useMemo(
-    () => conversations.find((c) => c.id === selectedId) ?? conversations[0],
+    () => conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null,
     [conversations, selectedId],
   );
 
   function handleSelectConversation(id: string) {
     setSelectedId(id);
     setMobileScreen("chat");
+    void markChatRead(businessId, id);
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)),
+      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0, messages: c.messages.map((m) => (m.sender === "customer" ? { ...m, status: "read" as const } : m)) } : c)),
     );
   }
 
-  function handleSendMessage(text: string) {
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "business",
-      type: "text",
-      text,
-      timestamp: timeStr,
-      status: "delivered",
-    };
-
-    setConversations((prev) =>
-      prev.map((conv) => {
-        if (conv.id !== selectedId) return conv;
-        return {
-          ...conv,
-          lastMessage: { text, timestamp: timeStr, sender: "business" },
-          messages: [...conv.messages, newMsg],
-        };
-      }),
-    );
+  async function handleSendMessage(text: string) {
+    if (!selectedConversation || sending) return;
+    setSending(true);
+    const res = await sendWhatsAppText(businessId, selectedConversation.id, text);
+    if (!res.ok) {
+      flashToast(`No se pudo enviar: ${res.error}`);
+    } else {
+      flashToast("Mensaje enviado");
+      void refresh();
+    }
+    setSending(false);
   }
 
-  function handleUpdateOrderStatus(orderId: string, newStatus: ChatOrderStatus) {
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-
-    const statusLabels: Record<ChatOrderStatus, string> = {
-      pending: "Nuevo",
-      preparing: "En Cocina",
-      ready: "Listo para retirar",
-      delivering: "En Camino",
-      delivered: "Entregado",
-      cancelled: "Cancelado",
-    };
-
-    const newLabel = statusLabels[newStatus];
-    const systemEventMsg: ChatMessage = {
-      id: `sys-${Date.now()}`,
-      sender: "business",
-      type: "system_order_event",
-      systemEvent: {
-        title: `Estado actualizado: ${newLabel}`,
-        description: `La comanda fue marcada como ${newLabel.toLowerCase()} a las ${timeStr}`,
-        status: newStatus,
-      },
-      timestamp: timeStr,
-    };
-
-    setConversations((prev) =>
-      prev.map((conv) => {
-        if (conv.activeOrder?.id !== orderId) return conv;
-        return {
-          ...conv,
-          activeOrder: {
-            ...conv.activeOrder,
-            status: newStatus,
-            statusLabel: newLabel,
-          },
-          messages: [...conv.messages, systemEventMsg],
-        };
-      }),
-    );
-
-    flashToast(`Comanda actualizada a "${newLabel}"`);
+  async function handleUpdateOrderStatus(orderId: string, newStatus: OrderLifecycleStatus) {
+    if (!selectedConversation || statusBusy) return;
+    setStatusBusy(true);
+    const res = await advanceOrderStatus({
+      businessId,
+      orderId,
+      targetStatus: newStatus,
+    });
+    if (!res.ok) flashToast(res.error);
+    else {
+      flashToast(`Comanda actualizada a "${STATUS_LABEL[newStatus]}"`);
+      void refresh();
+    }
+    setStatusBusy(false);
   }
 
-  if (!selectedConversation) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-stone-500">
-        Sin conversaciones
-      </div>
-    );
+  async function handleCreateComanda(items: { productId: string; name: string; quantity: number; unitPriceCents: number }[]) {
+    if (!selectedConversation) return;
+    const res = await createWhatsAppOrder(businessId, selectedConversation.id, items, selectedConversation.customer.name);
+    if ("error" in res) {
+      flashToast(`No se pudo crear: ${res.error}`);
+      return;
+    }
+    flashToast("Comanda creada — revisá la comandera");
+    setComandaOpen(false);
+    void refresh();
+  }
+
+  async function handleLinkOrder(orderId: string) {
+    if (!selectedConversation) return;
+    const res = await linkOrderToChat(businessId, selectedConversation.id, orderId);
+    if (!res.ok) {
+      flashToast(res.error);
+      return;
+    }
+    flashToast("Pedido vinculado a este chat");
+    setLinkOpen(false);
+    void refresh();
   }
 
   return (
@@ -134,16 +193,24 @@ export function WhatsAppChatView({ businessId: _businessId }: { businessId: stri
         </div>
 
         <div className="relative min-h-0 min-w-0 flex-1">
-          <ChatConversationPane
-            conversation={selectedConversation}
-            onSendMessage={handleSendMessage}
-            onOpenContext={() => setShowContextPane(true)}
-            showContextPane={showContextPane}
-            onToggleContextPane={() => setShowContextPane((s) => !s)}
-          />
+          {selectedConversation ? (
+            <ChatConversationPane
+              conversation={selectedConversation}
+              businessName={businessName}
+              onSendMessage={handleSendMessage}
+              sending={sending}
+              onOpenContext={() => setShowContextPane(true)}
+              showContextPane={showContextPane}
+              onToggleContextPane={() => setShowContextPane((s) => !s)}
+              onNewComanda={() => setComandaOpen(true)}
+              onLinkOrder={() => setLinkOpen(true)}
+            />
+          ) : (
+            <EmptyChat whatsappConnected={whatsappConnected} />
+          )}
 
           <AnimatePresence>
-            {showContextPane ? (
+            {showContextPane && selectedConversation ? (
               <motion.div
                 key="context-desktop"
                 initial={{ x: 24, opacity: 0 }}
@@ -155,6 +222,8 @@ export function WhatsAppChatView({ businessId: _businessId }: { businessId: stri
                 <ChatContextPane
                   conversation={selectedConversation}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onNewComanda={() => { setShowContextPane(false); setComandaOpen(true); }}
+                  onLinkOrder={() => { setShowContextPane(false); setLinkOpen(true); }}
                   onClose={() => setShowContextPane(false)}
                 />
               </motion.div>
@@ -178,46 +247,81 @@ export function WhatsAppChatView({ businessId: _businessId }: { businessId: stri
           </div>
         ) : (
           <div className="relative h-full w-full">
-            <ChatConversationPane
-              conversation={selectedConversation}
-              onSendMessage={handleSendMessage}
-              onOpenContext={() => setMobileDrawerOpen(true)}
-              onBackMobile={() => setMobileScreen("list")}
-              showContextPane={mobileDrawerOpen}
-              onToggleContextPane={() => setMobileDrawerOpen((o) => !o)}
-            />
-
-            <AnimatePresence>
-              {mobileDrawerOpen ? (
-                <>
-                  <motion.button
-                    type="button"
-                    aria-label="Cerrar detalles"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setMobileDrawerOpen(false)}
-                    className="absolute inset-0 z-40 bg-black/45"
-                  />
-                  <motion.div
-                    initial={{ x: "100%" }}
-                    animate={{ x: 0 }}
-                    exit={{ x: "100%" }}
-                    transition={{ type: "spring", damping: 28, stiffness: 280 }}
-                    className="absolute inset-y-0 right-0 z-50 w-[min(92vw,360px)] bg-[#fdfcfb] shadow-2xl dark:bg-[#161413]"
-                  >
-                    <ChatContextPane
-                      conversation={selectedConversation}
-                      onUpdateOrderStatus={handleUpdateOrderStatus}
-                      onClose={() => setMobileDrawerOpen(false)}
-                    />
-                  </motion.div>
-                </>
-              ) : null}
-            </AnimatePresence>
+            {selectedConversation ? (
+              <>
+                <ChatConversationPane
+                  conversation={selectedConversation}
+                  businessName={businessName}
+                  onSendMessage={handleSendMessage}
+                  sending={sending}
+                  onOpenContext={() => setMobileDrawerOpen(true)}
+                  onBackMobile={() => setMobileScreen("list")}
+                  showContextPane={mobileDrawerOpen}
+                  onToggleContextPane={() => setMobileDrawerOpen((o) => !o)}
+                  onNewComanda={() => setComandaOpen(true)}
+                  onLinkOrder={() => setLinkOpen(true)}
+                />
+                <AnimatePresence>
+                  {mobileDrawerOpen ? (
+                    <motion.div
+                      key="context-mobile"
+                      initial={{ x: "100%" }}
+                      animate={{ x: 0 }}
+                      exit={{ x: "100%" }}
+                      transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                      className="absolute inset-y-0 right-0 z-50 w-[min(92vw,360px)] bg-[#fdfcfb] shadow-2xl dark:bg-[#161413]"
+                    >
+                      <ChatContextPane
+                        conversation={selectedConversation}
+                        onUpdateOrderStatus={handleUpdateOrderStatus}
+                        onNewComanda={() => { setMobileDrawerOpen(false); setComandaOpen(true); }}
+                        onLinkOrder={() => { setMobileDrawerOpen(false); setLinkOpen(true); }}
+                        onClose={() => setMobileDrawerOpen(false)}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </>
+            ) : (
+              <EmptyChat whatsappConnected={whatsappConnected} />
+            )}
           </div>
         )}
       </div>
+
+      {comandaOpen && selectedConversation ? (
+        <ComandaBuilder
+          products={products.filter((p) => p.available !== false)}
+          businessName={businessName}
+          onClose={() => setComandaOpen(false)}
+          onConfirm={handleCreateComanda}
+        />
+      ) : null}
+
+      {linkOpen && selectedConversation ? (
+        <LinkOrderModal
+          businessId={businessId}
+          businessName={businessName}
+          onClose={() => setLinkOpen(false)}
+          onConfirm={handleLinkOrder}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EmptyChat({ whatsappConnected }: { whatsappConnected: boolean }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+        <MaterialSymbol icon="chat" size={30} className="text-emerald-600 dark:text-emerald-400" />
+      </span>
+      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Bandeja de WhatsApp</p>
+      <p className="max-w-xs text-[12px] text-gray-500 dark:text-gray-400">
+        {whatsappConnected
+          ? "Las conversaciones de los clientes van a aparecer acá en tiempo real."
+          : "Conectá tu número de WhatsApp Business desde Configuración → Canales para empezar a chatear."}
+      </p>
     </div>
   );
 }
