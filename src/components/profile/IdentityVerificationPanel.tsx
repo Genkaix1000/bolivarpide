@@ -123,12 +123,14 @@ function IdentityVerificationModal({
 
   useEffect(() => {
     if (!open) {
-      stopCamera();
-      setSuccess(false);
-      setCameraError(null);
+      queueMicrotask(() => {
+        stopCamera();
+        setSuccess(false);
+        setCameraError(null);
+      });
       return;
     }
-    void startCamera();
+    queueMicrotask(() => void startCamera());
     return () => stopCamera();
     // ponytail: only re-run when modal opens/closes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,7 +262,7 @@ export function IdentityVerificationPanel({
 
   useEffect(() => {
     if (!autoOpenModal || profile.identityVerified) return;
-    setModalOpen(true);
+    queueMicrotask(() => setModalOpen(true));
     onAutoOpenConsumed?.();
   }, [autoOpenModal, profile.identityVerified, onAutoOpenConsumed]);
 

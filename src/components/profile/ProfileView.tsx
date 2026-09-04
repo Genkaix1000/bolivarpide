@@ -15,6 +15,7 @@ import { DriverApplicationModal } from "./DriverApplicationModal";
 import { ProfileSection } from "./ProfileSection";
 import { IdentityVerificationPanel, profileInputClass } from "./IdentityVerificationPanel";
 import { createClient } from "@/lib/supabase/client";
+import { usePwaPush } from "@/hooks/usePwaPush";
 
 const FAQS = [
   {
@@ -50,6 +51,8 @@ export function ProfileView({
     useUserProfile();
   const searchParams = useSearchParams();
   const verifyDniHandled = useRef(false);
+  const { supported: pushSupported, state: pushState, active: pushActive, enable: enablePush, disable: disablePush } =
+    usePwaPush();
 
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [autoOpenVerifyModal, setAutoOpenVerifyModal] = useState(false);
@@ -419,6 +422,40 @@ export function ProfileView({
                 </button>
               </div>
             ))}
+            {pushSupported && (
+              <div className="p-3 rounded-2xl bg-white dark:bg-[#231f1c] border border-[#e8e0d6] dark:border-[#3d3732] flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MaterialSymbol icon={pushActive ? "notifications_active" : "notifications"} size={18} className="text-[#9a0002] shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold text-gray-900 dark:text-gray-100">
+                      Notificaciones push
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      {pushState === "denied"
+                        ? "Denegado en el navegador. Permitilo desde sus ajustes."
+                        : pushActive
+                          ? "Avisos del sistema aunque la app esté cerrada."
+                          : "Permití avisos fuera de la app."}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void (pushActive ? disablePush() : enablePush())}
+                  disabled={pushState === "denied"}
+                  aria-label={`Alternar Notificaciones push`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    pushActive ? "bg-[#9a0002]" : "bg-gray-300 dark:bg-stone-700"
+                  } ${pushState === "denied" ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition ${
+                      pushActive ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </ProfileSection>
 
