@@ -83,13 +83,15 @@ function HomeContent() {
     // Cargar caché del cliente inmediatamente al montar sin romper la hidratación de Next.js
     const cached = getHomeCache();
     if (cached && !cancelled) {
-      setRandomizedChains(cached.chains);
-      setRandomizedRecommended(cached.recommended);
-      setTrendingItems(cached.trendingItems);
-      if (cached.promoBanners && cached.promoBanners.length > 0) {
-        setPromoBanners(cached.promoBanners);
-      }
-      setIsDataLoading(false);
+      queueMicrotask(() => {
+        setRandomizedChains(cached.chains);
+        setRandomizedRecommended(cached.recommended);
+        setTrendingItems(cached.trendingItems);
+        if (cached.promoBanners && cached.promoBanners.length > 0) {
+          setPromoBanners(cached.promoBanners);
+        }
+        setIsDataLoading(false);
+      });
     }
 
     (async () => {
@@ -251,12 +253,14 @@ function HomeContent() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "home") setCurrentTab("home");
-    if (tab === "profile" && isAuthenticated) setCurrentTab("profile");
+    if (tab === "home") queueMicrotask(() => setCurrentTab("home"));
+    if (tab === "profile" && isAuthenticated) queueMicrotask(() => setCurrentTab("profile"));
   }, [searchParams, isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated && currentTab === "profile") setCurrentTab("home");
+    if (!isAuthenticated && currentTab === "profile") {
+      queueMicrotask(() => setCurrentTab("home"));
+    }
   }, [isAuthenticated, currentTab]);
 
   useEffect(() => {
@@ -271,8 +275,10 @@ function HomeContent() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setAddresses([]);
-      setSelectedAddressId("");
+      queueMicrotask(() => {
+        setAddresses([]);
+        setSelectedAddressId("");
+      });
       return;
     }
     let cancelled = false;

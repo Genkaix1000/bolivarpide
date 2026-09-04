@@ -22,7 +22,7 @@ export default function PagoResultadoPage() {
   }, [orderId, status]);
 
   useEffect(() => {
-    void poll();
+    queueMicrotask(() => void poll());
     const id = setInterval(() => void poll(), 3000);
     return () => clearInterval(id);
   }, [poll]);

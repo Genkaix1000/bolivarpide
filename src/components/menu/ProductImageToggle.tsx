@@ -52,6 +52,15 @@ export function ProductImageToggle({
   const icon = iconUrl?.trim() || "";
   const photo = photoUrl?.trim() || "";
   const displayUrl = icon || photo;
+  const modes = getProductImageModes(iconUrl, photoUrl);
+  const urls = getProductImageUrls(iconUrl, photoUrl);
+  const pickInitial = () => {
+    if (defaultMode === "icon" && modes.includes("icon")) return modes.indexOf("icon");
+    if (defaultMode === "photo" && modes.includes("photo")) return modes.indexOf("photo");
+    return 0;
+  };
+  const [index, setIndex] = useState(pickInitial);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (variant === "preview") {
     if (!displayUrl) {
@@ -70,15 +79,6 @@ export function ProductImageToggle({
     );
   }
 
-  const modes = getProductImageModes(iconUrl, photoUrl);
-  const urls = getProductImageUrls(iconUrl, photoUrl);
-  const pickInitial = () => {
-    if (defaultMode === "icon" && modes.includes("icon")) return modes.indexOf("icon");
-    if (defaultMode === "photo" && modes.includes("photo")) return modes.indexOf("photo");
-    return 0;
-  };
-  const [index, setIndex] = useState(pickInitial);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   const safeIndex = Math.min(index, Math.max(modes.length - 1, 0));
   const mode = modes[safeIndex];
   const src =

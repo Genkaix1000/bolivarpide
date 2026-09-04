@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode, Ref } from "react";
+import { useEffect, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { UserAvatarView } from "@/components/UserAvatarView";
 import type { OrderItemDetail, OrderLifecycleStatus } from "@/lib/orders/lifecycle";
@@ -279,9 +280,18 @@ export function ComandaTicketVisual({
   variant?: "full" | "body" | "kitchen";
   actions?: ReactNode;
 }) {
+  const [nowMs, setNowMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => queueMicrotask(() => setNowMs(Date.now())), 30000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const elapsed =
     data.elapsedMinutes ??
-    Math.max(0, Math.floor((Date.now() - new Date(data.createdAt).getTime()) / 60000));
+    (nowMs
+      ? Math.max(0, Math.floor((nowMs - new Date(data.createdAt).getTime()) / 60000))
+      : 0);
 
   const pending = highlightPending && data.status === "pending";
 

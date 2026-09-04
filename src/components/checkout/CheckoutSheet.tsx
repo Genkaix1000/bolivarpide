@@ -107,7 +107,7 @@ export function CheckoutSheet({
   }, []);
 
   useEffect(() => {
-    void loadAddresses();
+    queueMicrotask(() => void loadAddresses());
   }, [loadAddresses]);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export function CheckoutSheet({
 
   useEffect(() => {
     if (!resumePending || !pendingOrder || pendingOrder.businessSlug !== chain.id) return;
-    applyPending(pendingOrder);
+    queueMicrotask(() => applyPending(pendingOrder));
   }, [resumePending, pendingOrder, chain.id, applyPending]);
 
   const baseCents = subtotalCents - discountCents;
@@ -202,7 +202,9 @@ export function CheckoutSheet({
 
   useEffect(() => {
     if (!payOptions.length) return;
-    if (!payOptions.some((o) => o.id === method)) setMethod(payOptions[0].id);
+    if (!payOptions.some((o) => o.id === method)) {
+      queueMicrotask(() => setMethod(payOptions[0].id));
+    }
   }, [payOptions, method]);
 
   const canSubmit =

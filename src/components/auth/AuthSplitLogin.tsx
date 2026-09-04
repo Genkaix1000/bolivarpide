@@ -38,6 +38,34 @@ type Mode = "login" | "signup";
 
 const REMEMBER_KEY = "bp_remember_session";
 
+function EyeToggle({
+  shown,
+  onToggle,
+  hideLabel,
+  showLabel,
+}: {
+  shown: boolean;
+  onToggle: () => void;
+  hideLabel: string;
+  showLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? hideLabel : showLabel}
+      onMouseDown={(e) => e.preventDefault()}
+      className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
+    >
+      <MaterialSymbol
+        icon={shown ? "visibility_off" : "visibility"}
+        size={18}
+        className="leading-none"
+      />
+    </button>
+  );
+}
+
 export function AuthSplitLogin({
   next,
   error: urlError,
@@ -173,34 +201,6 @@ export function AuthSplitLogin({
         ? "border-red-400 focus:border-red-500"
         : "border-stone-200 focus:border-stone-400"
     }`;
-  }
-
-  function EyeToggle({
-    shown,
-    onToggle,
-    hideLabel,
-    showLabel,
-  }: {
-    shown: boolean;
-    onToggle: () => void;
-    hideLabel: string;
-    showLabel: string;
-  }) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={shown ? hideLabel : showLabel}
-        onMouseDown={(e) => e.preventDefault()}
-        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
-      >
-        <MaterialSymbol
-          icon={shown ? "visibility_off" : "visibility"}
-          size={18}
-          className="leading-none"
-        />
-      </button>
-    );
   }
 
   const formPane = (

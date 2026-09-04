@@ -102,7 +102,7 @@ export function OrderTrackingMap({
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; start: { x: number; y: number } } | null>(null);
   const [nowMs, setNowMs] = useState(0);
   const [route, setRoute] = useState<LatLng[] | null>(null);
-  const deliveringSince = useRef<number | null>(null);
+  const [deliveringAt, setDeliveringAt] = useState<number | null>(null);
   const nearNotified = useRef(false);
 
   const sheetInset = Math.round(size.h * 0.12);
@@ -141,23 +141,27 @@ export function OrderTrackingMap({
   }, []);
 
   useEffect(() => {
-    const next = fitMapView(fitPoints, size.w, size.h, 40, sheetInset);
-    setZoom(next.zoom);
-    setCenterPoint(latLngToPoint(next.center.lat, next.center.lng, next.zoom));
+    queueMicrotask(() => {
+      const next = fitMapView(fitPoints, size.w, size.h, 40, sheetInset);
+      setZoom(next.zoom);
+      setCenterPoint(latLngToPoint(next.center.lat, next.center.lng, next.zoom));
+    });
   }, [fitPoints, size.w, size.h, sheetInset]);
 
   useEffect(() => {
-    if (status === "delivering" && deliveringSince.current === null) {
-      deliveringSince.current = Date.now();
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
-        void Notification.requestPermission();
+    queueMicrotask(() => {
+      if (status === "delivering" && deliveringAt === null) {
+        setDeliveringAt(Date.now());
+        if (typeof Notification !== "undefined" && Notification.permission === "default") {
+          void Notification.requestPermission();
+        }
       }
-    }
-    if (status !== "delivering") {
-      deliveringSince.current = null;
-      nearNotified.current = false;
-    }
-  }, [status]);
+      if (status !== "delivering") {
+        nearNotified.current = false;
+        setDeliveringAt(null);
+      }
+    });
+  }, [status, deliveringAt]);
 
   useEffect(() => {
     if (status !== "delivering" || map.fulfillmentType !== "delivery") return;
@@ -173,8 +177,8 @@ export function OrderTrackingMap({
   const routePoints = route ?? (map.destination ? [map.business, map.destination] : null);
 
   const routeProgress =
-    status === "delivering" && deliveringSince.current != null
-      ? demoRouteProgress(status, deliveringSince.current, nowMs || Date.now())
+    status === "delivering" && deliveringAt != null
+      ? demoRouteProgress(status, deliveringAt, nowMs || deliveringAt)
       : 0;
 
   const courier =

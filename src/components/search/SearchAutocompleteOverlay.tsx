@@ -67,13 +67,15 @@ export function SearchAutocompleteOverlay({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        setRecentSearches(JSON.parse(stored));
-      } else {
-        setRecentSearches(DEFAULT_RECENT);
-      }
+      queueMicrotask(() => {
+        if (stored) {
+          setRecentSearches(JSON.parse(stored));
+        } else {
+          setRecentSearches(DEFAULT_RECENT);
+        }
+      });
     } catch {
-      setRecentSearches(DEFAULT_RECENT);
+      queueMicrotask(() => setRecentSearches(DEFAULT_RECENT));
     }
   }, []);
 
@@ -111,12 +113,14 @@ export function SearchAutocompleteOverlay({
 
     const trimmed = query.trim();
     if (trimmed.length < 1) {
-      setResults(null);
-      setIsLoading(false);
+      queueMicrotask(() => {
+        setResults(null);
+        setIsLoading(false);
+      });
       return;
     }
 
-    setIsLoading(true);
+    queueMicrotask(() => setIsLoading(true));
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const res = await searchCatalogAction(trimmed);
@@ -138,8 +142,10 @@ export function SearchAutocompleteOverlay({
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
-      setQuery("");
-      setResults(null);
+      queueMicrotask(() => {
+        setQuery("");
+        setResults(null);
+      });
     }
   }, [isOpen]);
 

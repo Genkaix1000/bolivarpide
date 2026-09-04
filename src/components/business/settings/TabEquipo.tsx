@@ -160,11 +160,13 @@ function InviteMemberCard({ businessId }: { businessId: string }) {
     if (selected) return;
     const q = query.trim();
     if (q.length < 2) {
-      setHits([]);
-      setLoading(false);
+      queueMicrotask(() => {
+        setHits([]);
+        setLoading(false);
+      });
       return;
     }
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void searchUsersForInviteAction(businessId, q)

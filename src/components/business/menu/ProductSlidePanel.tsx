@@ -164,7 +164,8 @@ export function ProductSlidePanel({
   const isEdit = Boolean(editing?.id);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    queueMicrotask(() => {
       if (editing) {
         setName(editing.name);
         setCategoryId(editing.categoryId || categories[0]?.id || "");
@@ -206,7 +207,7 @@ export function ProductSlidePanel({
       setIngredientInput("");
       setExtraLabel("");
       setExtraPrice("");
-    }
+    });
   }, [open, editing, categories]);
 
   // Price handler with Argentine Pesos formatting
