@@ -202,12 +202,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPendingOrder, refreshActiveOrder]);
 
   useEffect(() => {
-    setDismissedIds(getDismissedOrderIds());
-    setSeenCancelledIds(getSeenCancelledOrderIds());
+    queueMicrotask(() => {
+      setDismissedIds(getDismissedOrderIds());
+      setSeenCancelledIds(getSeenCancelledOrderIds());
+    });
   }, []);
 
   useEffect(() => {
-    void refreshOrders();
+    queueMicrotask(() => void refreshOrders());
     const supabase = createClient();
     const {
       data: { subscription },

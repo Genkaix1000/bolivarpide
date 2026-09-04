@@ -288,7 +288,7 @@ export function CartaView({
   const pendingDeletes = useRef(new Map<string, number>());
 
   useEffect(() => {
-    setProducts(initialProducts);
+    queueMicrotask(() => setProducts(initialProducts));
   }, [initialProducts]);
 
   const atProductLimit = isFreePlan(plan) && products.length >= FREE_PLAN_MAX_PRODUCTS;

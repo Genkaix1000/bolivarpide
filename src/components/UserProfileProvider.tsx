@@ -47,7 +47,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const skipNextSave = useRef(true);
 
   useEffect(() => {
-    setProfileReady(true);
+    queueMicrotask(() => setProfileReady(true));
   }, []);
 
   const persistProfile = useCallback(async (next: UserProfile) => {

@@ -76,7 +76,7 @@ export function useNotifications(opts?: { businessId?: string; enabled?: boolean
   );
 
   useEffect(() => {
-    void refresh();
+    queueMicrotask(() => void refresh());
   }, [refresh]);
 
   useEffect(() => {

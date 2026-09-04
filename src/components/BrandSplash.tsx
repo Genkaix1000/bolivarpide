@@ -101,7 +101,7 @@ export function useBrandSplash(storageKey: string, durationMs = 1400) {
       return;
     }
 
-    setShow(true);
+    queueMicrotask(() => setShow(true));
 
     if (splashTimers.has(storageKey)) return;
 

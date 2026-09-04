@@ -14,7 +14,7 @@ export function ThemeSegmentedControl({ className = "" }: ThemeSegmentedControlP
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
+    queueMicrotask(() => setIsDark(document.documentElement.classList.contains("dark")));
   }, []);
 
   const setMode = (darkMode: boolean) => {

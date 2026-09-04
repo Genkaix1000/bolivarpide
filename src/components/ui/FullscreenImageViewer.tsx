@@ -26,8 +26,10 @@ export function FullscreenImageViewer({
 
   useEffect(() => {
     if (open) {
-      setIndex(initialIndex);
-      setDirection(0);
+      queueMicrotask(() => {
+        setIndex(initialIndex);
+        setDirection(0);
+      });
     }
   }, [open, initialIndex]);
 

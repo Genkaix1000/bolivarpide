@@ -61,7 +61,7 @@ export function MenuImageCropDialog({ file, title, optimizeOpts, onCancel, onDon
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
-    setSrc(url);
+    queueMicrotask(() => setSrc(url));
     return () => URL.revokeObjectURL(url);
   }, [file]);
 

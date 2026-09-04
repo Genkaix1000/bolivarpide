@@ -62,23 +62,25 @@ export function AddressFormModal({
 
 useEffect(() => {
     if (!open) return;
-    setError(null);
-    setDeleteConfirm(false);
-    if (editing) {
-      setForm({
-        street: editing.street,
-        streetNumber: editing.streetNumber ?? "",
-        noNumber: editing.noNumber,
-        deliveryNotes: editing.deliveryNotes,
-        contactFirstName: editing.contactFirstName,
-        contactLastName: editing.contactLastName,
-        contactPhoneLocal: storedPhoneToLocal(editing.contactPhone),
-        lat: editing.lat,
-        lng: editing.lng,
-      });
-    } else {
-      setForm(emptyForm(presetContact));
-    }
+    queueMicrotask(() => {
+      setError(null);
+      setDeleteConfirm(false);
+      if (editing) {
+        setForm({
+          street: editing.street,
+          streetNumber: editing.streetNumber ?? "",
+          noNumber: editing.noNumber,
+          deliveryNotes: editing.deliveryNotes,
+          contactFirstName: editing.contactFirstName,
+          contactLastName: editing.contactLastName,
+          contactPhoneLocal: storedPhoneToLocal(editing.contactPhone),
+          lat: editing.lat,
+          lng: editing.lng,
+        });
+      } else {
+        setForm(emptyForm(presetContact));
+      }
+    });
     // Solo al abrir o cambiar la dirección editada - presetContact estable en el padre
   }, [open, editing, presetContact]);
 

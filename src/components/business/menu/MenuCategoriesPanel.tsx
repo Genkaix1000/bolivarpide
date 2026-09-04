@@ -49,9 +49,11 @@ export function MenuCategoriesPanel({
   useEffect(() => {
     if (open) {
       const sorted = [...categories].sort((a, b) => a.sort_order - b.sort_order);
-      setItems(sorted);
-      setError(null);
-      setDeletingId(null);
+      queueMicrotask(() => {
+        setItems(sorted);
+        setError(null);
+        setDeletingId(null);
+      });
     }
   }, [open, categories]);
 

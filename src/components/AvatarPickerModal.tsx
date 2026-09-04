@@ -37,18 +37,20 @@ export function AvatarPickerModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setSelectedAvatar(currentAvatar);
-    if (currentAvatar.type === "initials") {
-      setActiveTab("clasicos");
-      setClassicSubTab("initials");
-      setCustomInitials(currentAvatar.value);
-    } else if (currentAvatar.type === "emoji") {
-      setActiveTab("clasicos");
-      setClassicSubTab("emojis");
-    } else {
-      setActiveTab("clasicos");
-      setClassicSubTab("comida");
-    }
+    queueMicrotask(() => {
+      setSelectedAvatar(currentAvatar);
+      if (currentAvatar.type === "initials") {
+        setActiveTab("clasicos");
+        setClassicSubTab("initials");
+        setCustomInitials(currentAvatar.value);
+      } else if (currentAvatar.type === "emoji") {
+        setActiveTab("clasicos");
+        setClassicSubTab("emojis");
+      } else {
+        setActiveTab("clasicos");
+        setClassicSubTab("comida");
+      }
+    });
   }, [isOpen, currentAvatar]);
 
   useEffect(() => {

@@ -79,7 +79,7 @@ function FlashToastInner() {
       const qs = params.toString();
       window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
     }
-    setMsg(next);
+    queueMicrotask(() => setMsg(next));
   }, [pathname, searchParams]);
 
   useEffect(() => {

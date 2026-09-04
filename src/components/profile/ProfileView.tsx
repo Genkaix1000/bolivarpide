@@ -67,14 +67,16 @@ export function ProfileView({
 
   useEffect(() => {
     const parts = (profile.name || "").trim().split(/\s+/);
-    setFirstName(profile.firstName || parts[0] || "");
-    setLastName(profile.lastName || parts.slice(1).join(" ") || "");
-    setPhone(profile.phone || "");
+    queueMicrotask(() => {
+      setFirstName(profile.firstName || parts[0] || "");
+      setLastName(profile.lastName || parts.slice(1).join(" ") || "");
+      setPhone(profile.phone || "");
+    });
   }, [profile]);
 
   useEffect(() => {
     const section = searchParams.get("section");
-    if (section) setOpenSection(section);
+    if (section) queueMicrotask(() => setOpenSection(section));
   }, [searchParams]);
 
   useEffect(() => {
@@ -83,8 +85,10 @@ export function ProfileView({
     if (!isAuthenticated || profile.id === "guest") return;
 
     verifyDniHandled.current = true;
-    setOpenSection("personal");
-    if (!profile.identityVerified) setAutoOpenVerifyModal(true);
+    queueMicrotask(() => {
+      setOpenSection("personal");
+      if (!profile.identityVerified) setAutoOpenVerifyModal(true);
+    });
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("verify");
@@ -94,7 +98,7 @@ export function ProfileView({
 
   useEffect(() => {
     if (!isAuthenticated || profile.id === "guest") {
-      setOrdersCount(0);
+      queueMicrotask(() => setOrdersCount(0));
       return;
     }
     let cancelled = false;

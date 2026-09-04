@@ -28,7 +28,7 @@ export function AddressMapPicker({ lat, lng, onChangeCoords }: Props) {
   // Sync center when external lat/lng changes
   useEffect(() => {
     if (lat != null && lng != null && !isDragging) {
-      setCenterPoint(latLngToPoint(lat, lng, zoom));
+      queueMicrotask(() => setCenterPoint(latLngToPoint(lat, lng, zoom)));
     }
   }, [lat, lng, zoom, isDragging]);
 

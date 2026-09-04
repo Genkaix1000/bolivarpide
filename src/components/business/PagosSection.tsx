@@ -79,9 +79,11 @@ export function PagosSection({ businessId }: { businessId: string }) {
   }, [businessId, load]);
 
   useEffect(() => {
-    load()
-      .catch((e) => setError(e instanceof Error ? e.message : "Error"))
-      .finally(() => setLoading(false));
+    queueMicrotask(() => {
+      load()
+        .catch((e) => setError(e instanceof Error ? e.message : "Error"))
+        .finally(() => setLoading(false));
+    });
   }, [load]);
 
   useEffect(() => {
@@ -90,15 +92,15 @@ export function PagosSection({ businessId }: { businessId: string }) {
     const provision = searchParams.get("provision");
 
     if (linked === "true") {
-      setToast({ type: "ok", text: "Mercado Pago vinculado — configurando tu local…" });
+      queueMicrotask(() => setToast({ type: "ok", text: "Mercado Pago vinculado — configurando tu local…" }));
       if (provision === "1") {
         provisionAttempted.current = true;
-        void runAutoProvision();
+        queueMicrotask(() => void runAutoProvision());
       } else {
-        void load();
+        queueMicrotask(() => void load());
       }
     } else if (linked === "false" && message) {
-      setToast({ type: "err", text: decodeURIComponent(message) });
+      queueMicrotask(() => setToast({ type: "err", text: decodeURIComponent(message) }));
     }
 
     if (linked) {

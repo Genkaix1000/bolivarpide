@@ -78,15 +78,17 @@ export function MpHealthPanel({
   }, [businessId]);
 
   useEffect(() => {
-    if (linked === false) {
-      setLoading(false);
-      setHealth(null);
-      return;
-    }
-    setLoading(true);
-    load()
-      .catch(() => setError("No pudimos revisar los pagos."))
-      .finally(() => setLoading(false));
+    queueMicrotask(() => {
+      if (linked === false) {
+        setLoading(false);
+        setHealth(null);
+        return;
+      }
+      setLoading(true);
+      load()
+        .catch(() => setError("No pudimos revisar los pagos."))
+        .finally(() => setLoading(false));
+    });
   }, [load, linked]);
 
   const items = useMemo(() => (health ? collectChecks(health) : []), [health]);
