@@ -43,12 +43,14 @@ Meta Cloud API  ──webhook──►  Next /api/webhooks/meta  (GET verify + P
 
 ## Migración DB
 
-Aplicar `supabase/migrations/20260904_whatsapp_messages.sql` (SQL Editor o
-`psql -f`):
+Aplicar en orden (SQL Editor o `psql -f`):
 
-- Tabla `whatsapp_messages` (persistencia de mensajes inbound/outbound).
-- RLS: SELECT para miembros/admin (`is_business_member`); escrituras solo `service_role`.
-- Bucket `whatsapp-media` (public read, write service-only) para guardar la media entrante.
+1. `supabase/migrations/20260904_whatsapp_messages.sql`
+   - Tabla `whatsapp_messages` (persistencia de mensajes inbound/outbound).
+   - RLS: SELECT para miembros/admin (`is_business_member`); escrituras solo `service_role`.
+   - Bucket `whatsapp-media` (public read, write service-only) para guardar la media entrante.
+2. `supabase/migrations/20260904_whatsapp_status_templates.sql`
+   - Columnas en `business_whatsapp`: `notify_status`, `template_order_status_name`, `template_order_status_language`.
 
 ## Mover el webhook desde n8n a Next
 
@@ -81,9 +83,37 @@ delivered | rejected`, `src/lib/orders/lifecycle.ts`). Se eliminaron los
 estados mock `ready`/`cancelled`. El avance de estado desde el chat reusa
 `advanceOrderStatus` (mismas reglas de PIN/permisos que la comandera).
 
+## Notificaciones de estado al cliente (templates)
+
+Los pedidos originados por WhatsApp (`source='whatsapp'`) quedan vinculados a
+un chat (`wa_chat_id`) y al avanzar la comanda (`preparing / delivering /
+delivered / rejected`) se le notifica al cliente:
+
+- **Dentro de la ventana de 24 h** → texto libre (`sendWhatsAppText`, copy de
+  `trackingCopy`), sin template.
+- **Fuera de la ventana** → **template aprobada** de Meta (`sendOrderStatusTemplate`),
+  solo si el negocio activó `notify_status` y cargó `template_order_status_name`.
+  La template se mapea con los parámetros `[pedido, título, subtítulo]` (p. ej.
+  `shipping_update` de las apps de ejemplo).
+
+Implementación:
+
+- `src/lib/whatsapp/templates.ts` — `notifyOrderStatusByWhatsApp(orderId, status)`
+  y `sendOrderStatusTemplate(businessId, chatId, row)`.
+- Hook en `src/lib/orders/actions.ts` → `advanceOrderStatus` (ramas forward +
+  rejected) en paralelo a la notificación in-app.
+- Config por negocio en `business_whatsapp` (Settings → Canales →
+  Application card): toggle `notify_status` + nombre/idioma de template.
+
+> **Producción**: cada negocio tiene su WABA, así que la template debe estar
+> aprobada en SU WABA. En la app de prueba, `shipping_update` viene precargada.
+> Si no hay template aprobada, el envío fuera de ventana se omite en silencio
+> (solo se notifica si estabas dentro de las 24 h).
+
 ## + cheats para verificar
 
 - Enviar un mensaje al número de prueba → debe aparecer en el chat del panel en tiempo real.
 - Desde el panel, responder → el cliente recibe el texto y en la DB queda `direction='outbound'`.
 - Marcar comanda desde el chat → `create_order` valida precios contra `products` (401/500 si el precio no coincide), y el pedido suena en `/negocio/{id}/pedidos`.
+- Avanzar una comanda WhatsApp a `preparing` dentro de las 24 h → el cliente recibe "Preparando tu pedido"; fuera de la ventana, con template configurada → llega `shipping_update`.
 - Fuera de las 24 h: el input se bloquea con el aviso de ventana.

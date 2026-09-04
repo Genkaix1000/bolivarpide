@@ -45,6 +45,13 @@ export async function connectWhatsAppNumber(formData: FormData) {
   ).trim();
   const wabaId = String(formData.get("wabaId") || "").trim();
   const accessToken = String(formData.get("accessToken") || "").trim();
+  const notifyStatus = formData.get("notifyStatus") === "true";
+  const templateOrderStatusName = String(
+    formData.get("templateOrderStatusName") || "",
+  ).trim() || null;
+  const templateOrderStatusLanguage = (
+    String(formData.get("templateOrderStatusLanguage") || "").trim() || "es_AR"
+  );
 
   if (!businessId || !phoneNumberId) throw new Error("Faltan datos del número");
   if (accessToken.length < 10) throw new Error("Access token inválido");
@@ -91,6 +98,9 @@ export async function connectWhatsAppNumber(formData: FormData) {
       vault_token_ref: vaultTokenRef,
       status: "unverified",
       is_active: false,
+      notify_status: notifyStatus,
+      template_order_status_name: templateOrderStatusName,
+      template_order_status_language: templateOrderStatusLanguage,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "business_id" },

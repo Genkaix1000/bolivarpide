@@ -21,6 +21,15 @@ export function WhatsAppConnectionCard({
   );
   const [wabaId, setWabaId] = useState(connection?.waba_id ?? "");
   const [accessToken, setAccessToken] = useState("");
+  const [notifyStatus, setNotifyStatus] = useState(
+    connection?.notify_status ?? false,
+  );
+  const [templateOrderStatusName, setTemplateOrderStatusName] = useState(
+    connection?.template_order_status_name ?? "",
+  );
+  const [templateOrderStatusLanguage, setTemplateOrderStatusLanguage] = useState(
+    connection?.template_order_status_language ?? "es_AR",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,6 +45,9 @@ export function WhatsAppConnectionCard({
     form.set("displayPhoneNumber", displayPhoneNumber);
     form.set("wabaId", wabaId);
     form.set("accessToken", accessToken);
+    form.set("notifyStatus", String(notifyStatus));
+    form.set("templateOrderStatusName", templateOrderStatusName);
+    form.set("templateOrderStatusLanguage", templateOrderStatusLanguage);
     try {
       await connectWhatsAppNumber(form);
     } catch (err) {
@@ -148,6 +160,58 @@ export function WhatsAppConnectionCard({
             <p className="text-[10px] text-gray-400 mt-1">
               Se guarda cifrado en Supabase Vault. Nunca se muestra en el navegador.
             </p>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-[#3d3732] p-3 space-y-2.5">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notifyStatus}
+                onChange={(e) => setNotifyStatus(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="block">
+                <span className="block text-[12px] font-bold text-gray-700 dark:text-gray-200">
+                  Notificar estado del pedido por WhatsApp
+                </span>
+                <span className="block text-[10px] text-gray-400 mt-0.5">
+                  El cliente recibe el avance (cocina, en camino, entregado, rechazado). Dentro
+                  de las 24 h va texto libre; fuera de la ventana usa una template aprobada de
+                  Meta.
+                </span>
+              </span>
+            </label>
+
+            {notifyStatus && (
+              <>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+                    Template de estado de pedido
+                  </label>
+                  <input
+                    value={templateOrderStatusName}
+                    onChange={(e) => setTemplateOrderStatusName(e.target.value)}
+                    placeholder="ej. shipping_update"
+                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Nombre de la template aprobada en tu WABA (los parámetros
+                    se envían como: pedido, título, subtítulo).
+                  </p>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+                    Idioma
+                  </label>
+                  <input
+                    value={templateOrderStatusLanguage}
+                    onChange={(e) => setTemplateOrderStatusLanguage(e.target.value)}
+                    placeholder="es_AR"
+                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {error && (

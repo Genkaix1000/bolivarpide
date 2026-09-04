@@ -82,6 +82,9 @@ export async function advanceOrderStatus(input: {
     const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
     void emitCustomerStatusNotification(input.orderId, "rejected");
 
+    const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
+    void notifyOrderStatusByWhatsApp(input.orderId, "rejected");
+
     revalidatePath(`/negocio/${input.businessId}/pedidos`);
     return { ok: true };
   }
@@ -139,6 +142,9 @@ export async function advanceOrderStatus(input: {
 
   const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
   void emitCustomerStatusNotification(input.orderId, target);
+
+  const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
+  void notifyOrderStatusByWhatsApp(input.orderId, target);
 
   revalidatePath(`/negocio/${input.businessId}/pedidos`);
   return { ok: true };

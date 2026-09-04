@@ -9,6 +9,9 @@ export type WhatsAppConnectionRow = {
   status: string;
   vault_token_ref: string | null;
   is_active: boolean;
+  notify_status: boolean | null;
+  template_order_status_name: string | null;
+  template_order_status_language: string | null;
 };
 
 /**
@@ -22,7 +25,7 @@ export async function getActiveWhatsAppConnection(
   const { data, error } = await service
     .from("business_whatsapp")
     .select(
-      "id, business_id, phone_number_id, display_phone_number, waba_id, status, vault_token_ref, is_active",
+      "id, business_id, phone_number_id, display_phone_number, waba_id, status, vault_token_ref, is_active, notify_status, template_order_status_name, template_order_status_language",
     )
     .eq("business_id", businessId)
     .maybeSingle();

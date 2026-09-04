@@ -9,6 +9,9 @@ export type WhatsAppConnection = {
   waba_id: string | null;
   status: "unverified" | "connected" | "error";
   is_active: boolean;
+  notify_status: boolean;
+  template_order_status_name: string | null;
+  template_order_status_language: string;
   created_at: string;
   updated_at: string;
 };
@@ -25,7 +28,7 @@ export async function getWhatsAppConnection(
   const { data } = await supabase
     .from("business_whatsapp")
     .select(
-      "id, business_id, phone_number_id, display_phone_number, waba_id, status, is_active, created_at, updated_at",
+      "id, business_id, phone_number_id, display_phone_number, waba_id, status, is_active, notify_status, template_order_status_name, template_order_status_language, created_at, updated_at",
     )
     .eq("business_id", businessId)
     .maybeSingle();
@@ -42,7 +45,7 @@ export async function listWhatsAppConnectionsAdmin(): Promise<
   const { data } = await service
     .from("business_whatsapp")
     .select(
-      "id, business_id, phone_number_id, display_phone_number, waba_id, status, is_active, created_at, updated_at, businesses(name, slug)",
+      "id, business_id, phone_number_id, display_phone_number, waba_id, status, is_active, notify_status, template_order_status_name, template_order_status_language, created_at, updated_at, businesses(name, slug)",
     )
     .order("created_at", { ascending: false });
   return (data ?? []) as unknown as WhatsAppConnectionAdmin[];
