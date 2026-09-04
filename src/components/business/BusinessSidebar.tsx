@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
+import { flashToast } from "@/components/FlashToast";
+import { usePwaInstall } from "@/lib/pwa/usePwaInstall";
 
 interface BusinessSidebarProps {
   businessId: string;
@@ -30,6 +32,22 @@ export function BusinessSidebar({
 }: BusinessSidebarProps) {
   const pathname = usePathname();
   const base = `/negocio/${businessId}`;
+  const { isCapable, requestInstall } = usePwaInstall();
+  const showInstallItem = isCapable;
+
+  const handleInstallFromMenu = useCallback(
+    async (isMobile: boolean) => {
+      if (isMobile) onMobileClose();
+      const result = await requestInstall();
+      if (result === "ios") {
+        flashToast("En Safari: tocá Compartir → “Agregar a pantalla de inicio”.");
+      } else if (result === "pending") {
+        flashToast("Usá la opción de instalar de tu navegador (recargá si no aparece).");
+      }
+    },
+    [onMobileClose, requestInstall],
+  );
+
   const GENERAL_NAV = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
     {
@@ -43,29 +61,34 @@ export function BusinessSidebar({
     { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
   ];
 
-  const renderNavItem = (item: { id: string; label: string; icon: string; href: string; badge?: number }, isMobile: boolean) => {
+  const renderNavItem = (
+    item: {
+      id: string;
+      label: string;
+      icon: string;
+      href?: string;
+      badge?: number;
+      onClick?: (isMobile: boolean) => void;
+    },
+    isMobile: boolean,
+  ) => {
     const isActive =
       item.id === "configuracion"
         ? pathname.startsWith(`${base}/configuracion`)
-        : pathname === item.href;
+        : item.href != null && pathname === item.href;
     const isIconOnly = collapsed && !isMobile;
-    return (
-      <Link
-        key={item.id}
-        href={item.href}
-        onClick={isMobile ? onMobileClose : undefined}
-        title={isIconOnly ? item.label : undefined}
-        className={cn(
-          "group relative flex items-center transition-all duration-200 cursor-pointer",
-          isIconOnly
-            ? "justify-center h-10 w-10 mx-auto rounded-xl my-0.5"
-            : "gap-3 h-10 rounded-xl px-3 my-0.5",
-          isIconOnly && isActive && "bg-[#9a0002]/10 dark:bg-[#9a0002]/20 text-[#9a0002]",
-          isIconOnly && !isActive && "text-gray-400 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-100",
-          !isIconOnly && isActive && "bg-[#9a0002]/10 text-[#9a0002] font-semibold",
-          !isIconOnly && !isActive && "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200"
-        )}
-      >
+    const cls = cn(
+      "group relative flex items-center transition-all duration-200 cursor-pointer",
+      isIconOnly
+        ? "justify-center h-10 w-10 mx-auto rounded-xl my-0.5"
+        : "gap-3 h-10 rounded-xl px-3 my-0.5",
+      isIconOnly && isActive && "bg-[#9a0002]/10 dark:bg-[#9a0002]/20 text-[#9a0002]",
+      isIconOnly && !isActive && "text-gray-400 hover:bg-[#ede4d9]/70 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-100",
+      !isIconOnly && isActive && "bg-[#9a0002]/10 text-[#9a0002] font-semibold",
+      !isIconOnly && !isActive && "text-gray-500 dark:text-gray-400 hover:bg-[#ede4d9]/60 dark:hover:bg-[#2a2623] hover:text-gray-800 dark:hover:text-gray-200"
+    );
+    const inner = (
+      <>
         <div className="relative flex items-center justify-center">
           <MaterialSymbol icon={item.icon} size={20} fill={isActive} className="flex-shrink-0" />
           {isIconOnly && item.badge && item.badge > 0 && (
@@ -94,7 +117,31 @@ export function BusinessSidebar({
             {item.label} {item.badge ? `(${item.badge})` : ""}
           </span>
         )}
-      </Link>
+      </>
+    );
+    if (item.href) {
+      return (
+        <Link
+          key={item.id}
+          href={item.href}
+          onClick={isMobile ? onMobileClose : undefined}
+          title={isIconOnly ? item.label : undefined}
+          className={cls}
+        >
+          {inner}
+        </Link>
+      );
+    }
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => item.onClick?.(isMobile)}
+        title={isIconOnly ? item.label : undefined}
+        className={cls}
+      >
+        {inner}
+      </button>
     );
   };
 
@@ -163,6 +210,16 @@ export function BusinessSidebar({
         >
           {sectionLabel("General", isIconOnly)}
           {GENERAL_NAV.map((item) => renderNavItem(item, isMobile))}
+          {showInstallItem &&
+            renderNavItem(
+              {
+                id: "instalar",
+                label: "Instalar app",
+                icon: "system_update_alt",
+                onClick: (mob) => void handleInstallFromMenu(mob),
+              },
+              isMobile,
+            )}
         </nav>
 
         <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>

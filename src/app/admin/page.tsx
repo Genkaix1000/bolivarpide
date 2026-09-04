@@ -8,6 +8,7 @@ import {
   setPlan,
   setPublished,
 } from "@/lib/business/actions";
+import { AdminInstallButton } from "@/components/pwa/AdminInstallButton";
 import {
   listWhatsAppConnectionsAdmin,
 } from "@/lib/business/whatsappQueries";
@@ -57,15 +58,18 @@ export default async function AdminPage() {
             <h1 className="text-2xl font-bold text-stone-900">Admin</h1>
             <p className="text-sm text-stone-600">{user?.email}</p>
           </div>
-          <form action={signOut}>
-            <input type="hidden" name="next" value="/admin/login" />
-            <button
-              type="submit"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm cursor-pointer"
-            >
-              Salir
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            <AdminInstallButton />
+            <form action={signOut}>
+              <input type="hidden" name="next" value="/admin/login" />
+              <button
+                type="submit"
+                className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm cursor-pointer"
+              >
+                Salir
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-4">

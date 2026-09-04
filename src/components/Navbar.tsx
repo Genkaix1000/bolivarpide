@@ -9,7 +9,6 @@ import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { useCart } from "@/components/CartProvider";
 import { UserAvatarView } from "@/components/UserAvatarView";
-import { CockpitUserProfileBar } from "@/components/profile/CockpitUserProfileBar";
 import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
 import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 import {
@@ -18,6 +17,8 @@ import {
 } from "@/components/notifications/NotificationPopover";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { UserAddressSummary } from "@/lib/addresses/types";
+import { flashToast } from "@/components/FlashToast";
+import { usePwaInstall } from "@/lib/pwa/usePwaInstall";
 
 interface NavbarProps {
   currentTab: string;
@@ -139,12 +140,23 @@ export default function Navbar({
 }: NavbarProps) {
   const { profile, isAuthenticated, isAuthLoading, hasActiveBusiness, logout } = useUserProfile();
   const { activeOrder } = useCart();
+  const { isCapable, requestInstall } = usePwaInstall();
+
   const handleTabChange = useCallback((id: string) => {
     if (id === "profile" && !isAuthenticated) return;
     onTabChange(id);
   }, [onTabChange, isAuthenticated]);
 
   const [showDashboard, setShowDashboard] = useState(false);
+  const handleInstallFromMenu = useCallback(async () => {
+    setShowDashboard(false);
+    const result = await requestInstall();
+    if (result === "ios") {
+      flashToast("En Safari: tocá Compartir → “Agregar a pantalla de inicio”.");
+    } else if (result === "pending") {
+      flashToast("Usá la opción de instalar de tu navegador (recargá si no aparece).");
+    }
+  }, [requestInstall]);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const drawerFooterRef = useRef<HTMLDivElement>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -175,13 +187,6 @@ export default function Navbar({
       return next;
     });
   }, [markRead, activeOrder]);
-
-  useEffect(() => {
-    if (showNotifications) {
-      setNotifsViewed(true);
-      void markRead({ all: true });
-    }
-  }, [showNotifications, markRead]);
 
   const isNewActiveOrder = useMemo(() => {
     if (!activeOrder) return false;
@@ -214,10 +219,6 @@ export default function Navbar({
     return () => document.removeEventListener("mousedown", onPointer);
   }, [showUserMenu]);
 
-  useEffect(() => {
-    if (!showDashboard) setLogoutConfirm(false);
-  }, [showDashboard]);
-
   async function handleLogout() {
     setShowUserMenu(false);
     setShowDashboard(false);
@@ -249,7 +250,10 @@ export default function Navbar({
           <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <button
               type="button"
-              onClick={() => setShowDashboard(true)}
+              onClick={() => {
+                setShowDashboard(true);
+                setLogoutConfirm(false);
+              }}
               aria-label="Abrir menú"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden"
             >
@@ -681,6 +685,16 @@ export default function Navbar({
                         </button>
                       );
                     })}
+                    {isCapable && (
+                      <button
+                        type="button"
+                        onClick={() => void handleInstallFromMenu()}
+                        className="my-0.5 flex h-10 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-[13px] font-medium tracking-tight transition-all duration-200 text-gray-500 hover:bg-[#ede4d9]/60 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-[#2a2623] dark:hover:text-gray-200"
+                      >
+                        <MaterialSymbol icon="system_update_alt" size={20} className="flex-shrink-0" />
+                        <span className="flex-1">Instalar app</span>
+                      </button>
+                    )}
                   </nav>
 
                   <div className="mt-3 border-t border-[#e8e0d6] px-1 pt-3 space-y-2 dark:border-[#3d3732]">
@@ -828,7 +842,9 @@ export function ThemeToggleNavBtn({ className = "", clipId = "skipper-clip" }: {
   const [isDark, setIsDark] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => { setIsDark(document.documentElement.classList.contains("dark")); }, []);
+  useEffect(() => {
+    queueMicrotask(() => setIsDark(document.documentElement.classList.contains("dark")));
+  }, []);
 
   const toggle = useCallback(() => {
     const next = !isDark;
