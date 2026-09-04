@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
-import { SmoothInput } from "@/components/SmoothInput";
 import { HighlightText } from "./HighlightText";
 import { searchCatalogAction } from "@/lib/search/actions";
 import type { CatalogSearchResult } from "@/lib/search/types";

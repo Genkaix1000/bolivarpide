@@ -63,7 +63,7 @@ export function FullscreenImageViewer({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, images.length]);
+  }, [open, onClose, images.length, onIndexChange]);
 
   const hasPrev = index > 0;
   const hasNext = index < images.length - 1;

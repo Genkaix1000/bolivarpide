@@ -1,4 +1,4 @@
-import type { AppNotification, NotificationCategory, NotificationCounts, NotificationTab } from "./types";
+import type { AppNotification, NotificationCounts, NotificationTab } from "./types";
 
 export function relativeTime(createdAt: string, now = Date.now()): string {
   const diff = now - new Date(createdAt).getTime();

@@ -48,7 +48,6 @@ function redirectTarget(redirectUrl: string | null | undefined, businessId: stri
 
 serve(async (req: Request) => {
   const fallbackSite = Deno.env.get("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000";
-  let successRedirect = fallbackSite;
   let failRedirect = fallbackSite;
 
   try {
@@ -78,7 +77,6 @@ serve(async (req: Request) => {
     if (!businessId) throw new Error("OAuth sin business_id.");
 
     const baseTarget = redirectTarget(redirect_url as string | null, businessId);
-    successRedirect = baseTarget;
     failRedirect = baseTarget;
 
     const mpRedirectUri = Deno.env.get("MP_REDIRECT_URI");

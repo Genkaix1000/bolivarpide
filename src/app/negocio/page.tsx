@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listMyMemberships } from "@/lib/business/queries";
 import { respondInvite } from "@/lib/business/actions";

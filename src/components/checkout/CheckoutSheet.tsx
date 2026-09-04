@@ -75,7 +75,6 @@ export function CheckoutSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("pay");
-  const [qrData, setQrData] = useState<string | null>(null);
   const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -134,7 +133,6 @@ export function CheckoutSheet({
       return;
     }
     if (po.qrData) {
-      setQrData(po.qrData);
       setQrSrc(qrDisplaySrc(po.qrData));
       setExpiresAt(po.expiresAt);
       setPhase("qr_display");
@@ -302,7 +300,6 @@ export function CheckoutSheet({
       }
 
       setOrderId(j.orderId);
-      setQrData(j.qrData);
       setQrSrc(qrDisplaySrc(j.qrData));
       setExpiresAt(j.expiresAt);
       setChargeCents(j.amountCents);

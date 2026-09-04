@@ -57,7 +57,7 @@ function sparkBuckets(period: DashboardPeriod): number {
   return period === "today" ? 8 : 7;
 }
 
-function bucketIndex(period: DashboardPeriod, createdAt: string, _start: Date): number {
+function bucketIndex(period: DashboardPeriod, createdAt: string): number {
   const d = new Date(createdAt);
   if (period === "today") {
     const h = d.getHours();
@@ -85,7 +85,7 @@ function buildSpark(
   const counts = Array.from({ length: n }, () => 0);
 
   for (const o of delivered) {
-    const i = bucketIndex(period, o.created_at, start);
+    const i = bucketIndex(period, o.created_at);
     if (field === "revenue") sums[i] += o.total_cents;
     else if (field === "orders") sums[i] += 1;
     else {
@@ -136,7 +136,7 @@ export function computeSalesChart(
   const revenueSums = Array.from({ length: n }, () => 0);
 
   for (const o of delivered) {
-    const i = bucketIndex(period, o.created_at, start);
+    const i = bucketIndex(period, o.created_at);
     const cents = o.total_cents;
     if (o.delivery_address) delivery[i] += cents;
     else takeaway[i] += cents;

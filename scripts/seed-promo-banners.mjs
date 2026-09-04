@@ -6,7 +6,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { MVP_PROMO_BANNERS, seedPromoBanners } from "./seed-mvp-businesses.mjs";
+import { seedPromoBanners } from "./seed-mvp-businesses.mjs";
 
 function loadEnv() {
   try {

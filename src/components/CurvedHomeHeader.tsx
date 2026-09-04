@@ -394,6 +394,7 @@ function MiniScrollBar({
         onSeek((x / trackW) * max);
       }}
       role="scrollbar"
+      aria-controls="semicircle-track"
       aria-valuenow={Math.round(scrollLeft)}
       aria-valuemin={0}
       aria-valuemax={Math.round(max)}
@@ -609,6 +610,7 @@ function DragArcCarousel({
       >
         <div
           ref={scrollRef}
+          id="semicircle-track"
           className="semicircle-track pointer-events-auto flex h-full overflow-x-auto no-scrollbar"
           style={{
             gap: ITEM_GAP,

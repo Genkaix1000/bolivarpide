@@ -12,7 +12,6 @@ import {
 import {
   BUSINESS_BANNER_OPTS,
   BUSINESS_LOGO_OPTS,
-  menuImageSizeHint,
   optimizeImageFile,
   type OptimizeImageOptions,
 } from "@/lib/images/optimizeImage";
@@ -70,7 +69,6 @@ function ImageRow({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const url = resolveBusinessAssetUrl(path);
-  const sizeHint = menuImageSizeHint(opts);
 
   const onFile = (file: File | undefined) => {
     if (!file) return;

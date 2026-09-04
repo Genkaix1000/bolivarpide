@@ -69,7 +69,7 @@ async function navigateStrategy(request) {
       cache.put(key, res.clone());
     }
     return res;
-  } catch (err) {
+  } catch {
     const cached = await cache.match(key);
     if (cached) return cached;
     return new Response(

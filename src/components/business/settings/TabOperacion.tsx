@@ -90,7 +90,7 @@ export function TabOperacion({
     }
   }
 
-  function handleHourChange(weekday: number, field: keyof HourRow, val: any) {
+  function handleHourChange(weekday: number, field: keyof HourRow, val: HourRow[keyof HourRow]) {
     setHours((prev) =>
       prev.map((h) => (h.weekday === weekday ? { ...h, [field]: val } : h))
     );

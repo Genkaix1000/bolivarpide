@@ -36,7 +36,6 @@ if (!ref || !password) {
   process.exit(1);
 }
 
-const host = `db.${ref}.supabase.co`;
 const sqlPath = resolve(process.cwd(), "supabase/migrations/20260829_menu_categories.sql");
 const sql = readFileSync(sqlPath, "utf8");
 

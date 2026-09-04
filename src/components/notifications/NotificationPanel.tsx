@@ -69,9 +69,6 @@ export function NotificationPanel({
     () => (isCustomer ? [{ label: "", items: displayItems }] : groupByDay(displayItems)),
     [isCustomer, displayItems],
   );
-  const hasUnread = isCustomer
-    ? displayItems.some((n) => !n.readAt)
-    : counts.all > 0;
 
   useEffect(() => {
     // Apenas se abre el panel de notificaciones, se marcan todas como leídas

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireBusinessMember } from "@/lib/business/require-member-api";
-import { autoProvisionBusiness, reprovisionPos } from "@/lib/mercadopago/provisioning";
+import { reprovisionPos } from "@/lib/mercadopago/provisioning";
 
 export async function POST(req: NextRequest) {
   let body: { businessId?: string };

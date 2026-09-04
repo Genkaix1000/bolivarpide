@@ -60,7 +60,7 @@ export function AddressFormModal({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (!open) return;
     setError(null);
     setDeleteConfirm(false);
@@ -79,8 +79,8 @@ export function AddressFormModal({
     } else {
       setForm(emptyForm(presetContact));
     }
-    // Solo al abrir o cambiar la dirección editada — presetContact estable en el padre
-  }, [open, editing?.id]);
+    // Solo al abrir o cambiar la dirección editada - presetContact estable en el padre
+  }, [open, editing, presetContact]);
 
   async function handleUseLocation() {
     setError(null);

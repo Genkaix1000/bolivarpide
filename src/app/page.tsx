@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import Navbar from "@/components/Navbar";
 import CurvedHomeHeader from "@/components/CurvedHomeHeader";
@@ -36,7 +35,7 @@ import { MAX_USER_ADDRESSES } from "@/lib/addresses/constants";
 import type { UserAddress } from "@/lib/addresses/types";
 
 function HomeContent() {
-  const { profile, updateAvatar, isAuthenticated, logout, persistProfile } = useUserProfile();
+  const { profile, isAuthenticated } = useUserProfile();
   const searchParams = useSearchParams();
   const [currentTab, setCurrentTab] = useState("home");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -52,7 +51,7 @@ function HomeContent() {
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
 
   // Membership real (OAuth + business_members)
-  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
+  const [, setIsBusinessOwner] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const topSearches = ["Empanadas", "Sushi", "Desayuno", "Helado", "Envíos Gratis"];
   const [randomizedRecommended, setRandomizedRecommended] = useState<FeaturedChain[]>([]);
@@ -572,7 +571,7 @@ function HomeContent() {
     savedAddresses[0]?.label ||
     "Agregar dirección";
 
-  function contactPreset() {
+  const presetContact = useMemo(() => {
     const src = addresses.find((a) => a.isDefault) ?? addresses[addresses.length - 1];
     if (src) {
       const digits = src.contactPhone.replace(/\D/g, "");
@@ -589,7 +588,7 @@ function HomeContent() {
       lastName: parts.slice(1).join(" "),
       phoneLocal: "",
     };
-  }
+  }, [addresses, profile]);
 
   async function handleSelectAddress(id: string) {
     setSelectedAddressId(id);
@@ -774,7 +773,7 @@ function HomeContent() {
       <AddressFormModal
         open={addressFormOpen}
         editing={editingAddress}
-        presetContact={contactPreset()}
+        presetContact={presetContact}
         onClose={() => {
           setAddressFormOpen(false);
           setEditingAddress(null);

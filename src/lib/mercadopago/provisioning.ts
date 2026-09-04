@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { mpFetch, MpApiError } from "@/lib/mercadopago/mp-fetch";
+import { mpFetch } from "@/lib/mercadopago/mp-fetch";
 import { resolveMpStoreLocation, sanitizeMpPlaceName } from "@/lib/mercadopago/storeLocation";
 import {
   getAccessTokenForBusiness,

@@ -25,7 +25,7 @@ export function BusinessCard({ membership }: { membership: MembershipRow }) {
 
   // Stats
   const followersCount = 0; // Followers count
-  const productsCount = (business.products as any)?.[0]?.count ?? 0;
+  const productsCount = business.products?.[0]?.count ?? 0;
   const ratingValue = business.rating && business.rating > 0 ? Number(business.rating).toFixed(1) : "5.0";
 
   return (

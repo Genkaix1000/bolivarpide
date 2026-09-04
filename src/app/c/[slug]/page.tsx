@@ -35,7 +35,7 @@ export default async function StoreHubPage({
           Local no disponible
         </h1>
         <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
-          No pudimos encontrar el comercio <span className="font-semibold text-gray-700 dark:text-gray-300">"{slug}"</span> o actualmente no se encuentra abierto al público.
+          No pudimos encontrar el comercio <span className="font-semibold text-gray-700 dark:text-gray-300">&#34;{slug}&#34;</span> o actualmente no se encuentra abierto al público.
         </p>
 
         {/* Actions */}

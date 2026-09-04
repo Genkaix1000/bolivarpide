@@ -40,10 +40,6 @@ function Backdrop({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ProductSheetWrapper({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
-  return <ProductSheet item={item} onClose={onClose} />;
-}
-
 function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
   const { cart, openProduct, quickAdd, openDrawer } = useCart();
   const chain = FEATURED_CHAINS.find((c) => c.id === item.chainId);

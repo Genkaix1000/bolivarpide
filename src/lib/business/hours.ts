@@ -48,7 +48,7 @@ function baMinutes(): number {
   return h * 60 + m;
 }
 
-export function isOpenByHours(rows: BusinessHourRow[], fallbackIsOpen: boolean): boolean {
+export function isOpenByHours(rows: BusinessHourRow[]): boolean {
   const today = rows.find((r) => r.weekday === baWeekday());
   if (!today || today.closed || !today.open_time || !today.close_time) return false;
   const now = baMinutes();

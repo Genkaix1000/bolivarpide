@@ -3,7 +3,6 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireBusinessAccess, requireUser } from "@/lib/business/queries";
 
@@ -216,7 +215,10 @@ export async function searchUsersForInviteAction(
   return hits
     .sort((a, b) => a.score - b.score || a.displayName.localeCompare(b.displayName))
     .slice(0, 8)
-    .map(({ score: _s, ...rest }) => rest);
+    .map(({ score: _score, ...rest }) => {
+      void _score;
+      return rest;
+    });
 }
 
 export async function inviteMember(formData: FormData) {
@@ -463,7 +465,7 @@ export async function setPlan(formData: FormData) {
 
 export async function claimBusinessOwnership(formData: FormData) {
   const token = String(formData.get("claim") || "");
-  const { supabase, user } = await requireUser();
+  const { user } = await requireUser();
   const service = createServiceClient();
 
   const { data: lead } = await service
@@ -596,7 +598,7 @@ export async function deleteBusinessAction(formData: FormData) {
 
   if (!businessId) throw new Error("ID de local inválido");
 
-  const { supabase, user, member, business } = await requireBusinessAccess(businessId);
+  const { member, business } = await requireBusinessAccess(businessId);
   if (!member || member.role !== "owner") {
     throw new Error("Solo el Titular puede dar de baja el comercio");
   }
