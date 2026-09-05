@@ -8,7 +8,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "businessId requerido" }, { status: 400 });
   }
 
-  const auth = await requireBusinessMember(businessId);
+  const auth = await requireBusinessMember(businessId, "owner");
   if ("error" in auth && auth.error) return auth.error;
 
   try {

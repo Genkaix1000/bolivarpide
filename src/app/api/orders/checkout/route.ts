@@ -23,7 +23,14 @@ export async function POST(req: NextRequest) {
 
   let body: {
     businessSlug?: string;
-    lines?: { name: string; quantity: number; unitPriceCents: number; productId?: string; note?: string }[];
+    lines?: {
+      name: string;
+      quantity: number;
+      unitPriceCents: number;
+      productId: string;
+      note?: string;
+      optionsDetail?: { label: string; priceCents: number }[];
+    }[];
     paymentMethod?: "mercadopago_qr" | "mercadopago_fast" | "cash";
     couponCode?: string;
     idempotencyKey?: string;

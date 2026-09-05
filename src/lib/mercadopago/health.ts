@@ -107,11 +107,12 @@ export async function listRecentPaymentSessions(businessId: string, limit = 10) 
   return data ?? [];
 }
 
-export async function listRecentWebhooks(limit = 10) {
+export async function listRecentWebhooks(businessId: string, limit = 10) {
   const svc = createServiceClient();
   const { data } = await svc
     .from("mp_webhook_events")
     .select("id, x_request_id, data_id, event_type, processed, attempts, last_error, created_at")
+    .eq("business_id", businessId)
     .order("created_at", { ascending: false })
     .limit(limit);
   return data ?? [];

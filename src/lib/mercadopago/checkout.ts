@@ -9,24 +9,38 @@ import { formatFullDeliveryAddress } from "@/lib/addresses/display";
 import { rowToAddress, type AddressRow } from "@/lib/addresses/db";
 
 const QR_EXPIRATION_MS = 15 * 60 * 1000;
+const MAX_LINE_QUANTITY = 99;
 
 export type CheckoutLine = {
   name: string;
   quantity: number;
   unitPriceCents: number;
-  productId?: string;
+  productId: string;
+  note?: string;
+  optionsDetail?: { label: string; priceCents: number }[];
+};
+
+/** Línea con precio verificado contra la DB (products.price_cents + opciones). */
+type PricedLine = {
+  productId: string;
+  quantity: number;
+  name: string;
+  unitPriceCents: number;
   note?: string;
   optionsDetail?: { label: string; priceCents: number }[];
 };
 
 import { packOrderItemNote } from "@/lib/orders/itemOptionsNote";
+import { parseMenuOptionGroups } from "@/lib/business/menuOptionTypes";
+import { maybeAutoRejectStaleOrder } from "@/lib/orders/acceptanceTimeout";
+import { expirePaymentSession, type ExpirableSession } from "@/lib/mercadopago/expire";
 
 export type FulfillmentType = "delivery" | "pickup";
 
-function orderItemRows(orderId: string, lines: CheckoutLine[]) {
+function orderItemRows(orderId: string, lines: PricedLine[]) {
   return lines.map((l) => ({
     order_id: orderId,
-    product_id: l.productId ?? null,
+    product_id: l.productId,
     name: l.name,
     quantity: l.quantity,
     unit_price_cents: l.unitPriceCents,
@@ -80,11 +94,87 @@ async function resolveBusiness(slug: string) {
   const svc = createServiceClient();
   const { data, error } = await svc
     .from("businesses")
-    .select("id, slug, name, mp_ready, accepts_cash")
+    .select("id, slug, name, mp_ready, accepts_cash, published")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
+  if (!data?.published) {
+    throw new Error("Este local todavía no está publicado en BolivarPide.");
+  }
   return data;
+}
+
+/**
+ * Recalcula el precio de cada línea de forma server-side: el precio base sale de
+ * products.price_cents y las opciones se validan contra el jsonb options del
+ * producto. El cliente NO es fuente de verdad para precios (P0 #1).
+ */
+async function resolvePricedLines(
+  businessId: string,
+  lines: CheckoutLine[],
+): Promise<PricedLine[]> {
+  const svc = createServiceClient();
+  const priced: PricedLine[] = [];
+
+  for (const line of lines) {
+    if (!line.productId?.trim()) {
+      throw new Error("Falta el producto de una línea del carrito");
+    }
+    if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > MAX_LINE_QUANTITY) {
+      throw new Error("Cantidad inválida");
+    }
+
+    const { data: product, error: productErr } = await svc
+      .from("products")
+      .select("id, name, price_cents, options")
+      .eq("id", line.productId.trim())
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (productErr) throw new Error("No se pudo validar el pedido");
+    if (!product) {
+      throw new Error("Producto no disponible en este local");
+    }
+    if (typeof product.price_cents !== "number" || product.price_cents < 0) {
+      throw new Error("Producto inválido");
+    }
+
+    // Opciones: validar cada ítem contra los choices reales del producto.
+    const expectedByLabel = new Map<string, number>();
+    for (const group of parseMenuOptionGroups(product.options)) {
+      for (const choice of group.choices) {
+        expectedByLabel.set(choice.label, choice.price_cents);
+      }
+    }
+
+    let extraCents = 0;
+    for (const opt of line.optionsDetail ?? []) {
+      if (opt.priceCents < 0) throw new Error("Opción inválida");
+      const expected = expectedByLabel.get(opt.label);
+      if (expected == null) {
+        throw new Error(`Opción desconocida: ${opt.label}`);
+      }
+      if (opt.priceCents !== expected) {
+        throw new Error(`Precio inválido en opción ${opt.label}`);
+      }
+      extraCents += opt.priceCents;
+    }
+
+    const unitPriceCents = product.price_cents + extraCents;
+    if (line.unitPriceCents !== unitPriceCents) {
+      throw new Error(`Precio desactualizado para ${product.name}. Revisá tu carrito.`);
+    }
+
+    priced.push({
+      productId: product.id,
+      quantity: line.quantity,
+      name: product.name,
+      unitPriceCents,
+      note: line.note,
+      optionsDetail: line.optionsDetail,
+    });
+  }
+
+  return priced;
 }
 
 async function applyCoupon(
@@ -120,6 +210,22 @@ async function applyCoupon(
     discountCents = Math.min(subtotalCents, Math.round(Number(coupon.value) * 100));
   }
   return { discountCents, couponId: coupon.id };
+}
+
+/**
+ * P0 #5: reserva atómica de un uso de cupón (RPC con chequeo + incremento en una
+ * sola instrucción). Sin esto, `max_uses` no se enforcea nunca (solo se leía
+ * uses_count sin escribirlo). Tradeoff asumido: un checkout que reserva y luego
+ * aborta quema un uso del cupón.
+ */
+async function reserveCouponUse(couponId: string | null): Promise<void> {
+  if (!couponId) return;
+  const svc = createServiceClient();
+  const { data: reserved, error } = await svc.rpc("reserve_coupon_use", {
+    p_coupon_id: couponId,
+  });
+  if (error) throw new Error("No se pudo aplicar el cupón");
+  if (!reserved) throw new Error("Cupón agotado");
 }
 
 async function resolveFulfillment(
@@ -168,7 +274,10 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
 
   if (input.lines.length === 0) throw new Error("Carrito vacío");
 
-  const subtotalCents = input.lines.reduce(
+  // Los precios se recalculan server-side (P0 #1): el cliente no define montos.
+  const pricedLines = await resolvePricedLines(business.id, input.lines);
+
+  const subtotalCents = pricedLines.reduce(
     (s, l) => s + l.unitPriceCents * l.quantity,
     0,
   );
@@ -180,6 +289,8 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const applied = await applyCoupon(business.id, input.couponCode.trim(), subtotalCents);
     discountCents = applied.discountCents;
     couponId = applied.couponId;
+    // P0 #5: consumir un uso del cupón al confirmar el checkout.
+    await reserveCouponUse(couponId);
   }
 
   const baseCents = subtotalCents - discountCents;
@@ -243,7 +354,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       .single();
     if (error) throw error;
 
-    await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
+    await svc.from("order_items").insert(orderItemRows(order.id, pricedLines));
 
     const { emitCashOrderNotifications } = await import("@/lib/notifications/emit");
     void emitCashOrderNotifications(order.id);
@@ -302,7 +413,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       .single();
     if (orderErr) throw orderErr;
 
-    await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
+    await svc.from("order_items").insert(orderItemRows(order.id, pricedLines));
 
     const token = await getAccessTokenForBusiness(business.id);
     const externalRef = `BP-${order.id}`.slice(0, 64);
@@ -428,7 +539,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     .single();
   if (orderErr) throw orderErr;
 
-  await svc.from("order_items").insert(orderItemRows(order.id, input.lines));
+  await svc.from("order_items").insert(orderItemRows(order.id, pricedLines));
 
   const token = await getAccessTokenForBusiness(business.id);
   const amountStr = (amountCents / 100).toFixed(2);
@@ -521,21 +632,39 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
 }
 
 export async function getPaymentStatus(orderId: string, userId: string) {
+  // Lazy expiry (WS4): al consultar, se barren las sesiones vencidas y el
+  // timeout de aceptación de 3 min (solo sobre pedidos propios del usuario).
+  await maybeAutoRejectStaleOrder(orderId, userId);
+
   const svc = createServiceClient();
   const { data: order } = await svc
     .from("orders")
-    .select("id, payment_status, payment_method, customer_user_id, active_payment_session_id")
+    .select(
+      "id, status, payment_status, payment_method, customer_user_id, active_payment_session_id",
+    )
     .eq("id", orderId)
     .single();
   if (!order || order.customer_user_id !== userId) return null;
 
-  const { data: session } = order.active_payment_session_id
-    ? await svc
-        .from("payment_sessions")
-        .select("*")
-        .eq("id", order.active_payment_session_id)
-        .maybeSingle()
-    : { data: null };
+  let session: (ExpirableSession & Record<string, unknown>) | null = null;
+  if (order.active_payment_session_id) {
+    const { data: sessionRow } = await svc
+      .from("payment_sessions")
+      .select("*")
+      .eq("id", order.active_payment_session_id)
+      .maybeSingle();
+    if (sessionRow) {
+      if (
+        sessionRow.status === "created" &&
+        sessionRow.expires_at &&
+        new Date(sessionRow.expires_at) <= new Date()
+      ) {
+        await expirePaymentSession(sessionRow);
+        sessionRow.status = "expired";
+      }
+      session = sessionRow;
+    }
+  }
 
   return { order, session };
 }

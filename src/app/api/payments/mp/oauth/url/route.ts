@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "businessId requerido" }, { status: 400 });
   }
 
-  const auth = await requireBusinessMember(businessId);
+  const auth = await requireBusinessMember(businessId, "owner");
   if ("error" in auth && auth.error) return auth.error;
 
   const origin = req.headers.get("origin") ?? req.nextUrl.origin;

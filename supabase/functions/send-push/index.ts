@@ -46,11 +46,12 @@ Deno.serve(async (req: Request) => {
     getEnv("SUPABASE_SERVICE_ROLE_KEY"),
   );
 
-  // Preferencias del usuario para gatear por categoria
+  // Preferencias del usuario para gatear por categoria.
+  // user_profiles PK es user_id (no id) — el eq anterior nunca matcheaba.
   const { data: prefs } = await supabase
     .from("user_profiles")
     .select("notification_orders, notification_promos")
-    .eq("id", payload.user_id)
+    .eq("user_id", payload.user_id)
     .maybeSingle();
 
   const category = payload.category ?? "orders";

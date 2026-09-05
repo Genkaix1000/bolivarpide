@@ -6,6 +6,7 @@ import {
   type KitchenOrderTicket,
 } from "@/lib/orders/lifecycle";
 import { DEFAULT_USER_PROFILE, type UserAvatar } from "@/lib/userProfile";
+import { autoRejectStalePaidOrders } from "@/lib/orders/acceptanceTimeout";
 
 const KITCHEN_FIELDS =
   "id, order_number, status, customer_user_id, customer_name, customer_phone, fulfillment_type, payment_method, payment_status, total_cents, notes, created_at, rejection_reason, delivery_address";
@@ -77,6 +78,11 @@ export async function listKitchenOrders(businessId: string): Promise<{
   whatsappConnected: boolean;
 }> {
   await requireBusinessAccess(businessId);
+
+  // Lazy timeout de aceptación (WS4): antes de leer la cola, se rechazan los
+  // pedidos pagados que superaron los 3 min sin confirmación.
+  await autoRejectStalePaidOrders(businessId);
+
   const svc = createServiceClient();
 
   const [{ data, error }, waRes] = await Promise.all([

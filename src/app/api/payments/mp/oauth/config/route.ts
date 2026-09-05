@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const businessId = req.nextUrl.searchParams.get("businessId")?.trim();
   if (!businessId) return NextResponse.json({ error: "businessId requerido" }, { status: 400 });
 
-  const auth = await requireBusinessMember(businessId);
+  const auth = await requireBusinessMember(businessId, "owner");
   if ("error" in auth && auth.error) return auth.error;
 
   const config = getMpOAuthConfigStatus();

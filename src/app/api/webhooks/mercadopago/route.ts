@@ -16,6 +16,7 @@ type MpPaymentResponse = {
   id: number | string;
   status?: string;
   external_reference?: string;
+  transaction_amount?: number;
 };
 
 function mapMpStatus(raw?: string): string {
@@ -39,6 +40,48 @@ async function markOrderPaid(
   sessionId?: string,
 ) {
   const svc = createServiceClient();
+  const { data: order } = await svc
+    .from("orders")
+    .select("id, business_id, payment_status, total_cents, mp_payment_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return;
+  // Idempotencia por estado: un pedido ya pagado/refundado no se re-procesa.
+  if (order.payment_status === "paid" || order.payment_status === "refunded") return;
+
+  // Verificación de monto (defensa en profundidad): el pago MP debe coincidir con
+  // el total server-side de la orden. Sin payment id no se puede verificar → se
+  // preserva el flujo actual (el cierre de precio lo garantiza el checkout).
+  if (paymentId != null && order.total_cents != null && order.total_cents > 0) {
+    try {
+      const token = await getAccessTokenForBusiness(order.business_id);
+      const payment = await mpFetch<MpPaymentResponse>(
+        token,
+        `/v1/payments/${encodeURIComponent(String(paymentId))}`,
+        { method: "GET" },
+      );
+      const remoteCents = Math.round(Number(payment.transaction_amount ?? 0) * 100);
+      if (Math.abs(remoteCents - order.total_cents) > 1) return;
+    } catch {
+      return;
+    }
+  }
+
+  // Update condicional: solo gana si el pedido sigue sin pagar; si otro request
+  // concurrente ya lo marcó, `updated` es null → no re-notificamos.
+  const { data: updated } = await svc
+    .from("orders")
+    .update({
+      payment_status: "paid",
+      mp_payment_id: paymentId != null ? String(paymentId) : order.mp_payment_id ?? null,
+      paid_at: new Date().toISOString(),
+    })
+    .eq("id", orderId)
+    .in("payment_status", ["unpaid", "awaiting_payment"])
+    .select("id")
+    .maybeSingle();
+  if (!updated) return;
+
   if (sessionId) {
     await svc
       .from("payment_sessions")
@@ -49,27 +92,19 @@ async function markOrderPaid(
       })
       .eq("id", sessionId);
   }
-  await svc
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      mp_payment_id: paymentId != null ? String(paymentId) : null,
-      paid_at: new Date().toISOString(),
-    })
-    .eq("id", orderId);
 
   const { emitOrderPaidNotifications } = await import("@/lib/notifications/emit");
   void emitOrderPaidNotifications(orderId);
 }
 
-async function reconcileOrder(mpOrderId: string) {
+async function reconcileOrder(mpOrderId: string): Promise<string | null> {
   const svc = createServiceClient();
   const { data: session } = await svc
     .from("payment_sessions")
     .select("id, business_id, order_id, status")
     .eq("mp_order_id", mpOrderId)
     .maybeSingle();
-  if (!session) return;
+  if (!session) return null;
 
   const token = await getAccessTokenForBusiness(session.business_id);
   const remote = await mpFetch<MpOrderResponse>(token, `/v1/orders/${encodeURIComponent(mpOrderId)}`, {
@@ -78,7 +113,7 @@ async function reconcileOrder(mpOrderId: string) {
   const mapped = mapMpStatus(remote.status);
   const paymentId = remote.transactions?.payments?.[0]?.reference_id;
 
-  if (mapped === session.status) return;
+  if (mapped === session.status) return session.business_id;
 
   await svc
     .from("payment_sessions")
@@ -94,9 +129,10 @@ async function reconcileOrder(mpOrderId: string) {
   } else if (session.order_id && (mapped === "expired" || mapped === "canceled")) {
     await svc.from("orders").update({ payment_status: "expired" }).eq("id", session.order_id);
   }
+  return session.business_id;
 }
 
-async function reconcilePayment(paymentId: string, mpUserId: string | null) {
+async function reconcilePayment(paymentId: string, mpUserId: string | null): Promise<string | null> {
   const svc = createServiceClient();
   let businessId: string | null = null;
 
@@ -122,7 +158,7 @@ async function reconcilePayment(paymentId: string, mpUserId: string | null) {
     businessId = fallbackSession?.business_id ?? null;
   }
 
-  if (!businessId) return;
+  if (!businessId) return null;
 
   const token = await getAccessTokenForBusiness(businessId);
   const payment = await mpFetch<MpPaymentResponse>(
@@ -132,7 +168,7 @@ async function reconcilePayment(paymentId: string, mpUserId: string | null) {
   );
 
   const orderId = orderIdFromExternalRef(payment.external_reference);
-  if (!orderId) return;
+  if (!orderId) return businessId;
 
   const { data: session } = await svc
     .from("payment_sessions")
@@ -159,6 +195,7 @@ async function reconcilePayment(paymentId: string, mpUserId: string | null) {
   } else if (mapped === "expired" || mapped === "canceled") {
     await svc.from("orders").update({ payment_status: "expired" }).eq("id", orderId);
   }
+  return businessId;
 }
 
 export async function POST(req: NextRequest) {
@@ -212,12 +249,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (eventType === "order") {
-      await reconcileOrder(resourceId);
-    } else {
-      await reconcilePayment(resourceId, mpUserId);
-    }
-    await svc.from("mp_webhook_events").update({ processed: true }).eq("x_request_id", reqId);
+    const businessId =
+      eventType === "order"
+        ? await reconcileOrder(resourceId)
+        : await reconcilePayment(resourceId, mpUserId);
+    await svc
+      .from("mp_webhook_events")
+      .update({
+        processed: true,
+        ...(businessId ? { business_id: businessId } : {}),
+      })
+      .eq("x_request_id", reqId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await svc

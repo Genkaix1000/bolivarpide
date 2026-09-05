@@ -41,7 +41,8 @@ export async function PATCH(req: NextRequest) {
   const businessId = body.businessId?.trim();
   if (!businessId) return NextResponse.json({ error: "businessId requerido" }, { status: 400 });
 
-  const auth = await requireBusinessMember(businessId);
+  // P0 #6: escribir la configuración de pagos es operación de owner.
+  const auth = await requireBusinessMember(businessId, "owner");
   if ("error" in auth) return auth.error;
 
   try {

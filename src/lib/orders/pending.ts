@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAccessTokenForBusiness } from "@/lib/mercadopago/repository";
 import { mpFetch } from "@/lib/mercadopago/mp-fetch";
+import { expirePaymentSession } from "@/lib/mercadopago/expire";
 
 export type PendingCustomerOrder = {
   orderId: string;
@@ -50,12 +51,18 @@ export async function getPendingCustomerOrder(userId: string): Promise<PendingCu
 
   const { data: session } = await svc
     .from("payment_sessions")
-    .select("channel, qr_data, expires_at, status")
+    .select("id, business_id, order_id, channel, mp_order_id, qr_data, expires_at, status")
     .eq("id", order.active_payment_session_id)
     .maybeSingle();
 
-  if (!session || session.status !== "created") return null;
-  if (session.expires_at && new Date(session.expires_at) <= new Date()) return null;
+  if (!session) return null;
+  if (session.status !== "created") return null;
+  if (session.expires_at && new Date(session.expires_at) <= new Date()) {
+    // Lazy expiry (WS4): la sesión venció → cancelar la order QR remota y marcar
+    // la expiración localmente en vez de descartar en silencio.
+    await expirePaymentSession(session);
+    return null;
+  }
 
   return {
     orderId: order.id,

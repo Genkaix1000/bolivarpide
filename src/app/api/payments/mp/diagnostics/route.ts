@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       getMpHealth(businessId),
       getProvisioningStatus(businessId),
       listRecentPaymentSessions(businessId, limit),
-      listRecentWebhooks(limit),
+      listRecentWebhooks(businessId, limit),
       probeMpUser(businessId),
     ]);
     return NextResponse.json({
