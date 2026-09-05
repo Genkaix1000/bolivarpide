@@ -124,6 +124,131 @@ for (const bogus of [undefined, null, "", "  ", "hola", 0, "0", -5, Number.NaN])
   assert.equal(image.media?.caption, "comprobante");
 }
 
+// Ubicación: payload estructurado, no media. Antes caía en la rama de media,
+// no encontraba `id`/`mime_type` y llegaba al chat como burbuja vacía.
+{
+  const parsed = parseMetaWebhook(
+    metaPayload({
+      metadata: metadata(),
+      messages: [
+        {
+          from: "5492314111222",
+          id: "wamid.LOC",
+          timestamp: "1757030520",
+          type: "location",
+          location: {
+            latitude: -36.2301,
+            longitude: -61.1134,
+            name: "Casa",
+            address: "Av. San Martín 123",
+          },
+        },
+      ],
+    }),
+    NOW_MS,
+  );
+
+  const msg = parsed!.changes[0].messages[0];
+  assert.equal(msg.type, "location");
+  assert.equal(msg.location?.latitude, -36.2301);
+  assert.equal(msg.location?.longitude, -61.1134);
+  assert.equal(msg.location?.name, "Casa");
+  assert.equal(msg.location?.address, "Av. San Martín 123");
+  assert.equal(msg.media, undefined);
+}
+
+// Ubicación con coordenadas como string (Meta serializa números así).
+{
+  const parsed = parseMetaWebhook(
+    metaPayload({
+      metadata: metadata(),
+      messages: [
+        {
+          from: "549231411",
+          id: "wamid.LOC2",
+          timestamp: "1757030520",
+          type: "location",
+          location: { latitude: "-36.23", longitude: "-61.11" },
+        },
+      ],
+    }),
+    NOW_MS,
+  );
+  assert.equal(parsed!.changes[0].messages[0].location?.latitude, -36.23);
+}
+
+// Ubicación sin coordenadas: no se inventa un punto en (0,0).
+{
+  const parsed = parseMetaWebhook(
+    metaPayload({
+      metadata: metadata(),
+      messages: [
+        { from: "549231411", id: "wamid.LOC3", timestamp: "1757030520", type: "location", location: { name: "x" } },
+      ],
+    }),
+    NOW_MS,
+  );
+  assert.equal(parsed!.changes[0].messages[0].location, undefined);
+}
+
+// Contactos: array de tarjetas, no un objeto.
+{
+  const parsed = parseMetaWebhook(
+    metaPayload({
+      metadata: metadata(),
+      messages: [
+        {
+          from: "5492314111222",
+          id: "wamid.CONTACT",
+          timestamp: "1757030530",
+          type: "contacts",
+          contacts: [
+            {
+              name: { formatted_name: "Ana Gómez", first_name: "Ana" },
+              phones: [{ phone: "+54 9 2314 55-6677", wa_id: "5492314556677" }],
+            },
+            {
+              name: { first_name: "Luis", last_name: "Pérez" },
+              phones: [],
+            },
+          ],
+        },
+      ],
+    }),
+    NOW_MS,
+  );
+
+  const msg = parsed!.changes[0].messages[0];
+  assert.equal(msg.type, "contacts");
+  assert.equal(msg.contacts?.length, 2);
+  assert.equal(msg.contacts?.[0].name, "Ana Gómez");
+  assert.deepEqual(msg.contacts?.[0].phones, ["+54 9 2314 55-6677"]);
+  assert.equal(msg.contacts?.[1].name, "Luis Pérez");
+  assert.deepEqual(msg.contacts?.[1].phones, []);
+}
+
+// Documento: conserva el nombre del archivo para mostrarlo en el chat.
+{
+  const parsed = parseMetaWebhook(
+    metaPayload({
+      metadata: metadata(),
+      messages: [
+        {
+          from: "549231411",
+          id: "wamid.DOC",
+          timestamp: "1757030540",
+          type: "document",
+          document: { id: "media-doc", mime_type: "application/pdf", filename: "comprobante.pdf" },
+        },
+      ],
+    }),
+    NOW_MS,
+  );
+  const msg = parsed!.changes[0].messages[0];
+  assert.equal(msg.type, "document");
+  assert.equal(msg.media?.fileName, "comprobante.pdf");
+}
+
 // Tipo desconocido => "unsupported" (no rompe la ingesta del resto del lote).
 {
   const parsed = parseMetaWebhook(

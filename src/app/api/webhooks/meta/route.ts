@@ -111,6 +111,16 @@ export async function POST(request: Request) {
       if (existing) continue; // idempotency (Meta retries)
 
       let mediaJson: Record<string, unknown> | null = null;
+
+      // Payloads estructurados: no se descargan de Meta, se guardan tal cual
+      // para renderizarlos en el chat (antes se perdían y quedaba una burbuja
+      // vacía).
+      if (message.location) {
+        mediaJson = { location: message.location };
+      } else if (message.contacts?.length) {
+        mediaJson = { contacts: message.contacts };
+      }
+
       if (message.media?.id) {
         const token = await readWhatsAppToken(conn.vault_token_ref as string | null);
         if (token) {
@@ -134,7 +144,7 @@ export async function POST(request: Request) {
               mime_type: downloaded.mimeType,
               storage_path: uploadErr ? null : path,
               caption: message.media.caption ?? null,
-              duration_ms: message.media.durationMs ?? null,
+              file_name: message.media.fileName ?? null,
             };
           }
         }

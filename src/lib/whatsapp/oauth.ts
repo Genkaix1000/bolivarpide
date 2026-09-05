@@ -262,6 +262,48 @@ export async function subscribeAppToWaba(
   }
 }
 
+/** Corta la entrega de webhooks de esa WABA a la app (al desconectar). */
+export async function unsubscribeAppFromWaba(
+  wabaId: string,
+  token: string,
+): Promise<void> {
+  await graphFetch({ path: `${wabaId}/subscribed_apps`, token, method: "DELETE" });
+}
+
+export type MetaMessageTemplate = {
+  name: string;
+  language: string;
+  category: string | null;
+};
+
+/**
+ * Templates APROBADAS de la WABA.
+ *
+ * El dueño tipeaba el nombre a mano y sólo se enteraba del error cuando un
+ * pedido salía de la ventana de 24 h y el envío fallaba en silencio.
+ */
+export async function listApprovedTemplates(
+  wabaId: string,
+  token: string,
+): Promise<MetaMessageTemplate[]> {
+  const json = await graphGet<{
+    data?: Array<{
+      name?: string;
+      language?: string;
+      status?: string;
+      category?: string;
+    }>;
+  }>(`${wabaId}/message_templates`, token, "name,language,status,category");
+
+  return (json.data ?? [])
+    .filter((t) => t.name && t.status === "APPROVED")
+    .map((t) => ({
+      name: t.name as string,
+      language: t.language ?? "es_AR",
+      category: t.category ?? null,
+    }));
+}
+
 /** Confirma que el token tiene acceso al número y trae sus datos. */
 export async function verifyPhoneAccess(
   phoneNumberId: string,

@@ -7,6 +7,8 @@ import {
   CHAT_ORDER_STATUS_LABEL,
   isLiveOrder,
   type ChatActiveOrder,
+  type ChatContactCard,
+  type ChatLocation,
   type ChatMessage,
   type ChatOrderBadge,
   type ChatSummary,
@@ -33,7 +35,9 @@ type MessageRow = {
     storage_path?: string | null;
     storage_url?: string | null;
     caption?: string | null;
-    duration_ms?: number | null;
+    file_name?: string | null;
+    location?: ChatLocation | null;
+    contacts?: ChatContactCard[] | null;
   } | null;
   wa_message_id: string | null;
   status: string;
@@ -75,9 +79,33 @@ function mapMessageType(type: string): MessageType {
     case "video":
     case "sticker":
     case "document":
+    case "location":
+    case "contacts":
       return type;
     default:
       return "unknown";
+  }
+}
+
+/** Texto corto para la lista de chats cuando el mensaje no es texto. */
+function previewForType(type: string, hasMedia: boolean): string {
+  switch (type) {
+    case "image":
+      return "📷 Imagen";
+    case "audio":
+      return "🎤 Audio";
+    case "video":
+      return "🎥 Video";
+    case "sticker":
+      return "🎨 Sticker";
+    case "document":
+      return "📄 Documento";
+    case "location":
+      return "📍 Ubicación";
+    case "contacts":
+      return "👤 Contacto";
+    default:
+      return hasMedia ? "📎 Adjunto" : "";
   }
 }
 
@@ -159,11 +187,11 @@ function messageToChatMessage(
   if (mediaUrl) {
     if (media?.mime_type?.startsWith("image/")) {
       imageUrl = mediaUrl;
-      text = text ?? media.caption ?? "📷 Imagen";
+      text = text ?? media.caption ?? null;
     } else if (media?.mime_type?.startsWith("audio/")) {
       type = "audio";
-      audioDuration = null; // Meta no reporta duración en el webhook.
-      text = text ?? "🎤 Audio";
+      // Meta no manda `duration` en el webhook: la muestra el reproductor.
+      audioDuration = null;
     }
   }
 
@@ -179,8 +207,11 @@ function messageToChatMessage(
           mimeType: media.mime_type ?? null,
           storageUrl: mediaUrl,
           caption: media.caption ?? null,
+          fileName: media.file_name ?? null,
         }
       : null,
+    location: media?.location ?? null,
+    contacts: media?.contacts ?? null,
     timestamp: fmtTime(row.created_at),
     status:
       row.status === "delivered" || row.status === "read" || row.status === "failed"
@@ -216,6 +247,7 @@ type SummaryRow = {
   chat_id: string;
   customer_name: string | null;
   last_text: string | null;
+  last_type: string;
   last_direction: "inbound" | "outbound";
   last_has_media: boolean;
   last_at: string;
@@ -285,7 +317,7 @@ export async function listChatSummaries(businessId: string): Promise<ChatSummary
       activeOrder: activeByChat.get(row.chat_id) ?? null,
       unreadCount: row.unread_count ?? 0,
       lastMessage: {
-        text: row.last_text ?? (row.last_has_media ? "📎 adjunto" : ""),
+        text: row.last_text ?? previewForType(row.last_type, row.last_has_media),
         timestamp: fmtTime(row.last_at),
         sender: row.last_direction === "inbound" ? "customer" : "business",
       },
@@ -429,7 +461,9 @@ export async function getChatDetail(
       unreadCount: rows.filter((m) => m.direction === "inbound" && !m.read_at).length,
       lastMessage: lastMessage
         ? {
-            text: lastMessage.text ?? (lastRow?.media_json ? "📎 adjunto" : ""),
+            text:
+              lastMessage.text ??
+              previewForType(lastRow?.type ?? "", Boolean(lastRow?.media_json)),
             timestamp: lastMessage.timestamp,
             sender: lastMessage.sender,
           }

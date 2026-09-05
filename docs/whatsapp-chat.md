@@ -118,8 +118,14 @@ habilite. El form manual (token pegado) sigue disponible bajo
 "Configuración avanzada" para casos excepcionales y conserva el paso de admin.
 
 > Los tokens long-lived de system user vencen a los 60 días. El panel muestra
-> la fecha de vencimiento y `sendWhatsAppText` rechaza responder con un token
-> vencido; el dueño usa "Reconectar con Meta" para rotar.
+> la fecha de vencimiento —y a 7 días o menos lo avisa en ámbar— y los envíos
+> rechazan un token vencido; el dueño usa "Reconectar con Meta" para rotar.
+
+**Desconectar** (`disconnectWhatsAppNumber`) hace `DELETE
+/{waba_id}/subscribed_apps` para cortar la entrega de webhooks y deja la
+conexión inactiva, así ningún camino de envío la toma. No borra el secreto del
+Vault: reconectar es un click y el token vence solo. Si Meta rechaza la baja de
+la suscripción, igual se desactiva localmente — que es lo que el dueño pidió.
 
 ## Mover el webhook desde n8n a Next
 
@@ -171,6 +177,26 @@ temporales (1 h) en lote con `createSignedUrls` al leer el chat. La migración
 > ventana es una decisión del negocio y el borrado no se deshace—, pero
 > conviene definirla: es data personal de clientes que se acumula sin techo.
 
+### Tipos de mensaje soportados
+
+| Tipo | Cómo se guarda | Cómo se ve |
+|---|---|---|
+| `text` | `text_body` | burbuja |
+| `image` / `sticker` | Storage + `storage_path` | preview |
+| `audio` | Storage + `storage_path` | `<audio controls>` (Meta no manda duración: la lee el reproductor) |
+| `video` | Storage + `storage_path` | `<video controls>` |
+| `document` | Storage + `file_name` | link con el nombre del archivo |
+| `location` | `media_json.location` | tarjeta con link a Google Maps |
+| `contacts` | `media_json.contacts` | tarjeta con links `wa.me` |
+
+`location` y `contacts` estaban tipados como media, así que el parser les
+buscaba `id`/`mime_type`, no encontraba nada y el mensaje llegaba al chat como
+una burbuja vacía. Su payload es estructurado (lat/long, o un array de
+tarjetas) y ahora se guarda tal cual en `media_json`.
+
+El audio tenía un botón de play que sólo cambiaba de ícono —no había ningún
+`<audio>` en el componente— y mostraba "0:15" fijo para todos.
+
 ## Cambios de estados en el chat
 
 El chat usa el lifecycle real de la app (`pending → preparing → delivering →
@@ -203,6 +229,11 @@ Implementación:
   `updateWhatsAppNotifySettings`, **separado** del formulario de conexión: antes
   compartían action, así que guardar los avisos exigía re-pegar el access token
   y devolvía la conexión a `unverified`/`is_active=false`.
+- La template se elige de un **select** con las aprobadas de la WABA
+  (`GET /{waba_id}/message_templates` vía `/api/whatsapp/templates`), y elegirla
+  también fija el idioma. Antes se tipeaba el nombre a ciegas y el error recién
+  aparecía cuando un pedido salía de la ventana y el envío fallaba en silencio.
+  Si Meta no devuelve las templates, la UI cae al input manual.
 
 > Ojo con la semántica del toggle: hoy `notify_status` sólo gatea el envío
 > **fuera** de la ventana (el de template). Dentro de las 24 h el texto libre

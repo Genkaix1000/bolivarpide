@@ -124,6 +124,58 @@ export async function connectWhatsAppNumber(formData: FormData) {
 }
 
 /**
+ * Desconecta el número: corta la entrega de webhooks y deja la conexión
+ * inactiva, así ningún camino de envío la toma (todos pasan por
+ * `getActiveWhatsAppConnection`).
+ *
+ * No se borra el secreto del Vault: reconectar sigue siendo un click, y el
+ * token de todos modos vence solo. Si Meta rechaza la baja de la suscripción
+ * igual se desactiva localmente — que es lo que el dueño pidió.
+ */
+export async function disconnectWhatsAppNumber(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  if (!businessId) throw new Error("Falta el negocio");
+
+  await requireBusinessAccess(businessId);
+  const service = createServiceClient();
+
+  const { data: existing } = await service
+    .from("business_whatsapp")
+    .select("id, waba_id, vault_token_ref, token_expires_at")
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!existing) throw new Error("No hay ningún número conectado");
+
+  if (existing.waba_id) {
+    try {
+      const { readConnectionToken, unsubscribeAppFromWaba } = await import(
+        "@/lib/whatsapp/oauth"
+      );
+      const token = await readConnectionToken({
+        vault_token_ref: existing.vault_token_ref,
+        token_expires_at: existing.token_expires_at,
+      });
+      if (token) await unsubscribeAppFromWaba(existing.waba_id, token);
+    } catch (err) {
+      console.warn("disconnectWhatsAppNumber: no se pudo desuscribir la WABA", err);
+    }
+  }
+
+  const { error } = await service
+    .from("business_whatsapp")
+    .update({
+      status: "unverified",
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("business_id", businessId);
+  if (error) throw error;
+
+  revalidatePath(`/negocio/${businessId}/configuracion`);
+  revalidatePath(`/negocio/${businessId}/whatsapp`);
+}
+
+/**
  * Ajustes de notificación de estado por WhatsApp (toggle + template).
  *
  * Va separado de `connectWhatsAppNumber` a propósito: son los únicos campos

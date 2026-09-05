@@ -7,15 +7,7 @@ import type {
   WhatsAppMessageType,
 } from "./types";
 
-const MEDIA_TYPES = new Set([
-  "image",
-  "audio",
-  "video",
-  "sticker",
-  "document",
-  "location",
-  "contacts",
-]);
+const MEDIA_TYPES = new Set(["image", "audio", "video", "sticker", "document"]);
 
 type RawItem = Record<string, unknown>;
 
@@ -63,7 +55,11 @@ function parseMessage(raw: RawItem, nowMs: number): ParsedWhatsAppMessage | null
 
   const rawType = str(raw.type) ?? "unknown";
   const type: WhatsAppMessageType =
-    rawType === "text" ? "text" : MEDIA_TYPES.has(rawType) ? (rawType as WhatsAppMediaKind) : "unsupported";
+    rawType === "text" || rawType === "location" || rawType === "contacts"
+      ? rawType
+      : MEDIA_TYPES.has(rawType)
+        ? (rawType as WhatsAppMediaKind)
+        : "unsupported";
 
   const out: ParsedWhatsAppMessage = {
     waMessageId: id,
@@ -76,6 +72,37 @@ function parseMessage(raw: RawItem, nowMs: number): ParsedWhatsAppMessage | null
     const textObj = raw.text as RawItem | undefined;
     const body = textObj && str(textObj.body);
     if (body) out.text = { body };
+  } else if (type === "location") {
+    const loc = raw.location as RawItem | undefined;
+    const latitude = num(loc?.latitude);
+    const longitude = num(loc?.longitude);
+    if (latitude !== undefined && longitude !== undefined) {
+      out.location = {
+        latitude,
+        longitude,
+        name: str(loc?.name),
+        address: str(loc?.address),
+      };
+    }
+  } else if (type === "contacts") {
+    // `contacts` viene como ARRAY de tarjetas, no como objeto.
+    const list = Array.isArray(raw.contacts) ? (raw.contacts as RawItem[]) : [];
+    const cards = list
+      .map((c) => {
+        const nameObj = c.name as RawItem | undefined;
+        const name =
+          str(nameObj?.formatted_name) ??
+          [str(nameObj?.first_name), str(nameObj?.last_name)]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+        const phones = (Array.isArray(c.phones) ? (c.phones as RawItem[]) : [])
+          .map((p) => str(p.phone) ?? str(p.wa_id))
+          .filter((p): p is string => Boolean(p));
+        return name || phones.length > 0 ? { name: name || "Contacto", phones } : null;
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    if (cards.length > 0) out.contacts = cards;
   } else if (type !== "unsupported") {
     const m = raw[rawType] as RawItem | undefined;
     if (m) {

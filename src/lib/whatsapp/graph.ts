@@ -114,7 +114,7 @@ export type GraphRequest = {
   /** Path sin barra inicial ni versión, p. ej. `"1234567/messages"`. */
   path: string;
   token: string;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "DELETE";
   query?: Record<string, string>;
   /** Body JSON (solo POST). */
   body?: unknown;

@@ -4,8 +4,19 @@ import { useEffect, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import {
   connectWhatsAppNumber,
+  disconnectWhatsAppNumber,
   updateWhatsAppNotifySettings,
 } from "@/lib/business/whatsapp";
+
+type MetaTemplate = { name: string; language: string; category: string | null };
+
+/** Días que faltan para que venza el token, o null si no hay fecha. */
+function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return null;
+  return Math.floor(ms / 86_400_000);
+}
 import type { WhatsAppConnection } from "@/lib/business/whatsappQueries";
 
 type BannerResult = { ok: boolean; text: string };
@@ -54,10 +65,14 @@ export function WhatsAppConnectionCard({
   const [notifyPending, setNotifyPending] = useState(false);
   const [notifyError, setNotifyError] = useState("");
   const [notifySaved, setNotifySaved] = useState(false);
+  const [templates, setTemplates] = useState<MetaTemplate[] | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const active = connection?.is_active ?? false;
   const oauthHref = `/api/meta/oauth/start?businessId=${encodeURIComponent(businessId)}`;
   const expiresAt = connection?.token_expires_at ?? null;
+  const daysLeft = daysUntil(expiresAt);
+  const tokenExpiring = daysLeft !== null && daysLeft <= 7;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -68,6 +83,51 @@ export function WhatsAppConnectionCard({
       window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
   }, []);
+
+  // Templates aprobadas de la WABA, para elegirlas en vez de tipear el nombre
+  // a ciegas. Si Meta no las devuelve, se cae al input manual.
+  useEffect(() => {
+    if (!active || !notifyStatus || templates !== null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/whatsapp/templates?businessId=${encodeURIComponent(businessId)}`,
+          { cache: "no-store" },
+        );
+        const json = (await res.json()) as { templates?: MetaTemplate[] };
+        if (!cancelled) setTemplates(json.templates ?? []);
+      } catch {
+        if (!cancelled) setTemplates([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, notifyStatus, templates, businessId]);
+
+  async function handleDisconnect() {
+    if (
+      !window.confirm(
+        "¿Desconectar WhatsApp? Dejás de recibir y responder mensajes desde el panel. Podés volver a conectarlo cuando quieras.",
+      )
+    ) {
+      return;
+    }
+    setDisconnecting(true);
+    const form = new FormData();
+    form.set("businessId", businessId);
+    try {
+      await disconnectWhatsAppNumber(form);
+      window.location.reload();
+    } catch (err) {
+      setBanner({
+        ok: false,
+        text: err instanceof Error ? err.message : "No se pudo desconectar.",
+      });
+      setDisconnecting(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -188,10 +248,24 @@ export function WhatsAppConnectionCard({
                 {connection?.display_phone_number ?? connection?.phone_number_id}
               </span>
             </div>
-            <p className="text-[10px] text-gray-500 flex items-center gap-1.5">
-              <MaterialSymbol icon="schedule" size={13} className="text-slate-400" />
+            <p
+              className={`text-[10px] flex items-center gap-1.5 ${
+                tokenExpiring
+                  ? "text-amber-700 dark:text-amber-400 font-semibold"
+                  : "text-gray-500"
+              }`}
+            >
+              <MaterialSymbol
+                icon={tokenExpiring ? "warning" : "schedule"}
+                size={13}
+                className={tokenExpiring ? "" : "text-slate-400"}
+              />
               {expiresAt
-                ? `Token vigente hasta el ${formatDate(expiresAt)}`
+                ? tokenExpiring
+                  ? daysLeft !== null && daysLeft <= 0
+                    ? "El token venció — reconectá para seguir respondiendo"
+                    : `El token vence en ${daysLeft} día${daysLeft === 1 ? "" : "s"} — reconectá para no cortar el servicio`
+                  : `Token vigente hasta el ${formatDate(expiresAt)}`
                 : "Token de Meta vinculado"}
             </p>
           </div>
@@ -202,6 +276,15 @@ export function WhatsAppConnectionCard({
             <MaterialSymbol icon="refresh" size={16} />
             Reconectar con Meta
           </a>
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 text-[11px] font-bold rounded-full transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <MaterialSymbol icon="link_off" size={15} />
+            {disconnecting ? "Desconectando..." : "Desconectar"}
+          </button>
         </div>
       )}
 
@@ -238,19 +321,42 @@ export function WhatsAppConnectionCard({
                 <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
                   Template de estado de pedido
                 </label>
-                <input
-                  value={templateOrderStatusName}
-                  onChange={(e) => {
-                    setTemplateOrderStatusName(e.target.value);
-                    setNotifySaved(false);
-                  }}
-                  placeholder="ej. shipping_update"
-                  className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
-                />
+                {templates && templates.length > 0 ? (
+                  <select
+                    value={templateOrderStatusName}
+                    onChange={(e) => {
+                      const picked = templates.find((t) => t.name === e.target.value);
+                      setTemplateOrderStatusName(e.target.value);
+                      if (picked) setTemplateOrderStatusLanguage(picked.language);
+                      setNotifySaved(false);
+                    }}
+                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                  >
+                    <option value="">Sin template (solo dentro de 24 h)</option>
+                    {templates.map((t) => (
+                      <option key={`${t.name}-${t.language}`} value={t.name}>
+                        {t.name} · {t.language}
+                        {t.category ? ` · ${t.category.toLowerCase()}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={templateOrderStatusName}
+                    onChange={(e) => {
+                      setTemplateOrderStatusName(e.target.value);
+                      setNotifySaved(false);
+                    }}
+                    placeholder="ej. shipping_update"
+                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                  />
+                )}
                 <p className="text-[10px] text-gray-400 mt-1">
-                  Nombre de la template aprobada en tu WABA (los parámetros
-                  se envían como: pedido, título, subtítulo). Sin template, el
-                  aviso sale sólo dentro de las 24 h.
+                  {templates === null
+                    ? "Buscando tus templates aprobadas en Meta…"
+                    : templates.length > 0
+                      ? "Sólo aparecen las aprobadas en tu WABA. Los parámetros se envían como: pedido, título, subtítulo."
+                      : "No pudimos leer tus templates de Meta; escribí el nombre exacto de una aprobada. Sin template, el aviso sale sólo dentro de las 24 h."}
                 </p>
               </div>
               <div>

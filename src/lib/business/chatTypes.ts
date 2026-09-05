@@ -49,7 +49,28 @@ export type CustomerProfile = {
   isFavorite?: boolean;
 };
 
-export type MessageType = "text" | "audio" | "image" | "video" | "sticker" | "document" | "unknown";
+export type MessageType =
+  | "text"
+  | "audio"
+  | "image"
+  | "video"
+  | "sticker"
+  | "document"
+  | "location"
+  | "contacts"
+  | "unknown";
+
+export type ChatLocation = {
+  latitude: number;
+  longitude: number;
+  name?: string | null;
+  address?: string | null;
+};
+
+export type ChatContactCard = {
+  name: string;
+  phones: string[];
+};
 
 export type ChatMessage = {
   id: string;
@@ -62,7 +83,10 @@ export type ChatMessage = {
     mimeType: string | null;
     storageUrl: string | null;
     caption: string | null;
+    fileName?: string | null;
   } | null;
+  location?: ChatLocation | null;
+  contacts?: ChatContactCard[] | null;
   timestamp: string;
   status?: "sent" | "delivered" | "read" | "failed";
   /** Motivo del fallo reportado por Meta (solo cuando status === "failed"). */
