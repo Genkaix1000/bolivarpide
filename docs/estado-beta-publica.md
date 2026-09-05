@@ -16,12 +16,12 @@
 
 | Cara | % avance | Horas restantes | Diagnóstico en una línea |
 |---|---:|---:|---|
-| **Cliente** | **70%** | 59h | El flujo de pedido funciona punta a punta; miente en envío, horarios, legal y mapa |
-| **Comercio** | **84%** | 116h | Opera pedidos reales hoy, pero promete features que no existen |
-| **Delivery** | **73%** | 38h | Núcleo operativo real; el pipeline muere porque nadie puede aprobar un repartidor |
-| **Admin** | **81%** | 16h | La cara más completa; le falta la pantalla que desbloquea delivery |
+| **Cliente** | **70%** | 62h | El flujo de pedido funciona punta a punta; miente en envío, horarios, legal y mapa |
+| **Comercio** | **84%** | 109h | Opera pedidos reales hoy, pero promete features que no existen |
+| **Delivery** | **73%** | 20h | Núcleo operativo real; el pipeline muere porque nadie puede aprobar un repartidor |
+| **Admin** | **81%** | 19h | La cara más completa; le falta la pantalla que desbloquea delivery |
 | **Infra y lanzamiento** | **13%** | 58h | No existe deploy, ni dominio, ni backups, ni un solo comercio piloto |
-| **GLOBAL** | **70%** | **286h** | |
+| **GLOBAL** | **70%** | **268h** | |
 
 > **Nota sobre el árbol de trabajo:** al momento de escribir esto hay cambios sin commitear
 > que no forman parte de este análisis: se borró código muerto (`ARQUITECTURA.legacy.md`,
@@ -39,25 +39,27 @@ El análisis arrancó apuntando al 17/09, 12 días. La aritmética no daba:
 
 | Escenario | Horas necesarias | Capacidad en 12 días | Resultado |
 |---|---:|---:|---|
-| **Declarado** (todo adentro) | 286h | 144h | 199% — no entra |
-| **Recortado** (sin planes, rangos, promos, menú QR, reseñas) | 196h | 144h | 136% — no entra |
-| **Mínimo viable** (solo bloqueantes) | 138h | 144h | 96% — entra sin margen |
+| **Declarado** (todo adentro) | 268h | 144h | 186% — no entra |
+| **Recortado** (sin planes, rangos, promos, menú QR, reseñas) | 181h | 144h | 126% — no entra |
+| **Mínimo viable** (solo bloqueantes `P0`) | 120h | 144h | 83% — entra con margen |
 
 El alcance completo incluye features con **cero líneas de código escritas**: planes pagos con
 cobro de comisión (~30h), rangos y logros del comercio (~25h), CRUD de promociones (~12h),
 generador de menú QR (~6h). Son 73 horas de desarrollo nuevo antes de tocar un solo bloqueante.
 
-**Decisión tomada: se mantiene el alcance completo y se corre la fecha.** 286 horas contra 12
+**Decisión tomada: se mantiene el alcance completo y se corre la fecha.** 268 horas contra 12
 horas-persona por día son 24 días de trabajo. La fecha resultante es el **29/09/2026**.
 
 ### Advertencia sobre esa fecha
 
-24 días dan 288 horas-persona. El alcance pide 286. **La holgura es de 2 horas, el 1%.**
+24 días dan 288 horas-persona. El alcance pide 268. **La holgura es de 20 horas, el 7%.**
 
-Eso no es un plan con margen, es un plan al límite. Significa que el 29/09 se sostiene solo si
-todo sale como está estimado, y el tramo 3 son 67 horas de código que todavía no existe, o sea
-justo donde las estimaciones fallan. Sumale que el QA end-to-end cae en el último tramo, que es
-donde aparecen los problemas que no se pueden postergar.
+Siete por ciento es menos de lo que parece: son 20 horas repartidas en 24 días, o sea que
+cualquier tarea que se pase al doble se las come sola. Y el tramo 3 son 67 horas de código que
+todavía no existe concentradas en 3 tarjetas —30h de billing, 25h de rangos, 12h de promos—,
+justo donde las estimaciones fallan. Si billing se pasa un 50%, se come toda la holgura del
+plan. Sumale que el QA end-to-end cae en el último tramo, que es donde aparecen los problemas
+que no se pueden postergar.
 
 Dicho sin vueltas: **el 29/09 es la fecha más temprana posible, no una fecha probable.** Si
 querés una fecha que puedas prometerle a un comercio, poné el 03/10 y quedate con una semana de
@@ -347,9 +349,11 @@ idempotentes, RPC de transiciones con `REVOKE UPDATE`, dedupe de webhooks).
 
 | Decisión | Resolución | Consecuencia |
 |---|---|---|
-| **Alcance vs fecha** | Escenario C: se mantiene el alcance completo y la fecha pasa al **29/09**. | Nada se recorta: lo que era post-beta entra en los tramos 3 y 4. La holgura queda en el 1%. |
+| **Alcance vs fecha** | Escenario C: se mantiene el alcance completo y la fecha pasa al **29/09**. | Nada se recorta: lo que era post-beta entra en los tramos 3 y 4. La holgura queda en el 7%. |
 | **WhatsApp** | Arranca con el **bot n8n** del piloto. El OAuth de Meta self-service queda para después del lanzamiento. | El review de Meta deja de ser un bloqueante de fecha. Hay que darle una superficie mínima al bot en el panel (BP-36), porque hoy no tiene ninguna. |
 | **Recargo del pago rápido** | Se **elimina el toggle** `absorbFastPayFee`. La comisión la absorbe el comercio y el cliente paga precio de lista. | Menos código, no más: se borra el setting, su UI y la rama de recargo en el checkout. |
+| **Seguridad en pago efectivo** | Escalera de confianza: 0 compras = solo Mercado Pago; 1+ compras = efectivo habilitado (máximo 1 pedido activo simultáneo). | Corta pedidos falsos y spam sin requerir OCR de DNI ni APIs externas. Se muestra hint sobrio con `FieldHint` (`BP-9`). |
+| **Teléfono de contacto** | Centralizado en el perfil (`user_profiles.phone`) con opción de teléfono alternativo en la entrega. | Se desacopla de la dirección obligatoria y permite pedidos para terceros (`BP-51`). |
 | **Pagos QR** | Se deprecan. El pago rápido (MP Checkout Pro) pasa a ser el canal único. | Hay que limpiar el lenguaje y el provisioning QR de todo el panel. |
 | **Insignias de cliente** | Diferidas. El motor ya está completo y cableado, solo falta QA. | Baja de 8h a 3h de QA (BP-48). |
 
@@ -433,7 +437,7 @@ en los tramos 3 y 4. Lo único fuera es el review de Meta (BP-28), que no depend
 | BP-6 | ADMIN | Migrar las actions de KYC a `requirePlatformSuperadmin` | Admin | P0 | 1h | `profileActions.ts:220-221` |
 | BP-7 | PAGOS | Pago rápido como canal único: default, toggles, checkout | Comercio | P0 | 6h | `businessSettings.ts:4`, `PagosSection.tsx:282-291`, `checkout.ts:491` |
 | BP-8 | PAGOS | Retextear health panel, notices y dev tools sin lenguaje QR | Comercio | P0 | 4h | `MpHealthPanel.tsx:17-18,107`, `MpPaymentsNotice.tsx:42-45` |
-| BP-9 | PAGOS | Eliminar `absorbFastPayFee` y el recargo al cliente (lo absorbe el comercio) | Cliente | P0 | 1h | `pricing.ts:2`, `businessSettings.ts:5`, `PagosSection.tsx:294-309` |
+| BP-9 | PAGOS | Métodos de pago en Checkout: precio lista MP, botón efectivo y escalera de confianza (hint estético) | Cliente | P0 | 2h | `pricing.ts:2`, `businessSettings.ts:5`, `PagosSection.tsx:294-309`, `FieldHint.tsx` |
 | BP-10 | CLIENTE | Páginas de términos, privacidad y contacto | Cliente | P0 | 6h | no existen bajo `src/app` |
 | BP-11 | CLIENTE | Envío y pedido mínimo reales: schema, config, checkout, `canCheckout` | Cliente | P0 | 10h | `home.ts:30-31`, `publicStore.ts:89-90`, `cart.ts:112` |
 | BP-12 | CLIENTE | Limpiar banners ficticios (fallback + seed de DB) | Cliente | P0 | 2h | `staticContent.ts:39-40`, `20260902000000_promo_banners.sql:47-112` |
@@ -475,12 +479,15 @@ en los tramos 3 y 4. Lo único fuera es el review de Meta (BP-28), que no depend
 | BP-47 | COMERCIO | Generador de menú QR imprimible — **tramo 4** | Comercio | P2 | 6h | tarea falsa en `queries.ts:175-177` |
 | BP-48 | CLIENTE | QA E2E de insignias de cliente (el motor ya está completo y cableado) | Cliente | P2 | 3h | 6 archivos en `src/lib/badges/`, con hooks en entregas y onboarding |
 | BP-49 | CLIENTE | Botón "Seguir comercio" con persistencia — **tramo 4** | Cliente | P2 | 4h | `StoreHubView.tsx:171` |
+| BP-51 | CLIENTE | Teléfono principal en perfil de cuenta y teléfono alternativo en entrega | Cliente | P1 | 2h | `user_profiles.phone`, `CartFlow.tsx`, `ProfileView.tsx` |
 
-**Total:** 50 tarjetas, 286h en 4 tramos. Los bloqueantes `P0` son 25 tarjetas / 138h y viven
-en los tramos 1 y 2.
+**Total:** 51 tarjetas, 271h en 4 tramos (70h + 72h + 67h + 62h, contra 72h de capacidad por
+tramo). Los bloqueantes `P0` son 25 tarjetas / 121h y viven en los tramos 1 y 2.
 
-Las horas por escenario salen de `scripts/beta-score.mjs`, no de la suma de esta tabla: el
-script es la fuente de verdad y la tabla es su vista para Jira.
+**Esta tabla es la única fuente de horas** y es lo que está cargado en Jira (proyecto `PED`).
+`scripts/beta-score.mjs` la lee para calcular los escenarios y falla si deja de parsear 51
+tarjetas. El script solo aporta los porcentajes, que salen del modelo de pesos y scores.
+Antes había dos juegos de horas —el script y esta tabla— y habían derivado 18h.
 
 ---
 
@@ -490,7 +497,8 @@ script es la fuente de verdad y la tabla es su vista para Jira.
 |---|---|---|
 | **Cero comercios piloto confirmados** | Sin comercios no hay beta, esté el código como esté | Arrancar el reclutamiento el día 1, en paralelo al código. Es el ítem con más lead time y menos control. |
 | **El tramo 3 son 67h de código que no existe** | Si se desborda se come el QA del tramo 4 | Arrancar billing (BP-43) al principio del tramo. Si a mitad de camino vas atrasado, diferir rangos y logros (BP-44) antes que recortar QA. |
-| **El plan usa 286 de 288 horas (1% de holgura)** | El 29/09 es la fecha más temprana posible, no la probable | Comunicar el 03/10 hacia afuera. Revisar el avance al cierre de cada tramo; dos tramos con atraso = mover la fecha, no comprimir el QA. |
+| **El plan usa 268 de 288 horas (7% de holgura)** | El 29/09 es la fecha más temprana posible, no la probable | Comunicar el 03/10 hacia afuera. Revisar el avance al cierre de cada tramo; dos tramos con atraso = mover la fecha, no comprimir el QA. |
+| **El tramo 3 son 3 tarjetas de 30h, 25h y 12h** | Si billing (BP-43) se pasa un 50%, se come la holgura entera del plan | Partir BP-43 en subtareas antes de arrancar el tramo 3 y medir contra ellas, no contra la tarjeta de 30h. Es el único ítem que toca dinero. |
 | ~~Review de Meta sin fecha~~ | **Resuelto:** el día 1 va con el bot n8n; el OAuth de Meta queda post-lanzamiento | BP-28 pasó a P2. A cambio hay que darle superficie al bot en el panel (BP-36). |
 | **Un solo entorno** | Sin staging, cada deploy es a producción | Render para staging (ya está en el plan de D1-D2). |
 | **Sin monitoreo** | Los errores de la beta llegan por WhatsApp de un comerciante enojado | BP-27 antes del lanzamiento. |
