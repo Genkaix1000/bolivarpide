@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/negocio/:businessId/pagos",
+        destination: "/negocio/:businessId/configuracion/pagos",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -490,7 +490,8 @@ export function HomeContent({ initial }: { initial: HomeData }) {
       <div
         className={cn(
           "min-h-dvh flex flex-col bg-background dark:bg-[#1c1917] relative overscroll-y-contain",
-          "pt-[64px] md:pt-0",
+          "pt-14",
+          currentTab === "home" && "pt-0",
           "pb-[max(2.5rem,env(safe-area-inset-bottom,0px))]",
           currentTab === "profile" && "pb-[max(7rem,env(safe-area-inset-bottom,0px)+4rem)]",
         )}

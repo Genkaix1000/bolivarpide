@@ -15,6 +15,7 @@ export default async function ConfiguracionEquipoPage({
     .from("business_members")
     .select("id, role, status, user_id, invited_at")
     .eq("business_id", businessId)
+    .in("status", ["active", "invited"])
     .order("created_at");
 
   const membersList = rawMembers ?? [];

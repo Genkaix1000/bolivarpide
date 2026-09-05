@@ -3,7 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { MaterialSymbol } from "@/components/ui/material-symbol";
+import {
+  Bell,
+  BellRinging,
+  IdentificationBadge,
+  List,
+  MagnifyingGlass,
+  SignOut,
+  House,
+  X,
+} from "@phosphor-icons/react";
 import {
   CherryBtn,
   ThemeToggleNavBtn,
@@ -107,13 +116,13 @@ export function BusinessTopbar({
               aria-label="Abrir menú"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/90 hover:bg-white/10 md:hidden cursor-pointer"
             >
-              <MaterialSymbol icon="menu" size={20} />
+              <List weight="regular" size={20} />
             </button>
-            <MaterialSymbol icon="notifications_active" size={22} className="shrink-0 animate-pulse" />
-            <p className="min-w-0 flex-1 truncate text-sm font-bold md:text-base">{alertMessage}</p>
+            <BellRinging weight="fill" size={22} className="shrink-0 animate-pulse" />
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold md:text-[15px]">{alertMessage}</p>
             <Link
               href={`/negocio/${businessId}/pedidos`}
-              className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#9a0002] hover:bg-white/90 transition-transform active:scale-95 cursor-pointer shadow-sm"
+              className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#9a0002] hover:bg-white/90 transition-transform active:scale-95 cursor-pointer shadow-sm"
             >
               Ir a pedidos
             </Link>
@@ -125,7 +134,7 @@ export function BusinessTopbar({
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/20 hover:bg-black/35 text-white transition-all active:scale-90 cursor-pointer"
                 title="Cerrar alerta"
               >
-                <MaterialSymbol icon="close" size={18} />
+                <X weight="bold" size={16} />
               </button>
             )}
           </div>
@@ -136,18 +145,18 @@ export function BusinessTopbar({
             <button
               onClick={onMenuClick}
               aria-label="Abrir menú"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] md:hidden cursor-pointer"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-[#ede4d9] dark:text-stone-400 dark:hover:bg-[#2a2623] md:hidden cursor-pointer"
             >
-              <MaterialSymbol icon="menu" size={20} />
+              <List weight="regular" size={20} />
             </button>
 
             <div className="hidden h-10 w-full max-w-md items-center gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3.5 transition-colors focus-within:border-[#9a0002]/35 dark:border-[#3d3732] dark:bg-[#2a2623] md:flex">
-              <MaterialSymbol icon="search" size={17} className="shrink-0 text-gray-400" />
+              <MagnifyingGlass weight="regular" size={17} className="shrink-0 text-stone-400" />
               <SmoothInput
                 placeholder="Buscar en el panel..."
-                className="w-full text-[13px] font-medium text-gray-700 dark:text-gray-300"
+                className="w-full text-[13px] font-medium text-stone-700 dark:text-stone-300"
               />
-              <kbd className="ml-auto hidden shrink-0 items-center rounded-md border border-[#e8e0d6] bg-[#f5f1eb] px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:border-[#3d3732] dark:bg-[#1c1917] lg:inline-flex">
+              <kbd className="ml-auto hidden shrink-0 items-center rounded-md border border-[#e8e0d6] bg-[#f5f1eb] px-1.5 py-0.5 text-[10px] font-semibold text-stone-400 dark:border-[#3d3732] dark:bg-[#1c1917] lg:inline-flex">
                 ⌘F
               </kbd>
             </div>
@@ -157,9 +166,9 @@ export function BusinessTopbar({
             <button
               onClick={() => setMobileSearchOpen(true)}
               aria-label="Buscar"
-              className="md:hidden flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-[#ede4d9] dark:text-gray-400 dark:hover:bg-[#2a2623] cursor-pointer"
+              className="md:hidden flex h-10 w-10 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-[#ede4d9] dark:text-stone-400 dark:hover:bg-[#2a2623] cursor-pointer"
             >
-              <MaterialSymbol icon="search" size={18} />
+              <MagnifyingGlass weight="regular" size={18} />
             </button>
 
             <div className="relative">
@@ -177,7 +186,7 @@ export function BusinessTopbar({
                 }}
                 aria-label="Notificaciones"
               >
-                <MaterialSymbol icon="notifications" size={17} className="text-white" />
+                <Bell weight="fill" size={17} className="text-white" />
                 {hasNotifications && !showNotifDropdown && (
                   <span className="absolute top-0.5 right-0.5 z-10 h-2.5 w-2.5 animate-pulse rounded-full bg-[#ffeb3b] ring-[1.5px] ring-[#9a0002]" />
                 )}
@@ -213,33 +222,33 @@ export function BusinessTopbar({
                     className="absolute top-[52px] right-0 z-50 w-[220px] rounded-2xl border border-[#e8e0d6] bg-white p-2 shadow-xl dark:border-[#3d3732] dark:bg-[#231f1c]"
                   >
                     <div className="mb-1 border-b border-[#f0ebe4] px-2.5 py-2 dark:border-[#2a2623]">
-                      <p className="truncate text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+                      <p className="truncate text-[13px] font-semibold text-stone-900 dark:text-stone-100">
                         {profile.name}
                       </p>
-                      <p className="truncate text-[11px] text-gray-400">{shell.planLabel}</p>
+                      <p className="truncate text-[11px] text-stone-400">{shell.planLabel}</p>
                     </div>
                     {isAuthenticated && (
                       <Link
                         href="/?tab=profile"
                         role="menuitem"
-                        className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                        className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-stone-700 hover:bg-[#f5f1eb] dark:text-stone-200 dark:hover:bg-[#2a2623]"
                         onClick={() => setShowUserMenu(false)}
                       >
-                        <MaterialSymbol icon="badge" size={18} />
+                        <IdentificationBadge weight="regular" size={18} />
                         Mi perfil
                       </Link>
                     )}
                     <Link
                       href="/"
                       role="menuitem"
-                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-[#f5f1eb] dark:text-gray-200 dark:hover:bg-[#2a2623]"
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-stone-700 hover:bg-[#f5f1eb] dark:text-stone-200 dark:hover:bg-[#2a2623]"
                       onClick={() => setShowUserMenu(false)}
                     >
-                      <MaterialSymbol icon="home" size={18} />
+                      <House weight="regular" size={18} />
                       Ir al inicio
                     </Link>
                     <div className="flex items-center justify-between rounded-xl px-2.5 py-2">
-                      <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">
+                      <span className="text-[13px] font-medium text-stone-600 dark:text-stone-400">
                         Apariencia
                       </span>
                       <ThemeToggleNavBtn className="h-8 w-8" clipId="biz-theme-desk" />
@@ -250,7 +259,7 @@ export function BusinessTopbar({
                       onClick={() => void handleLogout()}
                       className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-medium text-[#9a0002] hover:bg-red-50 dark:hover:bg-red-950/30"
                     >
-                      <MaterialSymbol icon="logout" size={18} />
+                      <SignOut weight="regular" size={18} />
                       Cerrar sesión
                     </button>
                   </motion.div>
@@ -270,18 +279,18 @@ export function BusinessTopbar({
             transition={{ duration: 0.2 }}
             className="absolute inset-0 z-30 flex h-[64px] items-center gap-2 bg-[#faf6f1] px-4 dark:bg-[#1c1917] md:hidden"
           >
-            <MaterialSymbol icon="search" size={16} className="shrink-0 text-[#9a0002]" />
+            <MagnifyingGlass weight="regular" size={16} className="shrink-0 text-[#9a0002]" />
             <SmoothInput
               autoFocus
               placeholder="Buscar en el panel..."
-              className="flex-1 text-xs font-bold text-gray-700 dark:text-gray-300"
+              className="flex-1 text-[13px] font-medium text-stone-700 dark:text-stone-300"
             />
             <button
               onClick={() => setMobileSearchOpen(false)}
               aria-label="Cerrar búsqueda"
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#ede4d9] dark:hover:bg-[#2a2623]"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-[#ede4d9] dark:hover:bg-[#2a2623]"
             >
-              <MaterialSymbol icon="close" size={16} />
+              <X weight="bold" size={16} />
             </button>
           </motion.div>
         )}

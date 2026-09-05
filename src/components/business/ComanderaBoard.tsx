@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { KitchenOrderTicket, OrderLifecycleStatus } from "@/lib/orders/lifecycle";
 import { KitchenTicketCard } from "./KitchenTicketCard";
 import { createClient } from "@/lib/supabase/client";
+import { ShellPageHeader } from "@/components/shell/ShellPageHeader";
 
 const LIVE_POLL_MS = 8_000;
 
@@ -16,7 +17,7 @@ function TicketRow({ title, tickets, businessId, onUpdated }: {
   if (tickets.length === 0) return null;
   return (
     <section>
-      <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
+      <h2 className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">
         {title} ({tickets.length})
       </h2>
       <div className="flex gap-5 overflow-x-auto px-1 py-3 pb-5 snap-x snap-mandatory">
@@ -84,12 +85,11 @@ export function ComanderaBoard({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Comandera</h1>
-        <p className="text-sm text-stone-600 dark:text-stone-400">
-          Tickets en tiempo real · deslizá horizontalmente en cada fila
-        </p>
-      </div>
+      <ShellPageHeader
+        title="Pedidos"
+        description="Tickets en tiempo real · deslizá horizontalmente en cada fila"
+        badge={active > 0 ? `${active} activos` : undefined}
+      />
 
       {tickets.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-stone-300 px-4 py-12 text-center text-sm text-stone-500">
@@ -98,14 +98,16 @@ export function ComanderaBoard({
       ) : (
         <div className="space-y-8">
           {active === 0 ? (
-            <p className="text-sm text-stone-500">No hay pedidos en curso.</p>
+            <p className="mt-1 text-[13px] font-medium text-stone-500 dark:text-stone-400">
+              No hay pedidos en curso.
+            </p>
           ) : null}
           <TicketRow title="Pendientes" tickets={pending} businessId={businessId} onUpdated={refresh} />
           <TicketRow title="En cocina" tickets={preparing} businessId={businessId} onUpdated={refresh} />
           <TicketRow title="En reparto" tickets={delivering} businessId={businessId} onUpdated={refresh} />
           {done.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
+              <h2 className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">
                 Finalizados ({done.length})
               </h2>
               <div className="flex gap-5 overflow-x-auto px-1 py-3 pb-5">

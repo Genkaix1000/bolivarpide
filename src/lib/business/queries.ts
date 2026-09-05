@@ -84,7 +84,12 @@ export const requireUser = cache(async () => {
 
 export const requireBusinessAccess = cache(async (businessId: string) => {
   const { supabase, user } = await requireUser();
-  const isAdmin = user.app_metadata?.role === "admin";
+  const { resolvePlatformRole } = await import("@/lib/admin/platform");
+  const { getImpersonationBusinessId } = await import("@/lib/business/impersonate");
+  const platformRole = await resolvePlatformRole(user);
+  const impersonating =
+    platformRole === "superadmin" ? (await getImpersonationBusinessId()) === businessId : false;
+  const isAdmin = impersonating;
 
   const { data: membership } = await supabase
     .from("business_members")
@@ -108,7 +113,15 @@ export const requireBusinessAccess = cache(async (businessId: string) => {
 
   if (!business) redirect("/negocio");
 
-  return { supabase, user, member: membership, business, isAdmin };
+  return {
+    supabase,
+    user,
+    member: membership,
+    business,
+    isAdmin,
+    platformRole,
+    impersonating,
+  };
 });
 
 function formatOrderTime(createdAt: string) {
@@ -258,6 +271,16 @@ export async function getBusinessDashboardData(
 
 export type ShellNotification = { emoji: string; title: string; time: string };
 
+export type ShellMemberPreview = {
+  userId: string;
+  label: string;
+  avatar: {
+    type: "initials" | "symbol" | "emoji";
+    value: string;
+    gradientId: string;
+  };
+};
+
 export type BusinessShellData = {
   business: BusinessRow;
   displayName: string;
@@ -267,6 +290,10 @@ export type BusinessShellData = {
   planCommission: string;
   notifications: ShellNotification[];
   pendingCount: number;
+  platformRole: "superadmin" | "soporte" | null;
+  impersonating: boolean;
+  members: ShellMemberPreview[];
+  memberCount: number;
 };
 
 function planMeta(plan: string) {
@@ -286,10 +313,11 @@ function userDisplay(user: { email?: string }, profileName: string | null) {
 }
 
 export async function getBusinessShellData(businessId: string): Promise<BusinessShellData> {
-  const { supabase, user, business } = await requireBusinessAccess(businessId);
+  const { supabase, user, business, platformRole, impersonating } =
+    await requireBusinessAccess(businessId);
   const { label: planLabel, commission: planCommission } = planMeta(business.plan);
 
-  const [profileRes, pendingAllRes] = await Promise.all([
+  const [profileRes, pendingAllRes, membersRes] = await Promise.all([
     supabase
       .from("user_profiles")
       .select("display_name")
@@ -300,6 +328,13 @@ export async function getBusinessShellData(businessId: string): Promise<Business
       .select("id, status, payment_status, payment_method")
       .eq("business_id", businessId)
       .eq("status", "pending"),
+    supabase
+      .from("business_members")
+      .select("user_id")
+      .eq("business_id", businessId)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(24),
   ]);
 
   const { displayName, email, initials } = userDisplay(user, profileRes.data?.display_name);
@@ -308,6 +343,55 @@ export async function getBusinessShellData(businessId: string): Promise<Business
 
   const { isKitchenEligible } = await import("@/lib/orders/lifecycle");
   const operationalPending = (pendingAllRes.data ?? []).filter((o) => isKitchenEligible(o)).length;
+
+  const memberIds = (membersRes.data ?? []).map((m) => m.user_id);
+  const memberCount = memberIds.length;
+  const previewIds = memberIds.slice(0, 6);
+  const members: ShellMemberPreview[] = [];
+
+  if (previewIds.length > 0) {
+    try {
+      const { createServiceClient } = await import("@/lib/supabase/service");
+      const service = createServiceClient();
+      const { data: profiles } = await service
+        .from("user_profiles")
+        .select(
+          "user_id, display_name, avatar_type, avatar_value, avatar_gradient_id",
+        )
+        .in("user_id", previewIds);
+      const map = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+      for (const id of previewIds) {
+        const p = map.get(id);
+        const label = p?.display_name?.trim() || id.slice(0, 6);
+        const fallback = label.slice(0, 2).toUpperCase();
+        const type =
+          p?.avatar_type === "symbol" || p?.avatar_type === "emoji" || p?.avatar_type === "initials"
+            ? p.avatar_type
+            : "initials";
+        members.push({
+          userId: id,
+          label,
+          avatar: {
+            type,
+            value: (p?.avatar_value || fallback).slice(0, type === "emoji" ? 8 : 24),
+            gradientId: p?.avatar_gradient_id || "cherry",
+          },
+        });
+      }
+    } catch {
+      for (const id of previewIds) {
+        members.push({
+          userId: id,
+          label: id.slice(0, 6),
+          avatar: {
+            type: "initials",
+            value: id.slice(0, 2).toUpperCase(),
+            gradientId: "cherry",
+          },
+        });
+      }
+    }
+  }
 
   return {
     business,
@@ -318,6 +402,10 @@ export async function getBusinessShellData(businessId: string): Promise<Business
     planCommission,
     notifications,
     pendingCount: operationalPending,
+    platformRole: platformRole ?? null,
+    impersonating,
+    members,
+    memberCount,
   };
 }
 

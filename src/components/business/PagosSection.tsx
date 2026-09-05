@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { MpDevToolsPanel } from "@/components/business/MpDevToolsPanel";
+import { ShellPageHeader } from "@/components/shell/ShellPageHeader";
 import { cn } from "@/lib/utils";
 
 export type MpStatus = {
@@ -195,12 +196,10 @@ export function PagosSection({ businessId }: { businessId: string }) {
 
   return (
     <div className="space-y-4 pb-8">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Pagos</h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Vinculá Mercado Pago y listo — configuramos todo automáticamente
-        </p>
-      </div>
+      <ShellPageHeader
+        title="Pagos"
+        description="Vinculá Mercado Pago y listo — configuramos todo automáticamente"
+      />
 
       {error && (
         <div className="rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 px-4 py-3 text-xs text-red-700">

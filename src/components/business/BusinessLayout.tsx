@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { BusinessSidebar } from "./BusinessSidebar";
 import { BusinessTopbar } from "./BusinessTopbar";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SPLASH_NEGOCIO } from "@/lib/firstVisit";
 import { useOrderAlerts } from "@/hooks/useOrderAlerts";
 import { cn } from "@/lib/utils";
@@ -30,10 +31,14 @@ export function BusinessLayout({
   return (
     <div
       className={cn(
-        "flex bg-[#f3efe8] dark:bg-[#1c1917]",
+        "flex flex-col bg-[#f3efe8] dark:bg-[#1c1917]",
         isChatWorkspace ? "h-dvh overflow-hidden" : "min-h-screen",
       )}
     >
+      {shell.impersonating && (
+        <ImpersonationBanner businessName={shell.business.name} />
+      )}
+      <div className={cn("flex flex-1", isChatWorkspace && "min-h-0 overflow-hidden")}>
       <BrandSplash show={showSplash} onSkip={skipSplash} />
 
       <BusinessSidebar
@@ -45,6 +50,8 @@ export function BusinessLayout({
         onToggleCollapse={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        members={shell.members}
+        memberCount={shell.memberCount}
       />
 
       <div className={cn("flex min-w-0 flex-1 flex-col", isChatWorkspace && "min-h-0 overflow-hidden")}>
@@ -73,6 +80,7 @@ export function BusinessLayout({
             {children}
           </motion.div>
         </main>
+      </div>
       </div>
     </div>
   );

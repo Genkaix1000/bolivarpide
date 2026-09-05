@@ -16,6 +16,7 @@ import {
   type OptimizeImageOptions,
 } from "@/lib/images/optimizeImage";
 import { cn } from "@/lib/utils";
+import { ShellPageHeader } from "@/components/shell/ShellPageHeader";
 
 type Props = {
   businessId: string;
@@ -171,17 +172,14 @@ export function GeneralSettingsForm(props: Props) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">
-          Perfil del local
-        </h2>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Identidad, branding y datos de contacto visibles en la tienda.
-        </p>
-      </div>
+      <ShellPageHeader
+        title="Perfil del local"
+        description="Identidad, branding y datos de contacto visibles en la tienda."
+        as="h2"
+      />
 
       <section className={sectionCls}>
-        <h3 className="mb-5 text-sm font-bold text-gray-900 dark:text-gray-100">Branding</h3>
+        <h3 className="mb-5 text-[13px] font-semibold text-stone-900 dark:text-stone-100">Branding</h3>
         <div className="space-y-6">
           <ImageRow
             businessId={props.businessId}

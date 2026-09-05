@@ -191,22 +191,22 @@ export function SearchAutocompleteOverlay({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[60] flex flex-col bg-[#faf6f1] dark:bg-[#0b0b0d] animate-fade-in overflow-hidden"
       >
-        {/* Header Capsule Input */}
-        <div className="w-full max-w-[760px] mx-auto px-4 pt-4 pb-3 flex items-center gap-3 shrink-0 border-b border-[#e8e0d6] dark:border-[#2a2623] bg-[#faf6f1]/90 dark:bg-[#0b0b0d]/90 backdrop-blur-md">
+        {/* Header — same max-w/px/h as guest navbar search row */}
+        <div className="flex h-14 w-full max-w-[760px] shrink-0 items-center gap-3 border-b border-[#e8e0d6] bg-[#faf6f1]/90 px-4 backdrop-blur-md mx-auto dark:border-[#2a2623] dark:bg-[#0b0b0d]/90">
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar buscador"
-            className="w-10 h-10 rounded-full bg-[#ede4d9] dark:bg-[#1c1917] border border-[#ddd4c8] dark:border-[#3d3732] flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white shadow-xs cursor-pointer active:scale-95 transition-all shrink-0"
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#ddd4c8] bg-[#ede4d9] text-gray-600 shadow-xs transition-all active:scale-95 hover:text-gray-900 dark:border-[#3d3732] dark:bg-[#1c1917] dark:text-gray-300 dark:hover:text-white"
           >
             <MaterialSymbol icon="arrow_back" size={18} />
           </button>
 
           <div
-            className={`flex-1 h-11 bg-white dark:bg-[#1c1917] border rounded-2xl flex items-center px-3.5 gap-2.5 transition-all duration-300 relative shadow-sm ${
+            className={`relative flex h-11 flex-1 items-center gap-2.5 rounded-2xl border bg-white px-3.5 shadow-sm transition-all duration-300 dark:bg-[#1c1917] ${
               hasSearchText
                 ? "border-[#9a0002] ring-2 ring-[#9a0002]/20"
-                : "border-[#e8e0d6] dark:border-[#3d3732] focus-within:border-[#9a0002]"
+                : "border-[#e8e0d6] focus-within:border-[#9a0002] dark:border-[#3d3732]"
             }`}
           >
             {isLoading ? (

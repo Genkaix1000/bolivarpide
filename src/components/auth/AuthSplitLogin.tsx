@@ -10,6 +10,7 @@ import { PASSWORD_RULES, passwordIsValid } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/client";
 import { flashToast } from "@/components/FlashToast";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { BP_REMEMBER_KEY } from "@/lib/auth/rememberedAccount";
 
 type Field = "name" | "email" | "password" | "confirm";
 type FieldErrors = Partial<Record<Field, string>>;
@@ -36,7 +37,7 @@ type Props = {
 
 type Mode = "login" | "signup";
 
-const REMEMBER_KEY = "bp_remember_session";
+const REMEMBER_KEY = BP_REMEMBER_KEY;
 
 function EyeToggle({
   shown,

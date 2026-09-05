@@ -13,13 +13,16 @@ type Props = {
   onAccent?: boolean;
   /** Área que mantiene el modo confirm (típico: footer entero) */
   boundaryRef?: RefObject<HTMLElement | null>;
+  /** Ícono Material del botón pedir confirmación (default: logout) */
+  askIcon?: string;
+  askTitle?: string;
 };
 
 const slide =
   "absolute inset-0 flex items-center justify-end transition-all duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 
 /**
- * Logout con confirmación inline: ícono acento plano → ✕ y ✓ al confirmar.
+ * Acción con confirmación inline: ícono → ✕ y ✓ al confirmar.
  */
 export function LogoutNavRail({
   confirm,
@@ -28,6 +31,8 @@ export function LogoutNavRail({
   onConfirm,
   onAccent = false,
   boundaryRef,
+  askIcon = "logout",
+  askTitle = "Cerrar sesión",
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const focusRef = useRef<HTMLButtonElement>(null);
@@ -60,8 +65,8 @@ export function LogoutNavRail({
     >
       <button
         type="button"
-        title="Cerrar sesión"
-        aria-label="Cerrar sesión"
+        title={askTitle}
+        aria-label={askTitle}
         aria-expanded={confirm}
         onClick={onAsk}
         className={cn(
@@ -71,7 +76,7 @@ export function LogoutNavRail({
           confirm ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-0 opacity-100",
         )}
       >
-        <MaterialSymbol icon="logout" size={20} />
+        <MaterialSymbol icon={askIcon} size={20} />
       </button>
 
       <div
@@ -85,7 +90,7 @@ export function LogoutNavRail({
           ref={focusRef}
           type="button"
           title="Cancelar"
-          aria-label="Cancelar cierre de sesión"
+          aria-label="Cancelar"
           onClick={(e) => {
             e.stopPropagation();
             onCancel();
@@ -102,7 +107,7 @@ export function LogoutNavRail({
         <button
           type="button"
           title="Confirmar"
-          aria-label="Confirmar cierre de sesión"
+          aria-label="Confirmar"
           onClick={(e) => {
             e.stopPropagation();
             onConfirm();

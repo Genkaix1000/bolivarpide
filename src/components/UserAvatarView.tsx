@@ -56,29 +56,54 @@ export function UserAvatarView({
   const config = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
   const palette = getColorPalette(avatar.gradientId);
 
+  const isButton = variant === "button";
+  const buttonBox =
+    size === "sm"
+      ? "h-8 w-8"
+      : size === "md"
+        ? "h-10 w-10"
+        : config.container;
+  const glyphSize = isButton
+    ? size === "sm"
+      ? 15
+      : size === "md"
+        ? 18
+        : config.symbolSize
+    : config.symbolSize;
+  const emojiCls = isButton
+    ? size === "sm"
+      ? "text-[13px]"
+      : "text-[18px]"
+    : config.emojiText;
+  const initialsCls = isButton
+    ? size === "sm"
+      ? "text-[11px]"
+      : "text-[13px]"
+    : config.initialsText;
+
   const content =
     avatar.type === "symbol" ? (
-      <MaterialSymbol icon={avatar.value} size={variant === "button" ? 20 : config.symbolSize} className="text-white" fill />
+      <MaterialSymbol
+        icon={avatar.value}
+        size={glyphSize}
+        opticalSize={20}
+        className="text-white"
+        fill
+      />
     ) : avatar.type === "emoji" ? (
-      <span className={cn("select-none leading-none", variant === "button" ? "text-[20px]" : config.emojiText)}>
-        {avatar.value}
-      </span>
+      <span className={cn("select-none leading-none", emojiCls)}>{avatar.value}</span>
     ) : (
-      <span
-        className={cn(
-          "select-none font-black tracking-tight text-white",
-          variant === "button" ? "text-[13px]" : config.initialsText,
-        )}
-      >
+      <span className={cn("select-none font-black tracking-tight text-white", initialsCls)}>
         {avatar.value || "?"}
       </span>
     );
 
-  if (variant === "button") {
+  if (isButton) {
     return (
       <span
         className={cn(
-          "relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full",
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+          buttonBox,
           className,
         )}
         style={{ backgroundColor: palette.color }}

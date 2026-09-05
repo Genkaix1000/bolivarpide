@@ -9,6 +9,6 @@ export const viewport: Viewport = {
   themeColor: "#1c1917",
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

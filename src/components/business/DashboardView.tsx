@@ -303,7 +303,18 @@ export function DashboardView({
   };
 
   return (
-    <div className="space-y-5 max-w-[1280px] mx-auto text-gray-800 dark:text-gray-200">
+    <div className="space-y-5 max-w-[1280px] mx-auto text-stone-800 dark:text-stone-200">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-[13px] font-medium text-stone-500 dark:text-stone-400">
+            {business.name}
+          </p>
+        </div>
+      </div>
+
       {tourOpen && (
         <TourModal
           businessId={businessId}

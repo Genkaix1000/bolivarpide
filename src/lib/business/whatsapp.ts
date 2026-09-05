@@ -6,15 +6,21 @@ import { requireBusinessAccess, requireUser } from "@/lib/business/queries";
 
 async function requireAdminScoped() {
   const { user } = await requireUser();
-  if (user.app_metadata?.role !== "admin") throw new Error("Forbidden");
-  return { service: createServiceClient() };
+  const { isPlatformSuperadmin } = await import("@/lib/admin/platform");
+  if (!isPlatformSuperadmin(user)) throw new Error("Forbidden");
+  return { user, service: createServiceClient() };
 }
 
 /** Admin: activate / deactivate a connected number. */
 export async function setWhatsAppActive(formData: FormData) {
   const connectionId = String(formData.get("connectionId") || "");
   const active = formData.get("active") === "true";
-  const { service } = await requireAdminScoped();
+  const { user, service } = await requireAdminScoped();
+  const { data: conn } = await service
+    .from("business_whatsapp")
+    .select("business_id, display_phone_number")
+    .eq("id", connectionId)
+    .maybeSingle();
   const { error } = await service
     .from("business_whatsapp")
     .update({
@@ -24,7 +30,17 @@ export async function setWhatsAppActive(formData: FormData) {
     })
     .eq("id", connectionId);
   if (error) throw error;
+  const { writeAdminAudit } = await import("@/lib/admin/audit");
+  await writeAdminAudit({
+    actorUserId: user.id,
+    action: "whatsapp_set_active",
+    targetType: "business",
+    targetId: conn?.business_id ?? connectionId,
+    meta: { phone_e164: conn?.display_phone_number ?? null, active },
+  });
   revalidatePath("/admin");
+  revalidatePath("/admin/soporte");
+  revalidatePath("/admin/auditoria");
 }
 
 /**

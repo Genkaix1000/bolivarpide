@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { CaretRight, CurrencyCircleDollar, X } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/CartProvider";
 import {
@@ -12,14 +12,12 @@ import {
   suggestionsForChain,
 } from "@/lib/business/staticContent";
 import type { FeaturedChain, TrendingItem } from "@/lib/business/types";
-import {
-  cartItemCount,
-  cartSubtotal,
-} from "@/lib/cart";
+import { cartItemCount, cartSubtotal } from "@/lib/cart";
 import { CheckoutSheet } from "@/components/checkout/CheckoutSheet";
 import { ProductSheet } from "@/components/cart/ProductSheet";
 import type { PendingCustomerOrder } from "@/lib/orders/pending";
-import { statusIcon, statusShortLabel } from "@/lib/orders/active";
+import { statusShortLabel } from "@/lib/orders/active";
+import { OrderStatusGlyph } from "@/components/orders/orderStatusIcons";
 
 function money(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
@@ -78,7 +76,7 @@ function UpsellSheet({ item, onClose }: { item: TrendingItem; onClose: () => voi
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 cursor-pointer"
               aria-label="Cerrar"
             >
-              <MaterialSymbol icon="close" size={16} />
+              <X weight="bold" size={16} />
             </button>
           </div>
 
@@ -295,7 +293,7 @@ function CartDrawer({ onClose }: { onClose: () => void }) {
               className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 cursor-pointer"
               aria-label="Cerrar"
             >
-              <MaterialSymbol icon="close" size={16} />
+              <X weight="bold" size={16} />
             </button>
           </div>
         </div>
@@ -457,7 +455,7 @@ function FloatingCartBar() {
       >
         <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9a0002]/10 text-[#9a0002]">
-            <MaterialSymbol icon="payments" size={20} />
+            <CurrencyCircleDollar weight="regular" size={20} />
           </span>
           <span className="min-w-0 truncate">
             {label}
@@ -466,7 +464,7 @@ function FloatingCartBar() {
             </span>
           </span>
         </span>
-        <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
+        <CaretRight weight="regular" size={22} className="shrink-0 text-stone-400" />
       </motion.button>
     );
   }
@@ -495,7 +493,7 @@ function FloatingCartBar() {
             cancelled ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" : "bg-[#9a0002]/10 text-[#9a0002]",
           )}
         >
-          <MaterialSymbol icon={statusIcon(activeOrder.status)} size={22} />
+          <OrderStatusGlyph status={activeOrder.status} size={22} />
         </span>
         <div className="min-w-0 flex-1 text-left">
           <span className="block text-[13px] font-bold text-stone-900 dark:text-stone-100">
@@ -518,10 +516,10 @@ function FloatingCartBar() {
               className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
               aria-label="Cerrar aviso"
             >
-              <MaterialSymbol icon="close" size={16} />
+              <X weight="bold" size={16} />
             </button>
           ) : (
-            <MaterialSymbol icon="chevron_right" size={22} className="shrink-0 text-stone-400" />
+            <CaretRight weight="regular" size={22} className="shrink-0 text-stone-400" />
           )}
         </div>
       </motion.div>

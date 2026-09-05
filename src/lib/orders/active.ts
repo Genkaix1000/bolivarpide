@@ -22,18 +22,29 @@ export type ActiveCustomerOrder = {
   rejectionReason?: string | null;
 };
 
-export function statusIcon(status: OrderLifecycleStatus): string {
+/** Phosphor icon names for order lifecycle — keep in sync with OrderStepper. */
+export type OrderStatusIcon =
+  | "Receipt"
+  | "CookingPot"
+  | "Moped"
+  | "CheckCircle"
+  | "XCircle";
+
+export function statusIcon(status: OrderLifecycleStatus): OrderStatusIcon {
   switch (status) {
     case "pending":
-      return "receipt_long";
+      return "Receipt";
     case "preparing":
-      return "skillet";
+      return "CookingPot";
     case "delivering":
-      return "moped";
+      return "Moped";
+    case "delivered":
+      return "CheckCircle";
     case "rejected":
-      return "cancel";
+    case "cancelled":
+      return "XCircle";
     default:
-      return "receipt_long";
+      return "Receipt";
   }
 }
 

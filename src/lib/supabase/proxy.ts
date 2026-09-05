@@ -34,6 +34,11 @@ export async function updateSession(request: NextRequest) {
 
   if (pathname.startsWith("/admin")) {
     if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+      if (user?.app_metadata?.role === "admin") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
       return supabaseResponse;
     }
     if (!user) {

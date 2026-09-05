@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { OrderTrackingView } from "@/lib/orders/lifecycle";
 import { OrderTrackingSheet } from "@/components/orders/OrderTrackingSheet";
 import { OrderTrackingMap } from "@/components/orders/OrderTrackingMap";
-import { MaterialSymbol } from "@/components/ui/material-symbol";
+import { ArrowLeft } from "@phosphor-icons/react";
 
 const LIVE_POLL_MS = 8_000;
 
@@ -86,7 +86,7 @@ export function OrderTrackingClient({
           style={{ top: "max(12px, env(safe-area-inset-top))" }}
           aria-label="Volver"
         >
-          <MaterialSymbol icon="arrow_back" size={20} />
+          <ArrowLeft weight="bold" size={20} />
         </Link>
       </div>
 

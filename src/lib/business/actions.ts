@@ -20,7 +20,8 @@ function slugify(name: string) {
 
 async function requireAdmin() {
   const { supabase, user } = await requireUser();
-  if (user.app_metadata?.role !== "admin") {
+  const { isPlatformSuperadmin } = await import("@/lib/admin/platform");
+  if (!isPlatformSuperadmin(user)) {
     throw new Error("Forbidden");
   }
   return { supabase, user, service: createServiceClient() };
@@ -149,7 +150,7 @@ export async function searchUsersForInviteAction(
   const service = createServiceClient();
 
   const [{ data: members }, { data: listed }, { data: profiles }] = await Promise.all([
-    service.from("business_members").select("user_id").eq("business_id", businessId),
+    service.from("business_members").select("user_id, status").eq("business_id", businessId),
     service.auth.admin.listUsers({ perPage: 1000 }),
     service
       .from("user_profiles")
@@ -158,7 +159,12 @@ export async function searchUsersForInviteAction(
       ),
   ]);
 
-  const alreadyIn = new Set((members ?? []).map((m) => m.user_id));
+  // Solo contar activos/invitados — left/rejected pueden volver a invitarse
+  const alreadyIn = new Set(
+    (members ?? [])
+      .filter((m) => m.status === "active" || m.status === "invited")
+      .map((m) => m.user_id),
+  );
   const profileById = new Map((profiles ?? []).map((p) => [p.user_id, p]));
   const needle = q
     .toLowerCase()
@@ -297,6 +303,73 @@ export async function leaveBusiness(formData: FormData) {
   redirect("/negocio");
 }
 
+/** Owner/staff removes a non-owner member. Soft status → left (undoable). */
+export async function removeMember(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const memberId = String(formData.get("memberId") || "");
+  if (!businessId || !memberId) throw new Error("Datos inválidos");
+
+  const { supabase, user, member: actor } = await requireBusinessAccess(businessId);
+  if (!actor || (actor.role !== "owner" && actor.role !== "staff")) {
+    throw new Error("Sin permiso para quitar miembros");
+  }
+
+  const { data: target, error: fetchErr } = await supabase
+    .from("business_members")
+    .select("id, role, user_id, status")
+    .eq("id", memberId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (fetchErr || !target) throw new Error("Miembro no encontrado");
+  if (target.role === "owner") throw new Error("No se puede eliminar al titular");
+  if (target.user_id === user.id) throw new Error("Usá Salir del local para irte vos");
+  if (actor.role === "staff" && target.role === "staff") {
+    throw new Error("Solo el titular puede quitar administradores");
+  }
+
+  const { error } = await supabase
+    .from("business_members")
+    .update({ status: "left", responded_at: new Date().toISOString() })
+    .eq("id", memberId)
+    .eq("business_id", businessId)
+    .neq("role", "owner");
+  if (error) throw error;
+
+  revalidatePath(`/negocio/${businessId}/configuracion/equipo`);
+  revalidatePath("/negocio");
+  return { previousStatus: target.status as string };
+}
+
+/** Undo de removeMember: restaura status previo (active | invited). */
+export async function restoreMember(formData: FormData) {
+  const businessId = String(formData.get("businessId") || "");
+  const memberId = String(formData.get("memberId") || "");
+  const previousStatus = String(formData.get("previousStatus") || "active");
+  if (!businessId || !memberId) throw new Error("Datos inválidos");
+  if (previousStatus !== "active" && previousStatus !== "invited") {
+    throw new Error("Estado inválido");
+  }
+
+  const { supabase, member: actor } = await requireBusinessAccess(businessId);
+  if (!actor || (actor.role !== "owner" && actor.role !== "staff")) {
+    throw new Error("Sin permiso");
+  }
+
+  const { error } = await supabase
+    .from("business_members")
+    .update({
+      status: previousStatus,
+      responded_at: previousStatus === "active" ? new Date().toISOString() : null,
+    })
+    .eq("id", memberId)
+    .eq("business_id", businessId)
+    .neq("role", "owner");
+  if (error) throw error;
+
+  revalidatePath(`/negocio/${businessId}/configuracion/equipo`);
+  revalidatePath("/negocio");
+}
+
 export async function approveLead(formData: FormData) {
   const leadId = String(formData.get("leadId") || "");
   const { user, service } = await requireAdmin();
@@ -379,6 +452,8 @@ export async function approveLead(formData: FormData) {
   });
 
   revalidatePath("/admin");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/auditoria");
 }
 
 export async function rejectLead(formData: FormData) {
@@ -392,6 +467,8 @@ export async function rejectLead(formData: FormData) {
     target_id: leadId,
   });
   revalidatePath("/admin");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/auditoria");
 }
 
 export async function setPublished(formData: FormData) {
@@ -407,6 +484,8 @@ export async function setPublished(formData: FormData) {
     meta: { published },
   });
   revalidatePath("/admin");
+  revalidatePath("/admin/comercios");
+  revalidatePath("/admin/auditoria");
   revalidatePath("/");
 }
 
@@ -460,6 +539,8 @@ export async function setPlan(formData: FormData) {
     meta: { plan },
   });
   revalidatePath("/admin");
+  revalidatePath("/admin/comercios");
+  revalidatePath("/admin/auditoria");
 }
 
 export async function claimBusinessOwnership(formData: FormData) {

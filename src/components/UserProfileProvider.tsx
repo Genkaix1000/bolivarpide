@@ -1,6 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { usePathname } from "next/navigation";
 import {
   UserProfile,
@@ -12,12 +20,25 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchUserProfile, rowToProfile } from "@/lib/userProfileDb";
 import { saveUserProfileAction } from "@/lib/userProfileActions";
 import { flashToast } from "@/components/FlashToast";
+import {
+  clearRememberedAccount,
+  readGuestMode,
+  readRememberPreference,
+  readRememberedAccount,
+  setGuestMode,
+  writeRememberedAccount,
+  type RememberedAccount,
+} from "@/lib/auth/rememberedAccount";
+
+export type PlatformRoleClient = "superadmin" | "soporte";
 
 interface UserProfileContextValue {
   profile: UserProfile;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   hasActiveBusiness: boolean;
+  platformRole: PlatformRoleClient | null;
+  rememberedAccount: RememberedAccount | null;
   updateProfile: (partial: Partial<UserProfile>) => void;
   updateAvatar: (avatar: UserAvatar) => void;
   updateName: (name: string) => void;
@@ -25,7 +46,14 @@ interface UserProfileContextValue {
   removeBadge: (badgeId: string) => void;
   resetProfile: () => void;
   logout: () => Promise<void>;
+  continueSession: () => Promise<void>;
   persistProfile: (next: UserProfile) => Promise<void>;
+}
+
+function platformRoleFromMeta(meta: Record<string, unknown> | undefined): PlatformRoleClient | null {
+  if (meta?.role !== "admin") return null;
+  if (meta.platform_role === "soporte") return "soporte";
+  return "superadmin";
 }
 
 const UserProfileContext = createContext<UserProfileContextValue | null>(null);
@@ -37,17 +65,32 @@ function initialsFrom(name: string, email: string) {
   return base.slice(0, 2).toUpperCase() || "?";
 }
 
+function snapshotAccount(profile: UserProfile): RememberedAccount {
+  return {
+    name: profile.name,
+    email: profile.email,
+    avatar: profile.avatar,
+  };
+}
+
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [hasActiveBusiness, setHasActiveBusiness] = useState(false);
+  const [platformRole, setPlatformRole] = useState<PlatformRoleClient | null>(null);
+  const [rememberedAccount, setRememberedAccount] = useState<RememberedAccount | null>(null);
   const [profileReady, setProfileReady] = useState(false);
   const skipNextSave = useRef(true);
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
 
   useEffect(() => {
-    queueMicrotask(() => setProfileReady(true));
+    queueMicrotask(() => {
+      setProfileReady(true);
+      setRememberedAccount(readRememberedAccount());
+    });
   }, []);
 
   const persistProfile = useCallback(async (next: UserProfile) => {
@@ -62,15 +105,18 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         const {
           data: { user },
         } = await supabase.auth.getUser();
+
         if (!user) {
+          setGuestMode(false);
           setIsAuthenticated(false);
           setHasActiveBusiness(false);
+          setPlatformRole(null);
           setProfile(DEFAULT_USER_PROFILE);
           skipNextSave.current = true;
           return;
         }
 
-        setIsAuthenticated(true);
+        setPlatformRole(platformRoleFromMeta(user.app_metadata as Record<string, unknown>));
         const name =
           (user.user_metadata?.full_name as string | undefined) ||
           (user.user_metadata?.name as string | undefined) ||
@@ -85,26 +131,25 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
           .eq("status", "active");
         setHasActiveBusiness((count ?? 0) > 0);
 
+        let nextProfile: UserProfile;
         try {
           const row = await fetchUserProfile(user.id);
           skipNextSave.current = true;
-          if (row) {
-            setProfile(rowToProfile(row, { name, email }));
-          } else {
-            setProfile({
-              ...DEFAULT_USER_PROFILE,
-              id: user.id,
-              name,
-              email,
-              avatar: {
-                type: "initials",
-                value: initialsFrom(name, email),
-                gradientId: "cherry",
-              },
-            });
-          }
+          nextProfile = row
+            ? rowToProfile(row, { name, email })
+            : {
+                ...DEFAULT_USER_PROFILE,
+                id: user.id,
+                name,
+                email,
+                avatar: {
+                  type: "initials",
+                  value: initialsFrom(name, email),
+                  gradientId: "cherry",
+                },
+              };
         } catch {
-          setProfile({
+          nextProfile = {
             ...DEFAULT_USER_PROFILE,
             id: user.id,
             name,
@@ -114,8 +159,24 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
               value: initialsFrom(name, email),
               gradientId: "cherry",
             },
-          });
+          };
         }
+
+        setProfile(nextProfile);
+
+        if (readRememberPreference()) {
+          const snap = snapshotAccount(nextProfile);
+          writeRememberedAccount(snap);
+          setRememberedAccount(snap);
+        }
+
+        if (readGuestMode()) {
+          setIsAuthenticated(false);
+          skipNextSave.current = true;
+          return;
+        }
+
+        setIsAuthenticated(true);
       } finally {
         setIsAuthLoading(false);
       }
@@ -190,15 +251,49 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     skipNextSave.current = true;
   }, []);
 
+  const continueSession = useCallback(async () => {
+    setGuestMode(false);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      clearRememberedAccount();
+      setRememberedAccount(null);
+      flashToast("La sesión expiró. Iniciá sesión de nuevo.");
+      if (typeof window !== "undefined") window.location.href = "/login";
+      return;
+    }
+    setIsAuthenticated(true);
+    flashToast("Sesión reanudada.");
+  }, []);
+
   const logout = useCallback(async () => {
+    const current = profileRef.current;
+    const soft = readRememberPreference() && current.id !== "guest" && !!current.email;
+
+    if (soft) {
+      const snap = snapshotAccount(current);
+      writeRememberedAccount(snap);
+      setRememberedAccount(snap);
+      setGuestMode(true);
+      setIsAuthenticated(false);
+      skipNextSave.current = true;
+      flashToast("Sesión pausada.");
+      return;
+    }
+
     flashToast("Sesión cerrada.");
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
     } finally {
+      clearRememberedAccount();
+      setRememberedAccount(null);
       setProfile(DEFAULT_USER_PROFILE);
       setIsAuthenticated(false);
       setHasActiveBusiness(false);
+      setPlatformRole(null);
       skipNextSave.current = true;
       if (typeof window !== "undefined") {
         window.location.href = "/";
@@ -212,6 +307,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       isAuthenticated,
       isAuthLoading,
       hasActiveBusiness,
+      platformRole,
+      rememberedAccount,
       updateProfile,
       updateAvatar,
       updateName,
@@ -219,6 +316,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       removeBadge,
       resetProfile,
       logout,
+      continueSession,
       persistProfile,
     }),
     [
@@ -226,6 +324,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       isAuthenticated,
       isAuthLoading,
       hasActiveBusiness,
+      platformRole,
+      rememberedAccount,
       updateProfile,
       updateAvatar,
       updateName,
@@ -233,6 +333,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       removeBadge,
       resetProfile,
       logout,
+      continueSession,
       persistProfile,
     ],
   );

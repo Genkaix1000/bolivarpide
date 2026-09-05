@@ -16,7 +16,6 @@ export default async function NegocioHubPage() {
   return (
     <main className="min-h-dvh bg-[#f3efe8] dark:bg-[#141210] px-4 sm:px-8 py-8 sm:py-12 transition-colors">
       <div className="mx-auto max-w-7xl space-y-8">
-        {/* Pending invitations alerts */}
         {invited.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
@@ -65,7 +64,6 @@ export default async function NegocioHubPage() {
           </section>
         )}
 
-        {/* Business Grid */}
         <HubBusinessGrid memberships={active} />
       </div>
     </main>

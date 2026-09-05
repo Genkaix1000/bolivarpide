@@ -77,10 +77,9 @@ export function ChatConversationPane({
           ) : null}
 
           <button type="button" onClick={onOpenContext} className="relative shrink-0 cursor-pointer">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8e0d6] text-sm font-bold text-gray-700 dark:bg-[#2b2521] dark:text-gray-200">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[#e8e0d6] text-sm font-semibold text-stone-700 dark:bg-[#2b2521] dark:text-stone-200">
               {conversation.customer.name.slice(0, 2).toUpperCase()}
             </span>
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#fdfcfb] dark:ring-[#181513]" />
           </button>
 
           <button type="button" onClick={onOpenContext} className="min-w-0 cursor-pointer text-left">

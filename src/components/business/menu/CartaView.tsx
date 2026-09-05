@@ -9,6 +9,7 @@ import { MENU_IMAGE_FRAME_CLASS, MENU_PREVIEW_MAX_CLASS } from "@/lib/images/men
 import { cn } from "@/lib/utils";
 import { flashToastUndo } from "@/components/FlashToast";
 import { ConfirmActionRail } from "@/components/shared/ConfirmActionRail";
+import { ShellPageHeader } from "@/components/shell/ShellPageHeader";
 import { ProductSlidePanel } from "@/components/business/menu/ProductSlidePanel";
 import { MenuCategoriesPanel } from "@/components/business/menu/MenuCategoriesPanel";
 import {
@@ -461,19 +462,11 @@ export function CartaView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">Carta</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            {products.length} producto{products.length === 1 ? "" : "s"} · {categories.length}{" "}
-            categorí{categories.length === 1 ? "a" : "as"}
-            {businessName ? ` · ${businessName}` : ""}
-          </p>
-          <p className="mt-1 text-[12px] font-semibold text-stone-400">
-            {freePlanLimitsLabel(products.length, categories.length)}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <ShellPageHeader
+        title="Carta"
+        description={`${products.length} producto${products.length === 1 ? "" : "s"} · ${categories.length} categorí${categories.length === 1 ? "a" : "as"}${businessName ? ` · ${businessName}` : ""}`}
+        actions={
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
           <div className="flex rounded-full bg-[#e8e0d6]/70 p-0.5 dark:bg-[#2a2623]">
             <button
               type="button"
@@ -518,17 +511,21 @@ export function CartaView({
             type="button"
             disabled={atProductLimit || categories.length === 0}
             onClick={openNew}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#9a0002] px-4 py-2 text-[12px] font-bold text-white hover:bg-[#850002] disabled:opacity-50"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#9a0002] px-4 py-2 text-[12px] font-semibold text-white hover:bg-[#850002] disabled:opacity-50"
           >
             <MaterialSymbol icon="add" size={18} />
             Agregar producto
           </button>
-        </div>
-      </div>
+          </div>
+        }
+      />
+      <p className="-mt-2 text-[12px] font-medium text-stone-400">
+        {freePlanLimitsLabel(products.length, categories.length)}
+      </p>
 
       <div className={cn("overflow-hidden rounded-2xl border border-[#e8e0d6] bg-[#f3efe8] dark:border-[#3d3732] dark:bg-[#141210]", MENU_PREVIEW_MAX_CLASS)}>
         <div className="px-5 pt-5 pb-8">
-          <h2 className="mb-1 text-[15px] font-bold text-gray-900 dark:text-gray-100">Menú</h2>
+          <h2 className="mb-1 text-[15px] font-semibold tracking-tight text-stone-900 dark:text-stone-100">Menú</h2>
           {products.length > 0 && categories.length > 0 && (
             <CategoryStickyNav categories={categories} products={products} />
           )}

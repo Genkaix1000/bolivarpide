@@ -1,20 +1,20 @@
 "use client";
 
-import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 import type { OrderLifecycleStatus } from "@/lib/orders/lifecycle";
+import { ORDER_STEP_ICONS } from "@/components/orders/orderStatusIcons";
 
 const DELIVERY_STEPS = [
-  { icon: "receipt_long", label: "Pedido" },
-  { icon: "skillet", label: "Cocina" },
-  { icon: "moped", label: "Camino" },
-  { icon: "check_circle", label: "Entregado" },
+  { Icon: ORDER_STEP_ICONS.receipt, label: "Pedido" },
+  { Icon: ORDER_STEP_ICONS.cooking, label: "Cocina" },
+  { Icon: ORDER_STEP_ICONS.moped, label: "Camino" },
+  { Icon: ORDER_STEP_ICONS.check, label: "Entregado" },
 ] as const;
 
 const PICKUP_STEPS = [
-  { icon: "receipt_long", label: "Pedido" },
-  { icon: "skillet", label: "Cocina" },
-  { icon: "storefront", label: "Para retirar" },
+  { Icon: ORDER_STEP_ICONS.receipt, label: "Pedido" },
+  { Icon: ORDER_STEP_ICONS.cooking, label: "Cocina" },
+  { Icon: ORDER_STEP_ICONS.storefront, label: "Para retirar" },
 ] as const;
 
 export function OrderStepper({
@@ -34,6 +34,7 @@ export function OrderStepper({
       {steps.map((s, i) => {
         const active = allDone ? true : i <= step;
         const current = allDone ? i === steps.length - 1 : i === step;
+        const IconCmp = s.Icon;
         return (
           <div key={s.label} className="flex flex-1 flex-col items-center gap-1.5">
             <div className="flex w-full items-center">
@@ -57,7 +58,7 @@ export function OrderStepper({
                     "ring-2 ring-[#9a0002] ring-offset-2 ring-offset-white dark:ring-offset-[#1c1917]",
                 )}
               >
-                <MaterialSymbol icon={s.icon} size={20} />
+                <IconCmp weight={current ? "regular" : "light"} size={20} />
               </div>
               {i < steps.length - 1 ? (
                 <div
@@ -74,7 +75,7 @@ export function OrderStepper({
             </div>
             <span
               className={cn(
-                "text-[10px] font-medium text-center leading-tight",
+                "text-center text-[10px] font-medium leading-tight",
                 active ? "text-stone-700 dark:text-stone-200" : "text-stone-400 dark:text-stone-500",
               )}
             >
