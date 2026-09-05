@@ -263,7 +263,6 @@ export async function inviteMember(formData: FormData) {
   );
   if (error) throw error;
   revalidatePath(`/negocio/${businessId}/configuracion/equipo`);
-  revalidatePath(`/negocio/${businessId}/equipo`);
   revalidatePath("/negocio");
 }
 

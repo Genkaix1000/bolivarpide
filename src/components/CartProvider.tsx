@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { TrendingItem } from "@/lib/mockData";
+import type { TrendingItem } from "@/lib/business/types";
 import { createClient } from "@/lib/supabase/client";
 import type { PendingCustomerOrder } from "@/lib/orders/pending";
 import type { ActiveCustomerOrder } from "@/lib/orders/active";

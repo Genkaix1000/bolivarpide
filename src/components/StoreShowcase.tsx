@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
-import type { PanelProduct } from "@/lib/mockData";
-import type { BusinessInfo, FeaturedChain } from "@/lib/mockData";
+import type { PanelProduct } from "@/lib/business/types";
+import type { BusinessInfo, FeaturedChain } from "@/lib/business/types";
 
 export type StoreProfile = {
   name: string;

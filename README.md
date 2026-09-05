@@ -1,33 +1,49 @@
-# BolivarPide (delivery)
+# BolivarPide
 
 App de delivery y panel de negocios para San Carlos de Bolívar.
+Next.js 16 (App Router) + Supabase + MercadoPago QR.
+
+## Stack
+
+- **Frontend:** Next.js 16 · React 19 · Tailwind CSS v4 · TypeScript
+- **Backend/datos:** Supabase (PostgreSQL, Auth, Storage, Realtime) · Route Handlers
+- **Pagos:** MercadoPago QR dinámico (OAuth por comercio)
+- **WhatsApp:** n8n self-hosted (bot) + Meta OAuth con tokens en Supabase Vault
+
+Ver `ARQUITECTURA.md` (estado real) y `docs/debt.md` (deuda técnica y plan de remediación).
 
 ## Desarrollo
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Migraciones Supabase: `supabase/migrations/`. Tras pull, aplicar en tu proyecto (CLI o dashboard).
-
-Checks locales:
+Verificación local:
 
 ```bash
-node scripts/wipe-carta.mjs <businessId>
-npm run build
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm test          # corre los *.check.ts (patrón ponytail) vía tsx
 ```
 
-## Carta / menú del negocio
+## Migraciones Supabase
 
-- **Ruta panel:** `/negocio/[businessId]/carta`
-- **Categorías:** tabla `menu_categories`, orden con drag (lista plana, sin subcategorías).
-- **Productos:** fotos en bucket `business-assets` (`icon_path` + `image_path` foto real).
-- **Plan Free:** 25 productos, 5 categorías (`src/lib/business/planLimits.ts`).
-- **Carta pública:** `/c/[slug]` — productos `available=true`, navegación sticky por categoría.
+Se aplican con la CLI (nunca desde el SQL editor):
 
-Ver `ARQUITECTURA.md` y migración `20260829_menu_categories.sql`.
+```bash
+supabase login                       # una vez
+supabase link --project-ref <ref>    # una vez
+supabase db push
+```
+
+Las migraciones viven en `supabase/migrations/`. El historial de la DB debe
+coincidir 1:1 con los archivos (reconciliação en `docs/debt.md`).
 
 ## Documentación
 
-- `ARQUITECTURA.md` — diseño del producto y esquema de datos.
+- `ARQUITECTURA.md` — estado real de la arquitectura y el esquema
+- `ARQUITECTURA.legacy.md` — diseño original (caras usuario/negocio/delivery, roadmap; **no** refleja la implementación)
+- `docs/specs/` — specs compartidas (pagos MP QR, config de locales)
+- `docs/features/` — TDD/SDD de features
+- `docs/debt.md` — auditoría de deuda técnica consolidada

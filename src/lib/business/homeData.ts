@@ -2,12 +2,8 @@ import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { toFeaturedChain } from "@/lib/business/home";
 import { productToTrendingItem } from "@/lib/business/publicStore";
-import {
-  PROMO_BANNERS,
-  type FeaturedChain,
-  type PromoBanner,
-  type TrendingItem,
-} from "@/lib/mockData";
+import { PROMO_BANNERS } from "@/lib/business/staticContent";
+import type { FeaturedChain, PromoBanner, TrendingItem } from "@/lib/business/types";
 
 export type HomeData = {
   chains: FeaturedChain[];

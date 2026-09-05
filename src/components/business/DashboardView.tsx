@@ -90,7 +90,7 @@ const TOUR_STEPS = [
     title: "Asociá un repartidor",
     body: "Invitá al menos un delivery o activá take away. Sin logística no se pueden completar pedidos.",
     hint: "Código de invitación desde Equipo → Asociar",
-    path: "equipo",
+    path: "configuracion/equipo",
   },
 ];
 

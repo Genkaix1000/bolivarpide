@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
 import { useCart } from "@/components/CartProvider";
-import { type FeaturedChain } from "@/lib/mockData";
+import { type FeaturedChain } from "@/lib/business/types";
 import { cartSubtotal, type CartLine } from "@/lib/cart";
 import { qrDisplaySrc } from "@/lib/qr-display";
 import {

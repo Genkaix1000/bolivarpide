@@ -1,14 +1,8 @@
-/**
- * Run: node --experimental-strip-types src/lib/userProfileDb.check.ts
- */
 import assert from "node:assert/strict";
-
-function normalizeAvatarType(type: string) {
-  if (type === "symbol" || type === "emoji" || type === "initials") return type;
-  return "initials";
-}
+import { normalizeAvatarType } from "./userProfileDb";
 
 assert.equal(normalizeAvatarType("character"), "initials");
 assert.equal(normalizeAvatarType("emoji"), "emoji");
+assert.equal(normalizeAvatarType("symbol"), "symbol");
 
 console.log("userProfileDb.check.ts: ok");

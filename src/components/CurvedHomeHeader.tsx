@@ -18,8 +18,8 @@ import {
   CATEGORIES,
   PROMO_BANNERS,
   RESTAURANT_SPECIALTIES,
-  type PromoBanner,
-} from "@/lib/mockData";
+} from "@/lib/business/staticContent";
+import type { PromoBanner } from "@/lib/business/types";
 
 interface CurvedHomeHeaderProps {
   activeCategory: string | null;

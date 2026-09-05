@@ -10,12 +10,12 @@ import { ProductImageToggle } from "@/components/menu/ProductImageToggle";
 import { ProductImagePlaceholder } from "@/components/menu/ProductImagePlaceholder";
 import { StoreRatingBadge } from "@/components/store/StoreRatingBadge";
 import { cn } from "@/lib/utils";
-import {
-  type FeaturedChain,
-  type TrendingItem,
-  type PromoBanner,
-  PROMO_BANNERS,
-} from "@/lib/mockData";
+import { PROMO_BANNERS } from "@/lib/business/staticContent";
+import type {
+  FeaturedChain,
+  PromoBanner,
+  TrendingItem,
+} from "@/lib/business/types";
 import type { HomeData } from "@/lib/business/homeData";
 import { useCart } from "@/components/CartProvider";
 import { BrandSplash, useBrandSplash } from "@/components/BrandSplash";

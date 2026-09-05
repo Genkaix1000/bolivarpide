@@ -1,34 +1,21 @@
-/**
- * Run: node --experimental-strip-types src/lib/business/publicStore.check.ts
- * Bug guard: public store must expose resolved asset URLs, never raw storage paths as img src.
- */
 import assert from "node:assert/strict";
+import { resolveBusinessAssetUrl } from "./assets";
 
-function resolveBusinessAssetUrl(path: string | null | undefined): string | undefined {
-  if (!path) return undefined;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const base = "https://example.supabase.co";
-  const clean = path.replace(/^\/+/, "");
-  return `${base}/storage/v1/object/public/business-assets/${clean}`;
-}
+// Footgun documentado: sin NEXT_PUBLIC_SUPABASE_URL el asset vuelve como path
+// crudo (no como URL absoluta). En producción el env siempre está set.
+delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+assert.equal(resolveBusinessAssetUrl("biz-1/logo.webp"), "biz-1/logo.webp");
 
-function toFeaturedChain(b: { slug: string; name: string; logo_path: string | null; banner_path: string | null }) {
-  return {
-    id: b.slug,
-    logoImage: resolveBusinessAssetUrl(b.logo_path),
-    bannerImage: resolveBusinessAssetUrl(b.banner_path),
-  };
-}
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+const url = resolveBusinessAssetUrl("biz-1/logo.webp");
+assert.equal(
+  url,
+  "https://example.supabase.co/storage/v1/object/public/business-assets/biz-1/logo.webp",
+);
+assert.equal(resolveBusinessAssetUrl(null), undefined);
+assert.equal(
+  resolveBusinessAssetUrl("https://cdn.example.com/a.webp"),
+  "https://cdn.example.com/a.webp",
+);
 
-const raw = "biz-1/logo-abc.webp";
-const chain = toFeaturedChain({
-  slug: "don-luis",
-  name: "Don Luis",
-  logo_path: raw,
-  banner_path: "biz-1/banner-xyz.webp",
-});
-
-assert.notEqual(chain.logoImage, raw);
-assert.match(String(chain.logoImage), /\/storage\/v1\/object\/public\/business-assets\//);
-assert.match(String(chain.bannerImage), /banner-xyz\.webp$/);
 console.log("publicStore.check.ts: ok");

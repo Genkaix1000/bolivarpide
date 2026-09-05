@@ -1,4 +1,4 @@
-import type { TrendingItem } from "@/lib/mockData";
+import type { TrendingItem } from "@/lib/business/types";
 
 export type SelectedOptions = Record<string, string | string[]>;
 

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useCart } from "@/components/CartProvider";
-import type { FeaturedChain, TrendingItem } from "@/lib/mockData";
+import type { FeaturedChain, TrendingItem } from "@/lib/business/types";
 import type { PublicMenuCategory } from "@/lib/business/publicStore";
 import { profileFromChain, StoreLocationBlock, StoreSidePanel } from "@/components/StoreShowcase";
 import { ProductImageToggle } from "@/components/menu/ProductImageToggle";

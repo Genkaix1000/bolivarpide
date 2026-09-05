@@ -15,7 +15,7 @@ import {
   unitPrice,
   type CartState,
 } from "./cart";
-import type { TrendingItem } from "./mockData";
+import type { TrendingItem } from "./business/types";
 
 const plain: TrendingItem = {
   id: "fries",

@@ -10,9 +10,8 @@ import { useCart } from "@/components/CartProvider";
 import {
   FEATURED_CHAINS,
   suggestionsForChain,
-  type FeaturedChain,
-  type TrendingItem,
-} from "@/lib/mockData";
+} from "@/lib/business/staticContent";
+import type { FeaturedChain, TrendingItem } from "@/lib/business/types";
 import {
   cartItemCount,
   cartSubtotal,

@@ -14,7 +14,7 @@ import {
   FEATURED_CHAINS,
   RESTAURANT_SPECIALTIES,
   TRENDING_ITEMS,
-} from "@/lib/mockData";
+} from "@/lib/business/staticContent";
 
 const DIETARY_TAGS: SearchResultTag[] = [
   { id: "sintacc", name: "Opciones Sin TACC / Celíacos", type: "diet" },

@@ -1,5 +1,5 @@
 import type { BusinessRow } from "@/lib/business/queries";
-import type { TrendingItem } from "@/lib/mockData";
+import type { TrendingItem } from "@/lib/business/types";
 import { toFeaturedChain, type PublishedStore } from "@/lib/business/home";
 import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 import { parseMenuOptionGroups } from "@/lib/business/menuOptionTypes";

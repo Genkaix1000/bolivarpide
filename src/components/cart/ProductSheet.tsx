@@ -5,7 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useCart } from "@/components/CartProvider";
-import { FEATURED_CHAINS, type TrendingItem } from "@/lib/mockData";
+import { FEATURED_CHAINS } from "@/lib/business/staticContent";
+import type { TrendingItem } from "@/lib/business/types";
 import {
   requiredOptionsMissing,
   type SelectedOptions,

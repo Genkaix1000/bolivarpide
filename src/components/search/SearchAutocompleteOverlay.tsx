@@ -7,7 +7,7 @@ import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { HighlightText } from "./HighlightText";
 import { searchCatalogAction } from "@/lib/search/actions";
 import type { CatalogSearchResult } from "@/lib/search/types";
-import type { FeaturedChain } from "@/lib/mockData";
+import type { FeaturedChain } from "@/lib/business/types";
 
 interface SearchAutocompleteOverlayProps {
   isOpen: boolean;

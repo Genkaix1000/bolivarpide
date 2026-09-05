@@ -12,6 +12,38 @@ incluye evidencia con `archivo:línea`. Severidades:
 
 ---
 
+## Estado de remediación (2026-09)
+
+- ✅ **Fase 1 (P0 seguridad/dinero) — aplicada y pusheada.** Checkout con precio
+  server-side (`resolvePricedLines`), `markOrderPaid` idempotente + verificación de
+  monto, refund con key estable y reserva atómica, lazy-expiry QR + timeout de
+  aceptación 3 min, roles `owner` en endpoints MP, fix de `send-push`, cupón con
+  reserva atómica (`reserve_coupon_use`).
+- ✅ **Fase 2 (P1 estado/capas) — aplicada y pusheada.** Enum de 6 estados con
+  `cancelled` real, RPC `transition_order_status` + `REVOKE UPDATE` en `orders`
+  (enforcement en DB), dominio de pagos en `src/lib/mercadopago/reconcile.ts` con
+  route delgado, home a RSC/ISR (`revalidate=60`) sin cache localStorage.
+- ✅ **Fase 3 (higiene) — en curso.** Tests copy-based → import-based, código
+  muerto eliminado, `mockData` split, package renombrado, `.env.example`
+  trackeado, docs regeneradas. Pendiente: reconciliación del historial de
+  migraciones con timestamps únicos (ver §26).
+
+### Deuda residual (post F1-F2)
+
+- **`refund_pending` sigue sin retry job** (§12): el flag se setea/resetea pero no
+  hay worker de reintento ni reconciliación boot-time.
+- **`reconcilePayment` heurístico** (§18): el fallback "última sesión creada de
+  cualquier comercio" puede mal-etiquetar un payment; si la búsqueda falla, un
+  pago válido se descarta en silencio.
+- **Lazy timeout sin backstop cron**: el auto-rechazo de 3 min y la expiración QR
+  solo corren cuando algo consulta el pedido; garantía total requiere `pg_cron`
+  (Supabase Pro).
+- **Historial de migraciones**: al momento del análisis y la reconciliación
+  parcial de la Fase 1 quedaron versiones temporales en la tabla de historial;
+  la tarea de la Fase 3 cierra esto (timestamps únicos + `migration repair`).
+
+---
+
 ## P0 — Seguridad y dinero
 
 ### 1. Precios controlados por el cliente en checkout (CRÍTICO)
