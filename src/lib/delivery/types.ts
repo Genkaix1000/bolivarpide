@@ -47,6 +47,15 @@ export type ActiveDriver = {
   activeDeliveriesCount: number;
 };
 
+/** Repartidor aprobado por la plataforma (delivery_profiles.status=approved)
+ * que un negocio todavía no tiene en su equipo: candidato a contratar. */
+export type HirableDriver = {
+  userId: string;
+  displayName: string;
+  initials: string;
+  vehicleLabel: string;
+};
+
 export type DriverBoard = {
   enCamino: DeliveryOrderView[];
   disponibles: DeliveryOrderView[];

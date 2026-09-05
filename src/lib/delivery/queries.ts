@@ -18,6 +18,7 @@ import type {
   DispatchQueue,
   DriverBoard,
   DriverTab,
+  HirableDriver,
 } from "./types";
 
 const ORDER_FIELDS =
@@ -361,6 +362,60 @@ export async function listDispatchQueue(
 export async function listActiveDrivers(businessId: string): Promise<ActiveDriver[]> {
   const queue = await listDispatchQueue(businessId);
   return queue.drivers;
+}
+
+/** Repartidores aprobados por la plataforma que NO son miembros del negocio
+ * (candidatos a contratar). Excluye cualquier fila previa en business_members. */
+export async function listHirableDrivers(businessId: string): Promise<HirableDriver[]> {
+  await requireBusinessAccess(businessId);
+  const svc = createServiceClient();
+
+  const { data: profiles } = await svc
+    .from("delivery_profiles")
+    .select("user_id, vehicle_type")
+    .eq("status", "approved");
+  if (!profiles?.length) return [];
+
+  const candidateIds = (profiles as { user_id: string; vehicle_type: string }[]).map(
+    (p) => p.user_id,
+  );
+
+  const { data: members } = await svc
+    .from("business_members")
+    .select("user_id")
+    .eq("business_id", businessId)
+    .in("user_id", candidateIds);
+  const memberIds = new Set((members ?? []).map((m) => (m as { user_id: string }).user_id));
+
+  const candidates = (profiles as { user_id: string; vehicle_type: string }[]).filter(
+    (p) => !memberIds.has(p.user_id),
+  );
+  if (candidates.length === 0) return [];
+
+  const { VEHICLE_LABELS } = await import("@/lib/delivery/profile");
+  const { data: users } = await svc
+    .from("user_profiles")
+    .select("user_id, first_name, last_name, display_name")
+    .in("user_id", candidates.map((c) => c.user_id));
+  const nameById = new Map(
+    ((users ?? []) as Array<{
+      user_id: string;
+      first_name: string | null;
+      last_name: string | null;
+      display_name: string | null;
+    }>).map((u) => [u.user_id, driverDisplayName(u, null)]),
+  );
+
+  return candidates.map((c) => {
+    const display = nameById.get(c.user_id) ?? "Repartidor";
+    return {
+      userId: c.user_id,
+      displayName: display,
+      initials: driverInitials(display),
+      vehicleLabel:
+        VEHICLE_LABELS[c.vehicle_type as keyof typeof VEHICLE_LABELS] ?? c.vehicle_type,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

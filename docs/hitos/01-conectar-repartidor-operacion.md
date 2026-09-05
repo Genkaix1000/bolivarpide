@@ -45,20 +45,21 @@ producto pidió explícitamente el onboarding para eso.
 ## Tareas
 
 ### Fase A — Dominio y acciones
-- [ ] `src/lib/delivery/queries.ts`: `listHirableDrivers(businessId)` (approved + not member + select
+- [x] `src/lib/delivery/queries.ts`: `listHirableDrivers(businessId)` (approved + not member + select
       de perfil para nombre/vehículo).
-- [ ] `src/lib/delivery/actions.ts` (o `profileActions.ts`): `hireApprovedDriverAction` con
+- [x] `src/lib/delivery/actions.ts`: `hireApprovedDriverAction` con
       `requireBusinessAccess` + rol manager; upsert `business_members` `invited` +
       `insertNotification` (dedupe `driver_hire:<businessId>:<userId>`); `revalidatePath`.
+- [x] API GET `/api/orders/hirable` (manager-gated, mismo patrón que `dispatch`).
 
 ### Fase B — UI
-- [ ] Estado vacío de "Repartidores" en `DispatchView` → CTA "Contratar repartidor de Bolívar".
-- [ ] Selector de candidatos + confirmación (`useTransition`, `flashToast`).
+- [x] `DispatchView`: estado vacío de "Repartidores" → CTA "Contratar repartidor de Bolívar".
+- [x] `HireDriverModal.tsx`: selector de candidatos + confirmación (`useTransition`, `flashToast`).
 
 ### Fase C — Verificación
-- [ ] `pnpm test` + `tsc --noEmit` + `lint` (0 errores) + QA manual (contratar → aceptar → aparece en
-      `listActiveDrivers` y puede recibir asignaciones).
-- [ ] Spec `docs/features/09-contratar-repartidor/` con sdd/tdd al entrar en implementación.
+- [x] `pnpm test` (35/35) + `tsc --noEmit` (0) + `lint` (0 errores).
+- [ ] QA manual (contratar → aceptar en hub → aparece en `listActiveDrivers` y recibe asignaciones).
+- [ ] Spec `docs/features/09-contratar-repartidor/` con sdd/tdd al cierre (opcional, como feature 08).
 
 ## Referencias en el código
 

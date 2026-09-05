@@ -218,8 +218,93 @@ export async function unassignOrder(input: {
     dedupeKey: `delivery_unassign:${order.id}`,
   });
 
-  revalidatePath(`/negocio/${input.businessId}/reparto`);
+revalidatePath(`/negocio/${input.businessId}/reparto`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Contratar repartidor aprobado de la plataforma (owner/staff)
+// ---------------------------------------------------------------------------
+
+export async function hireApprovedDriverAction(input: {
+  businessId: string;
+  userId: string;
+}): Promise<{ ok: true; driverName: string } | { ok: false; error: string }> {
+  const { user, member, isAdmin, business } = await requireBusinessAccess(input.businessId);
+  const role = memberRole(member, isAdmin);
+  if (!isDeliveryManager(role)) {
+    return { ok: false, error: "Sin permiso para contratar repartidor" };
+  }
+
+  const svc = createServiceClient();
+
+  const { data: profile } = await svc
+    .from("delivery_profiles")
+    .select("user_id")
+    .eq("user_id", input.userId)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (!profile) {
+    return { ok: false, error: "Este repartidor no tiene una postulación aprobada" };
+  }
+
+  const { data: existing } = await svc
+    .from("business_members")
+    .select("id, status")
+    .eq("business_id", input.businessId)
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  if (existing) {
+    return {
+      ok: false,
+      error:
+        existing.status === "active"
+          ? "Ya es miembro del equipo"
+          : "Ya hay una invitación pendiente",
+    };
+  }
+
+  const { error: insertError } = await svc.from("business_members").insert({
+    business_id: input.businessId,
+    user_id: input.userId,
+    role: "driver",
+    status: "invited",
+    invited_by: user.id,
+    invited_at: new Date().toISOString(),
+  });
+  if (insertError) return { ok: false, error: insertError.message };
+
+  const driverName = await resolveCourierName(svc, input.userId);
+
+  await insertNotification({
+    userId: input.userId,
+    businessId: input.businessId,
+    category: "system",
+    priority: 2,
+    title: `«${business.name}» quiere contratarte`,
+    body: "Te sumaron como repartidor del local. Aceptá desde Mis locales.",
+    emoji: "🤝",
+    actionUrl: "/negocio",
+    entityType: "business",
+    entityId: input.businessId,
+    dedupeKey: `driver_hire:${input.businessId}:${input.userId}`,
+  });
+
+  revalidatePath(`/negocio/${input.businessId}/reparto`);
+  revalidatePath("/negocio");
+  return { ok: true, driverName };
+}
+
+async function resolveCourierName(
+  svc: ReturnType<typeof createServiceClient>,
+  userId: string,
+): Promise<string> {
+  const { data: profile } = await svc
+    .from("user_profiles")
+    .select("first_name, last_name, display_name")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return driverDisplayName(profile ?? undefined, null);
 }
 
 // ---------------------------------------------------------------------------

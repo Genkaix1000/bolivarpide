@@ -2,12 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useDispatchLive, useDispatchTicker } from "@/hooks/useDispatchLive";
+import { MaterialSymbol } from "@/components/ui/material-symbol";
 import type {
   ActiveDriver,
   DispatchOrderView,
   DispatchQueue,
 } from "@/lib/delivery/types";
 import { DispatchOrderCard } from "./DispatchOrderCard";
+import { HireDriverModal } from "./HireDriverModal";
 
 function Section({
   title,
@@ -56,6 +58,7 @@ export function DispatchView({
   initial: DispatchQueue;
 }) {
   const [queue, setQueue] = useState(initial);
+  const [hireOpen, setHireOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/orders/dispatch?businessId=${encodeURIComponent(businessId)}`, {
@@ -94,9 +97,19 @@ export function DispatchView({
       />
 
       <section>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-          Repartidores ({queue.drivers.length})
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            Repartidores ({queue.drivers.length})
+          </h2>
+          <button
+            type="button"
+            onClick={() => setHireOpen(true)}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-[#9a0002]/10 px-3 py-1.5 text-[11px] font-bold text-[#9a0002] hover:bg-[#9a0002]/20 dark:text-red-300"
+          >
+            <MaterialSymbol icon="person_add" size={14} />
+            Contratar repartidor
+          </button>
+        </div>
         {queue.drivers.length === 0 ? (
           <p className="text-sm text-stone-500 dark:text-stone-500">
             No hay repartidores activos.{" "}
@@ -105,7 +118,15 @@ export function DispatchView({
               className="font-semibold text-[#9a0002] hover:underline"
             >
               Invitalos desde Equipo
-            </a>
+            </a>{" "}
+            o{" "}
+            <button
+              type="button"
+              onClick={() => setHireOpen(true)}
+              className="cursor-pointer font-semibold text-[#9a0002] hover:underline"
+            >
+              contratá repartidores aprobados de Bolívar
+            </button>
             .
           </p>
         ) : (
@@ -131,6 +152,13 @@ export function DispatchView({
           </div>
         )}
       </section>
+
+      <HireDriverModal
+        businessId={businessId}
+        open={hireOpen}
+        onClose={() => setHireOpen(false)}
+        onHired={refresh}
+      />
     </div>
   );
 }
