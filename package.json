@@ -2,12 +2,14 @@
   "name": "bolivarpide",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node scripts/run-checks.mjs",
+    "typecheck": "tsc --noEmit",
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {

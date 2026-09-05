@@ -15,11 +15,17 @@ sean reproducibles fuera de la máquina local.
 
 ## Estado actual de los checks (relevante para el CI)
 
-- Solo **1** check lee `process.env` directamente: `src/lib/business/publicStore.check.ts`
-  (con env de la máquina). `env.check.ts` y `oauthConfig.check.ts` llaman helpers puros con
-  literales → **no dependen** de `.env`.
-- Riesgo: en un runner limpio, `publicStore.check.ts` puede fallar si asume variables.
-  Tarea 0 del hito: correr `pnpm test` con las env vacías y arreglar/gatear ese check.
+- **Ningún check requiere `.env`** (`node` no lo autoload; los helpers son puros). `publicStore.check.ts`
+  se seteá su propio `NEXT_PUBLIC_SUPABASE_URL` dentro del test.
+- El único check con dependencia externa era **`storeLocation.check.ts`**, que geocodificaba vía
+  **Nominatim por red** → **hermético** ahora con un stub de `globalThis.fetch` dentro del check
+  (run-checks.spawna un proceso por check → sin filtraciones).
+- Los restantes son puros o con mocks (`mp-fetch`, `reconcile`, `refund`, `whatsapp *`).
+
+## Resultado de la verificación local (simulando CI)
+
+- `pnpm test` con env crítico limpio → **35/35**.
+- `pnpm typecheck` → exit 0. `pnpm lint` → 0 errores.
 
 ## Alcance
 
@@ -30,8 +36,8 @@ sean reproducibles fuera de la máquina local.
   3. `lint` → `pnpm eslint`
 - Uso de `pnpm/action-setup@v4` (verificar versión vigente) + `actions/setup-node` con
   `cache: pnpm`.
-- Task 0: hacer que la suite corra **sin `.env`** (gatear `publicStore.check.ts` con dummy o
-  guard) para que el CI no dependa de secretos para la parte básica.
+- Task 0: suite **hermética** — volver `storeLocation.check.ts` determinístico (stub de `fetch`)
+  para que el CI no dependa de red ni secretos.
 - Script `pnpm typecheck` en `package.json` (conveniencia local + CI).
 
 **Out (v2 posibles)**
@@ -45,15 +51,18 @@ sean reproducibles fuera de la máquina local.
 |----------|----------|---------------|
 | Framework nuevo ahora vs no | (a) mantener ponytail + CI; (b) sumar Vitest | **(a)** para este hito: el CI es el valor; Vitest se evalúa cuando los checks dejen de dar el ancho (dominios con mocking pesado) |
 | Secretos en CI | ninguno para `test/typecheck/lint` vs `SUPABASE_*` como dummy | ninguno; los checks se hacen herméticos (Task 0) |
+| Versión de Node | 22 LTS vs 24 | **24** — igual que el entorno local (elimina el "anda en mi máquina") |
+| Hermeticidad de geocodificación | stub de `fetch` en el check vs inyección `fetchImpl` en prod | **stub en el check** (proceso por check → sin filtraciones, cero churn de prod) |
 
 ## Tareas
 
-- [ ] **Task 0**: `pnpm test` con env vacía → gatear `publicStore.check.ts` (o decidir su dummy) y
-      corregir cualquier check que asuma `.env`.
-- [ ] `.github/workflows/ci.yml` (jobs test / typecheck / lint, pnpm setup, frozen lockfile).
-- [ ] `package.json`: script `typecheck`.
-- [ ] Verificación local del flujo: emular el paso de CI en la máquina (env vacía) y confirmar
-      verde; luego `git push` y ver el check en GitHub.
+- [x] **Task 0**: `storeLocation.check.ts` con stub de `fetch` (hermético) y verificación de la
+      suite con env limpio (35/35). `publicStore.check.ts` no requería cambio (es auto-contenido).
+- [x] `.github/workflows/ci.yml` (jobs test / typecheck / lint, `pnpm/action-setup`, `setup-node`
+      Node 24 con `cache: pnpm`, `pnpm install --frozen-lockfile`, `permissions: contents: read`,
+      `concurrency` cancel-in-progress).
+- [x] `package.json`: `packageManager: pnpm@11.24.0` + script `typecheck`.
+- [ ] Confirmar la primera corrida verde en GitHub tras el push.
 
 ## Referencias
 
