@@ -62,7 +62,9 @@ sean reproducibles fuera de la máquina local.
       Node 24 con `cache: pnpm`, `pnpm install --frozen-lockfile`, `permissions: contents: read`,
       `concurrency` cancel-in-progress).
 - [x] `package.json`: `packageManager: pnpm@11.24.0` + script `typecheck`.
-- [ ] Confirmar la primera corrida verde en GitHub tras el push.
+- [x] `pnpm-workspace.yaml`: `allowBuilds` + `esbuild: true` (CI con install limpio fallaba con
+      `ERR_PNPM_IGNORED_BUILDS` en instalaciones frescas — solo sharp estaba aprobado).
+- [x] Confirmada la primera corrida verde en GitHub (Tests / Typecheck / Lint → success).
 
 ## Referencias
 
