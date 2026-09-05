@@ -51,25 +51,44 @@ la experiencia.
 ## Tareas
 
 ### Fase A — Datos y dominio
-- [ ] Migración: tabla `delivery_locations` + índices (`order_id`, `created_at DESC`) + RLS
-      (customer / member / admin; escritura service-only).
-- [ ] Server action `shareDeliveryLocationAction(orderId, lat, lng)` (authz: driver asignado +
-      status delivering + delivery-type; insert throttled por ventana de tiempo).
-- [ ] Helper puro de throttle + `location.check.ts`.
+- [x] Migración `supabase/migrations/20260908000000_delivery_locations.sql`: tabla `delivery_locations`
+      (`order_id, driver_user_id, lat, lng, created_at`) + índices (`order_id, created_at DESC`; `created_at`) +
+      RLS de lectura proxied al pedido padre (customer / member / admin; escritura service-only) +
+      alta en `supabase_realtime`.
+- [x] Server actions `shareDeliveryLocationAction` / `stopSharingLocationAction`
+      (`src/lib/delivery/locationActions.ts`): authz driver asignado + status delivering +
+      delivery-type; escritura service-only. Limpieza automática al confirmar entrega
+      (red de seguridad en `advanceOrderStatus`).
+- [x] Helper puro `src/lib/delivery/location.ts` (throttle, vigencia, rango WGS84) + `location.check.ts`.
+
+> Decisión de realtime: **`postgres_changes` sobre `delivery_locations`** (filtro `order_id=eq.X`) en vez de
+> broadcast manual `tracking-${orderId}`. Consistente con el resto del repo y los eventos respetan RLS
+> (solo el dueño del pedido recibe la posición). Cleanup de posiciones al entregar vía server action
+> invocada desde `advanceOrderStatus` (idempotente).
 
 ### Fase B — Consola driver
-- [ ] Botón "Iniciar reparto / Dejar de compartir" en `DeliveryOrderCard` (estado `sharing`) con
-      gemelo de errores (`getCurrentPosition` falla → aviso).
-- [ ] Enviar posiciones al servidor; al `delivered` limpiar.
+- [x] Botón "Iniciar reparto / Dejar de compartir" en `DeliveryOrderCard` (estado `sharing` +
+      `driveError`) con hook `src/hooks/useDriverLocation.ts` (getCurrentPosition por intervalo,
+      throttle de guardado, fallback sin GPS y aviso).
+- [x] Enviar posiciones al servidor (`shareDeliveryLocationAction`); al `delivered` se limpia
+      (stop + `stopSharingLocationAction` + red de seguridad en `advanceOrderStatus`).
 
 ### Fase C — Cliente (tracking)
-- [ ] Suscripción a `tracking-${orderId}` en `OrderTrackingMap` + merge con la ruta/fallback.
-- [ ] Nueva lectura inicial: último punto de `delivery_locations` (vía query existente de tracking).
+- [x] Suscripción `postgres_changes` a `delivery_locations` (filtro `order_id=eq.X`) en
+      `OrderTrackingMap` + merge con la ruta: `liveFresh` (posición real reciente dentro de
+      `LOCATION_MAX_AGE_MS`) reemplaza al marker simulado; fallback a `demoRouteProgress` cuando
+      no hay posición o está stale.
+- [x] Lectura inicial del último punto: `resolveOrderTrackingMap` ahora recibe `orderId` y agrega
+      `latestLocation` (`delivery_locations`, último `created_at`) al `OrderTrackingMapData` /
+      `OrderTrackingMapView`.
 
 ### Fase D — Verificación
+- [x] Migración `20260908000000_delivery_locations.sql` aplicada a remoto (`supabase db push --include-all`,
+      junto a la `20260906050000_whatsapp_summaries_type.sql` que había quedado sin aplicar).
+      Verified vía REST: GET 200 `[]`, INSERT anon rechazado por RLS (solo service_role escribe).
 - [ ] `pnpm test` + `tsc --noEmit` + `lint` + QA manual en dos dispositivos (driver en consola,
       cliente en `/pedido/[id]`).
-- [ ] Spec `docs/features/09-tracking-gps/` con sdd/tdd.
+- [x] Spec `docs/features/09-tracking-gps/` con sdd/tdd (README, sdd 01–02, tdd 01–03).
 
 ## Riesgos
 

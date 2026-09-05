@@ -11,6 +11,8 @@ export type OrderTrackingMapData = {
   fulfillmentType: "delivery" | "pickup";
   business: LatLng & { label: string };
   destination: (LatLng & { label: string }) | null;
+  /** Última posición GPS real compartida por el repartidor (null si no hay). */
+  latestLocation: (LatLng & { ts: number }) | null;
 };
 
 async function businessCoords(
@@ -58,6 +60,7 @@ export async function resolveOrderTrackingMap(input: {
   deliveryAddress: string | null;
   customerUserId: string;
   status: OrderLifecycleStatus;
+  orderId: string;
 }): Promise<OrderTrackingMapData | null> {
   if (input.status === "rejected") return null;
 
@@ -70,6 +73,7 @@ export async function resolveOrderTrackingMap(input: {
       fulfillmentType,
       business: { ...business, label: input.businessName },
       destination: null,
+      latestLocation: null,
     };
   }
 
@@ -82,6 +86,15 @@ export async function resolveOrderTrackingMap(input: {
   const destCoords =
     pickDestinationCoords((rows ?? []) as AddressRow[], input.deliveryAddress) ?? BOLIVAR_CENTER;
 
+  // Último punto GPS real del repartidor (para suscriptores tardíos / lectura inicial).
+  const { data: last } = await svc
+    .from("delivery_locations")
+    .select("lat, lng, created_at")
+    .eq("order_id", input.orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return {
     showMap: true,
     fulfillmentType,
@@ -90,5 +103,13 @@ export async function resolveOrderTrackingMap(input: {
       ...destCoords,
       label: input.deliveryAddress?.trim() || "Tu dirección",
     },
+    latestLocation:
+      last && typeof last.lat === "number" && typeof last.lng === "number"
+        ? {
+            lat: last.lat as number,
+            lng: last.lng as number,
+            ts: new Date(last.created_at as string).getTime(),
+          }
+        : null,
   };
 }

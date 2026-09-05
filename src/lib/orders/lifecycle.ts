@@ -61,6 +61,7 @@ export type OrderTrackingMapView = {
   fulfillmentType: "delivery" | "pickup";
   business: { lat: number; lng: number; label: string };
   destination: { lat: number; lng: number; label: string } | null;
+  latestLocation: { lat: number; lng: number; ts: number } | null;
 };
 
 export type OrderTrackingView = {

@@ -5,6 +5,8 @@ import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { flashToast } from "@/components/FlashToast";
 import { advanceOrderStatus } from "@/lib/orders/actions";
 import { claimDeliveryOrder } from "@/lib/delivery/actions";
+import { stopSharingLocationAction } from "@/lib/delivery/locationActions";
+import { useDriverLocation } from "@/hooks/useDriverLocation";
 import type { DeliveryOrderView } from "@/lib/delivery/types";
 import {
   dispatchElapsedMinutes,
@@ -39,6 +41,8 @@ export function DeliveryOrderCard({
   const [pending, startTransition] = useTransition();
   const [pinOpen, setPinOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { active: sharingActive, sharing: sharingGps, error: driveError, start, stop } =
+    useDriverLocation();
 
   const badge = statusLabel(order);
   const mapsUrl = order.deliveryAddress
@@ -72,10 +76,22 @@ export function DeliveryOrderCard({
       if (!res.ok) setError(res.error);
       else {
         setPinOpen(false);
+        stop();
         flashToast(`Pedido #${order.orderNumber} entregado`);
         onChanged();
       }
     });
+  }
+
+  function toggleSharing() {
+    setError(null);
+    if (sharingActive) {
+      stop();
+      void stopSharingLocationAction({ businessId, orderId: order.id });
+      flashToast("Dejaste de compartir tu ubicación");
+      return;
+    }
+    start(businessId, order.id);
   }
 
   const canActDeliver = order.status === "delivering" && order.assignedToMe;
@@ -168,15 +184,44 @@ export function DeliveryOrderCard({
               Tomar pedido
             </button>
           ) : canActDeliver ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setPinOpen(true)}
-              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-stone-900 px-3 py-2.5 text-[12px] font-bold text-white hover:bg-stone-800 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
-            >
-              <MaterialSymbol icon="check_circle" size={17} />
-              Confirmar entrega
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={toggleSharing}
+                className={cn(
+                  "mb-2 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[12px] font-bold transition-colors disabled:opacity-50",
+                  sharingActive
+                    ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
+                    : "border border-[#9a0002]/30 bg-[#9a0002]/5 text-[#9a0002] hover:bg-[#9a0002]/10",
+                )}
+              >
+                <MaterialSymbol
+                  icon={sharingActive ? "location_on" : "share_location"}
+                  size={17}
+                />
+                {sharingActive
+                  ? sharingGps
+                    ? "Compartiendo ubicación · Dejar de compartir"
+                    : "GPS sin señal · Dejar de compartir"
+                  : "Iniciar reparto (compartir GPS)"}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setPinOpen(true)}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-stone-900 px-3 py-2.5 text-[12px] font-bold text-white hover:bg-stone-800 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+              >
+                <MaterialSymbol icon="check_circle" size={17} />
+                Confirmar entrega
+              </button>
+              {sharingActive && driveError ? (
+                <p className="mt-2 rounded-xl bg-amber-500/10 px-3 py-2 text-center text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                  {driveError === "denied"
+                    ? "Sin permiso de ubicación: compartí igual y avisá al cliente."
+                    : "GPS no disponible: compartí igual y avisá al cliente."}
+                </p>
+              ) : null}
+            </>
           ) : order.status === "preparing" ? (
             <p className="rounded-xl bg-amber-500/10 px-3 py-2.5 text-center text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Se está preparando — te van a avisar cuando salga.

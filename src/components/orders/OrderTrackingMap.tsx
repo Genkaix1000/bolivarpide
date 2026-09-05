@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { flashToast } from "@/components/FlashToast";
+import { createClient } from "@/lib/supabase/client";
 import {
   MAP_TILE_SIZE,
   fitMapView,
@@ -18,6 +19,7 @@ import {
   pointOnPolyline,
   trimPolyline,
 } from "@/lib/orders/routeGeometry";
+import { isLocationFresh } from "@/lib/delivery/location";
 import type { OrderLifecycleStatus } from "@/lib/orders/lifecycle";
 import type { OrderTrackingMapData } from "@/lib/orders/trackingMap";
 import { cn } from "@/lib/utils";
@@ -105,6 +107,14 @@ export function OrderTrackingMap({
   const [deliveringAt, setDeliveringAt] = useState<number | null>(null);
   const nearNotified = useRef(false);
 
+  const [livePos, setLivePos] = useState<LatLng | null>(
+    () =>
+      map.latestLocation
+        ? { lat: map.latestLocation.lat, lng: map.latestLocation.lng }
+        : null,
+  );
+  const [livePosTs, setLivePosTs] = useState<number | null>(map.latestLocation?.ts ?? null);
+
   const sheetInset = Math.round(size.h * 0.12);
 
   const fitPoints = useMemo(() => {
@@ -166,13 +176,44 @@ export function OrderTrackingMap({
   useEffect(() => {
     if (status !== "delivering" || map.fulfillmentType !== "delivery") return;
     let raf = 0;
-    const tick = (t: number) => {
-      setNowMs(t);
+    const tick = () => {
+      setNowMs(Date.now());
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [status, map.fulfillmentType]);
+
+  // Posición GPS en vivo del repartidor: postgres_changes sobre
+  // delivery_locations (los eventos respetan RLS: solo llegan si esta fila es
+  // legible por el cliente dueño del pedido). El filtro es por order_id.
+  useEffect(() => {
+    if (status !== "delivering" || map.fulfillmentType !== "delivery" || !orderId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`tracking-${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "delivery_locations",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload) => {
+          const row = payload.new as { lat?: unknown; lng?: unknown; created_at?: string };
+          if (typeof row.lat !== "number" || typeof row.lng !== "number") return;
+          const ts = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+          setLivePos({ lat: row.lat, lng: row.lng });
+          setLivePosTs(ts);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [status, map.fulfillmentType, orderId]);
 
   const routePoints = route ?? (map.destination ? [map.business, map.destination] : null);
 
@@ -181,9 +222,12 @@ export function OrderTrackingMap({
       ? demoRouteProgress(status, deliveringAt, nowMs || deliveringAt)
       : 0;
 
+  const liveFresh =
+    livePos && livePosTs != null && isLocationFresh(livePosTs, nowMs) ? livePos : null;
+
   const courier =
-    status === "delivering" && routePoints && routePoints.length >= 2
-      ? pointOnPolyline(routePoints, routeProgress)
+    status === "delivering"
+      ? liveFresh ?? (routePoints && routePoints.length >= 2 ? pointOnPolyline(routePoints, routeProgress) : null)
       : null;
 
   useEffect(() => {
@@ -241,7 +285,7 @@ export function OrderTrackingMap({
       ? latRouteToSvg(routePoints, centerPoint, zoom, size.w, size.h)
       : null;
   const activeRouteSvg =
-    routePoints && routeProgress > 0
+    routePoints && routeProgress > 0 && !liveFresh
       ? latRouteToSvg(trimPolyline(routePoints, routeProgress), centerPoint, zoom, size.w, size.h)
       : null;
 

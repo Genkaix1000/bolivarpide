@@ -63,6 +63,7 @@ export async function getOrderTracking(orderId: string): Promise<OrderTrackingVi
     deliveryAddress: row.delivery_address,
     customerUserId: row.customer_user_id!,
     status,
+    orderId: row.id,
   });
 
   const items = ((row.order_items as unknown[]) ?? []).map((raw) => {

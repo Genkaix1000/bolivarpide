@@ -76,6 +76,21 @@ export async function advanceOrderStatus(input: {
     }
   });
 
+  // Red de seguridad de privacidad: al entregar se eliminan las posiciones GPS
+  // compartidas del reparto (data sensible del recorrido). Idempotente.
+  after(async () => {
+    if (input.targetStatus !== "delivered") return;
+    const { stopSharingLocationAction } = await import("@/lib/delivery/locationActions");
+    try {
+      await stopSharingLocationAction({
+        businessId: input.businessId,
+        orderId: input.orderId,
+      });
+    } catch (err) {
+      console.error("advanceOrderStatus: limpieza de ubicaciones falló", err);
+    }
+  });
+
   after(async () => {
     const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
     try {
