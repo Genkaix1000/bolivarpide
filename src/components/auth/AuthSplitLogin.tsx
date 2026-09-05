@@ -383,15 +383,23 @@ export function AuthSplitLogin({
           )}
 
           {!isSignUp && (
-            <label className="flex cursor-pointer items-center gap-2 text-[12px] text-stone-600 select-none">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-stone-300 accent-[#9a0002]"
-              />
-              Guardar sesión
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex cursor-pointer items-center gap-2 text-[12px] text-stone-600 select-none">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-stone-300 accent-[#9a0002]"
+                />
+                Guardar sesión
+              </label>
+              <Link
+                href={`/auth/olvide-pass?next=${encodeURIComponent(next)}`}
+                className="text-[12px] font-medium text-[#9a0002] hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           )}
 
           <button

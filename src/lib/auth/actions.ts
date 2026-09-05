@@ -34,3 +34,27 @@ export async function signOut(formData: FormData) {
   const sep = next.includes("?") ? "&" : "?";
   redirect(`${next}${sep}toast=logout`);
 }
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const next = safeNextPath(String(formData.get("next") || "/"));
+  const supabase = await createClient();
+  const headerStore = await headers();
+  const origin =
+    headerStore.get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const changePath = `/auth/nueva-password?next=${encodeURIComponent(next)}`;
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(changePath)}`;
+  const base = `/auth/olvide-pass?next=${encodeURIComponent(next)}`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    redirect(`${base}&error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(`${base}&enviado=1&email=${encodeURIComponent(email)}`);
+}
