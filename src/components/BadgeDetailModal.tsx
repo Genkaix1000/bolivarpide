@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 interface BadgeDetailModalProps {
   badge: UserAwardBadge | null;
   onClose: () => void;
+  locked?: boolean;
 }
 
-export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
+export function BadgeDetailModal({ badge, onClose, locked = false }: BadgeDetailModalProps) {
   if (!badge) return null;
 
   const rarityStyle = getRarityColor(badge.rarity);
@@ -70,11 +71,11 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
           <div className="w-full mt-5 pt-4 border-t border-[#ede4d9] dark:border-[#2a2623] space-y-2 text-left">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-gray-400">Otorgado por:</span>
-              <span className="font-bold text-gray-800 dark:text-gray-200">{badge.awardedBy || "BolivarPide Oficial"}</span>
+              <span className="font-bold text-gray-800 dark:text-gray-200">{locked ? "BolivarPide" : (badge.awardedBy || "BolivarPide Oficial")}</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-gray-400">Fecha de entrega:</span>
-              <span className="font-semibold text-gray-700 dark:text-gray-300">{badge.unlockedAt || "Reciente"}</span>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">{locked ? "Aún sin desbloquear" : (badge.unlockedAt || "Reciente")}</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-gray-400">Categoría:</span>

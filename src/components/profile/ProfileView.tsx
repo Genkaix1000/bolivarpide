@@ -10,6 +10,8 @@ import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 import { ThemeToggleNavBtn } from "@/components/Navbar";
 import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAwardBadge, getRarityColor } from "@/lib/userProfile";
+import { BADGE_DEFINITIONS, type BadgeDefinition } from "@/lib/badges/definitions";
+import { BadgeUnlockedModal } from "./BadgeUnlockedModal";
 import { flashToast } from "@/components/FlashToast";
 import { DriverApplicationModal } from "./DriverApplicationModal";
 import { getMyDriverProfileAction } from "@/lib/delivery/profileActions";
@@ -61,6 +63,9 @@ export function ProfileView({
   const [autoOpenVerifyModal, setAutoOpenVerifyModal] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
+  const [selectedBadgeLocked, setSelectedBadgeLocked] = useState(false);
+  const [celebrationBadge, setCelebrationBadge] = useState<BadgeDefinition | null>(null);
+  const initialBadgeIds = useRef<Set<string> | null>(null);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [driverProfile, setDriverProfile] = useState<MyDriverProfileView | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -101,6 +106,20 @@ export function ProfileView({
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || profile.id === "guest") return;
+    const ids = new Set(profile.awardedBadges.map((b) => b.id));
+    if (initialBadgeIds.current === null) {
+      initialBadgeIds.current = ids;
+      return;
+    }
+    const fresh = BADGE_DEFINITIONS.find((def) => !initialBadgeIds.current!.has(def.id) && ids.has(def.id));
+    if (fresh) {
+      initialBadgeIds.current = ids;
+      setCelebrationBadge(fresh);
+    }
+  }, [profile.id, profile.awardedBadges, isAuthenticated]);
 
   useEffect(() => {
     if (verifyDniHandled.current) return;
@@ -620,48 +639,61 @@ export function ProfileView({
         </ProfileSection>
       </div>
 
-      {profile.awardedBadges && profile.awardedBadges.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5">
-              <MaterialSymbol icon="military_tech" size={18} className="text-[#9a0002]" fill />
-              <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Insignias</h4>
-            </div>
-            <span className="text-[11px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-2 py-0.5 rounded-full">
-              {profile.awardedBadges.length}
-            </span>
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5">
+            <MaterialSymbol icon="military_tech" size={18} className="text-[#9a0002]" fill />
+            <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Insignias</h4>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {profile.awardedBadges.map((badge) => {
-              const style = getRarityColor(badge.rarity);
-              return (
-                <button
-                  key={badge.id}
-                  type="button"
-                  onClick={() => setSelectedBadge(badge)}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-3 hover:shadow-md bg-[#faf6f1] dark:bg-[#231f1c] ${style.border} hover:border-[#9a0002]/40 cursor-pointer`}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${style.bg} ${style.border}`}>
-                    {badge.emoji ? (
-                      <span className="text-lg">{badge.emoji}</span>
-                    ) : (
-                      <MaterialSymbol icon={badge.icon} size={18} className={style.text} fill />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h5 className="font-bold text-[12px] text-gray-900 dark:text-gray-100 truncate">{badge.title}</h5>
-                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>
-                      {badge.rarity}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <span className="text-[11px] font-bold text-[#9a0002] bg-[#9a0002]/10 px-2 py-0.5 rounded-full">
+            {profile.awardedBadges.length} / {BADGE_DEFINITIONS.length}
+          </span>
         </div>
-      )}
-
-      {isAuthenticated && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {BADGE_DEFINITIONS.map((def) => {
+            const owned = profile.awardedBadges.some((b) => b.id === def.id);
+            const ownedBadge = profile.awardedBadges.find((b) => b.id === def.id);
+            const style = getRarityColor(def.rarity);
+            return (
+              <button
+                key={def.id}
+                type="button"
+                onClick={() => {
+                  setSelectedBadge(ownedBadge ?? {
+                    id: def.id,
+                    title: def.title,
+                    description: def.description,
+                    icon: def.icon,
+                    emoji: def.emoji,
+                    rarity: def.rarity,
+                  });
+                  setSelectedBadgeLocked(!owned);
+                }}
+                className={`p-3 rounded-2xl border text-left flex items-center gap-3 hover:shadow-md bg-[#faf6f1] dark:bg-[#231f1c] cursor-pointer ${
+                  owned ? style.border : "border-[#e8e0d6] dark:border-[#3d3732] opacity-50 grayscale"
+                } hover:border-[#9a0002]/40`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${owned ? style.bg : "bg-[#f0ebe4] dark:bg-[#2a2623]"} ${owned ? style.border : "border-[#e8e0d6] dark:border-[#3d3732]"}`}>
+                  {def.emoji ? (
+                    <span className="text-lg">{def.emoji}</span>
+                  ) : (
+                    <MaterialSymbol icon={def.icon} size={18} className={owned ? style.text : "text-gray-400"} fill={owned} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h5 className="font-bold text-[12px] text-gray-900 dark:text-gray-100 truncate">{def.title}</h5>
+                  <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                    owned ? `${style.bg} ${style.text} ${style.border}` : "text-gray-400 border-[#e8e0d6] dark:border-[#3d3732]"
+                  }`}>
+                    {owned ? def.rarity : "bloqueada"}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+        {isAuthenticated && (
         <button
           type="button"
           onClick={() => void logout()}
@@ -682,7 +714,13 @@ export function ProfileView({
         }}
       />
 
-      <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
+      <BadgeDetailModal
+        badge={selectedBadge}
+        onClose={() => setSelectedBadge(null)}
+        locked={selectedBadgeLocked}
+      />
+
+      <BadgeUnlockedModal badge={celebrationBadge} onClose={() => setCelebrationBadge(null)} />
 
       <DriverApplicationModal
         isOpen={isDriverModalOpen}
