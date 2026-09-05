@@ -110,6 +110,11 @@ export async function saveUserAddressAction(input: unknown, addressId?: string) 
     await syncPrimaryAddress(supabase, user.id, rowToAddress(inserted as AddressRow));
   }
 
+  if (isFirst) {
+    const { evaluateBadgesForUser } = await import("@/lib/badges/actions");
+    await evaluateBadgesForUser(user.id);
+  }
+
   revalidatePath("/");
   return rowToAddress(inserted as AddressRow);
 }
@@ -250,6 +255,10 @@ export async function restoreUserAddressAction(addr: UserAddress) {
 
   const restored = rowToAddress(data as AddressRow);
   if (makeDefault) await syncPrimaryAddress(supabase, user.id, restored);
+
+  const { evaluateBadgesForUser } = await import("@/lib/badges/actions");
+  await evaluateBadgesForUser(user.id);
+
   revalidatePath("/");
   return restored;
 }

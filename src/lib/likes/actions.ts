@@ -178,5 +178,10 @@ export async function toggleProductLike(
     .eq("product_id", productId);
   if (countErr) throw countErr;
 
+  if (user && !existing) {
+    const { evaluateBadgesForUser } = await import("@/lib/badges/actions");
+    await evaluateBadgesForUser(user.id);
+  }
+
   return { liked: !existing, count: count ?? 0 };
 }

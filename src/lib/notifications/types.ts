@@ -1,4 +1,4 @@
-export type NotificationCategory = "orders" | "payments" | "system" | "promos";
+export type NotificationCategory = "orders" | "payments" | "system" | "promos" | "badges";
 
 export type NotificationPayload = {
   businessName?: string;

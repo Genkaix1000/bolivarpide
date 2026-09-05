@@ -91,6 +91,17 @@ export async function advanceOrderStatus(input: {
     }
   });
 
+  // Gamificación de cliente: al entregar se evalúan insignias del dueño del pedido.
+  after(async () => {
+    if (input.targetStatus !== "delivered") return;
+    const { evaluateBadgesForOrder } = await import("@/lib/badges/actions");
+    try {
+      await evaluateBadgesForOrder(input.orderId);
+    } catch (err) {
+      console.error("advanceOrderStatus: evaluación de insignias falló", err);
+    }
+  });
+
   after(async () => {
     const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
     try {

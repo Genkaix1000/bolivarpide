@@ -53,7 +53,11 @@ export function rowToProfile(
   };
 }
 
-export function profileToRow(profile: UserProfile): Omit<ProfileRow, "user_id"> {
+export type ProfileWriteRow = Omit<ProfileRow, "user_id" | "awarded_badges">;
+
+// awarded_badges es escritura server-only (RPC grant_customer_badges): el cliente
+// NO la incluye en el upsert (columna revocada). La lectura sí se mapea en rowToProfile.
+export function profileToRow(profile: UserProfile): ProfileWriteRow {
   return {
     display_name: profile.name || null,
     first_name: profile.firstName || null,
@@ -63,7 +67,6 @@ export function profileToRow(profile: UserProfile): Omit<ProfileRow, "user_id"> 
     avatar_value: profile.avatar.value,
     avatar_gradient_id: profile.avatar.gradientId,
     primary_address: profile.primaryAddress,
-    awarded_badges: profile.awardedBadges,
     identity_verified: profile.identityVerified ?? false,
     identity_verified_at: profile.identityVerifiedAt || null,
     notification_orders: profile.notificationOrders ?? true,

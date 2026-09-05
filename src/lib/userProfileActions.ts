@@ -14,6 +14,12 @@ function assertDni(dni: string) {
   return digits;
 }
 
+/** Side-effect de gamificación: evalúa insignias tras un hito de onboarding. */
+async function maybeEvaluateBadges(userId: string) {
+  const { evaluateBadgesForUser } = await import("@/lib/badges/actions");
+  await evaluateBadgesForUser(userId);
+}
+
 export async function saveUserProfileAction(profile: UserProfile) {
   const supabase = await createClient();
   const {
@@ -43,6 +49,8 @@ export async function saveUserProfileAction(profile: UserProfile) {
     { onConflict: "user_id" },
   );
   if (error) throw new Error(error.message);
+
+  await maybeEvaluateBadges(user.id);
 }
 
 export type VerifyIdentityInput = {
@@ -95,6 +103,8 @@ export async function verifyIdentityAction(input: VerifyIdentityInput) {
 
   // ponytail: dni_hash column when we add it; hash computed for future audit trail
   void dniHash;
+
+  await maybeEvaluateBadges(user.id);
 
   revalidatePath("/");
   return { verified: true, displayName };

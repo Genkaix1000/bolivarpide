@@ -83,6 +83,7 @@ export const CUSTOMER_TABS: { id: NotificationTab; label: string }[] = [
   { id: "all", label: "Todo" },
   { id: "orders", label: "Pedidos" },
   { id: "promos", label: "Promos" },
+  { id: "badges", label: "Logros" },
 ];
 
 export function tabIds(tabs: { id: NotificationTab }[]): NotificationTab[] {
