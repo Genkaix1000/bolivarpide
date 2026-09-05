@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { PendingCustomerOrder } from "@/lib/orders/pending";
 import type { ActiveCustomerOrder } from "@/lib/orders/active";
 import { flashToastUndo } from "@/components/FlashToast";
+import { useUserProfile } from "@/components/UserProfileProvider";
 import {
   type CartState,
   type SelectedOptions,
@@ -175,7 +176,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setUi({ kind: "idle" });
   }, []);
 
+  const { isAuthenticated } = useUserProfile();
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
+
   const refreshPendingOrder = useCallback(async () => {
+    if (!isAuthenticatedRef.current) {
+      setPendingOrder(null);
+      return;
+    }
     try {
       const res = await fetch("/api/orders/pending");
       if (!res.ok) return;
@@ -187,6 +196,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshActiveOrder = useCallback(async () => {
+    if (!isAuthenticatedRef.current) {
+      setActiveOrder(null);
+      return;
+    }
     try {
       const res = await fetch("/api/orders/active");
       if (!res.ok) return;
@@ -200,6 +213,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const refreshOrders = useCallback(async () => {
     await Promise.all([refreshPendingOrder(), refreshActiveOrder()]);
   }, [refreshPendingOrder, refreshActiveOrder]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setActiveOrder(null);
+      setPendingOrder(null);
+      return;
+    }
+    void refreshOrders();
+  }, [isAuthenticated, refreshOrders]);
 
   useEffect(() => {
     queueMicrotask(() => {

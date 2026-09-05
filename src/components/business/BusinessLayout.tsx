@@ -56,11 +56,11 @@ export function BusinessLayout({
 
       <div className={cn("flex min-w-0 flex-1 flex-col", isChatWorkspace && "min-h-0 overflow-hidden")}>
         <BusinessTopbar
-          shell={shell}
           businessId={businessId}
           orderAlerts={alerts}
           onDismissOrderAlerts={dismiss}
           onMenuClick={() => setMobileOpen(true)}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
         />
 
         <main

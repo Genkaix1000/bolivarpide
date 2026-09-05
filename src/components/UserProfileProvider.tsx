@@ -280,6 +280,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       setIsAuthenticated(false);
       skipNextSave.current = true;
       flashToast("Sesión pausada.");
+      if (typeof window !== "undefined") window.location.href = "/";
       return;
     }
 

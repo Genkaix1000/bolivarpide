@@ -18,6 +18,7 @@ import { ProductSheet } from "@/components/cart/ProductSheet";
 import type { PendingCustomerOrder } from "@/lib/orders/pending";
 import { statusShortLabel } from "@/lib/orders/active";
 import { OrderStatusGlyph } from "@/components/orders/orderStatusIcons";
+import { useUserProfile } from "@/components/UserProfileProvider";
 
 function money(n: number) {
   return `$${n.toLocaleString("es-AR")}`;
@@ -395,6 +396,7 @@ function CartDrawer({ onClose }: { onClose: () => void }) {
 
 function FloatingCartBar() {
   const router = useRouter();
+  const { isAuthenticated } = useUserProfile();
   const { cart, pendingOrder, activeOrder, activeOrderBarVisible, openDrawer, openPendingCheckout, dismissActiveOrderBar, ui } =
     useCart();
   const count = cartItemCount(cart.lines);
@@ -442,7 +444,7 @@ function FloatingCartBar() {
     );
   }
 
-  if (pendingOrder) {
+  if (pendingOrder && isAuthenticated) {
     const label =
       pendingOrder.channel === "checkout_pro" ? "Continuar pago" : "Completar pago · QR";
     return (
@@ -469,7 +471,7 @@ function FloatingCartBar() {
     );
   }
 
-  if (activeOrderBarVisible && activeOrder) {
+  if (activeOrderBarVisible && activeOrder && isAuthenticated) {
     const cancelled = activeOrder.status === "rejected";
     return (
       <motion.div
