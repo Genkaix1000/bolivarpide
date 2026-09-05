@@ -4,11 +4,15 @@ import { redirect } from "next/navigation";
 import { resolveBusinessAssetUrl } from "@/lib/business/assets";
 import { BUSINESS_PLANS } from "@/lib/business/plans";
 import {
+  aggregateDriverMetrics,
   computeMetrics,
   computeSalesChart,
   periodStart,
+  type DashboardDriverRow,
   type DashboardPeriod,
+  type DriverMetricsRow,
 } from "@/lib/business/dashboard";
+import { listActiveDrivers } from "@/lib/delivery/queries";
 
 export type BusinessRow = {
   id: string;
@@ -68,6 +72,11 @@ export type DashboardStockProduct = {
   name: string;
   image?: string;
   available: boolean;
+};
+
+export type DriverMetricsView = DriverMetricsRow & {
+  displayName: string;
+  initials: string;
 };
 
 const BUSINESS_FIELDS =
@@ -189,6 +198,8 @@ export async function getBusinessDashboardData(
     productsCountRes,
     stockProductsRes,
     driversCountRes,
+    driverOrdersRes,
+    activeDrivers,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -220,6 +231,12 @@ export async function getBusinessDashboardData(
       .eq("business_id", businessId)
       .eq("role", "driver")
       .eq("status", "active"),
+    supabase
+      .from("orders")
+      .select("delivery_driver_id, status, dispatched_at, delivered_at")
+      .eq("business_id", businessId)
+      .gte("created_at", start.toISOString()),
+    listActiveDrivers(businessId),
   ]);
 
   const metricOrders = metricsOrdersRes.data ?? [];
@@ -245,6 +262,15 @@ export async function getBusinessDashboardData(
     driversCount,
   );
 
+  const driverNameById = new Map((activeDrivers ?? []).map((d) => [d.userId, d]));
+  const driversMetrics: DriverMetricsView[] = aggregateDriverMetrics(
+    (driverOrdersRes.data ?? []) as unknown as DashboardDriverRow[],
+  ).map((m) => ({
+    ...m,
+    displayName: driverNameById.get(m.driverId)?.displayName ?? "Repartidor",
+    initials: driverNameById.get(m.driverId)?.initials ?? "RD",
+  }));
+
   return {
     business,
     metrics,
@@ -252,6 +278,7 @@ export async function getBusinessDashboardData(
     recentOrders: (recentOrdersRes.data ?? []).map(mapRecentOrder),
     productsCount,
     stockProducts,
+    driversMetrics,
     tasks,
   };
 }

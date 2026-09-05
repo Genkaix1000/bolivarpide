@@ -16,6 +16,7 @@ import type {
   BusinessRow,
   DashboardRecentOrder,
   DashboardStockProduct,
+  DriverMetricsView,
   TutorialTask,
 } from "@/lib/business/queries";
 import type { DashboardMetrics, DashboardPeriod, SalesChartData } from "@/lib/business/dashboard";
@@ -219,6 +220,7 @@ type Props = {
   recentOrders: DashboardRecentOrder[];
   productsCount: number;
   stockProducts: DashboardStockProduct[];
+  driversMetrics: DriverMetricsView[];
   tasks: TutorialTask[];
 };
 
@@ -231,6 +233,7 @@ export function DashboardView({
   recentOrders,
   productsCount,
   stockProducts,
+  driversMetrics,
   tasks,
 }: Props) {
   const router = useRouter();
@@ -426,6 +429,89 @@ export function DashboardView({
           sparkColor="#d97706"
         />
       </div>
+
+      <section className={cn(CARD, "p-5 md:p-6")}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f3efe8] dark:bg-[#231f1c]">
+              <MaterialSymbol icon="moped" size={18} className="text-gray-500 dark:text-gray-400" />
+            </div>
+            <div>
+              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">Reparto</h3>
+              <p className="mt-0.5 text-[11px] text-gray-400">
+                Entregas por repartidor{" "}
+                {period === "today" ? "hoy" : period === "week" ? "en la semana" : "en el mes"}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/negocio/${businessId}/reparto`}
+            className="text-[12px] font-semibold text-[#9a0002] hover:underline"
+          >
+            Ver reparto →
+          </Link>
+        </div>
+
+        {driversMetrics.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-500 dark:border-stone-600">
+            Sin repartidores con actividad en este período.{" "}
+            <Link
+              href={`/negocio/${businessId}/reparto`}
+              className="font-semibold text-[#9a0002] hover:underline"
+            >
+              Contratá o asigná repartidores en Reparto
+            </Link>
+            .
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-stone-200 text-[11px] uppercase tracking-wide text-stone-400 dark:border-[#332d29]">
+                  <th className="py-2 pr-3 font-semibold">Repartidor</th>
+                  <th className="py-2 pr-3 font-semibold">En ruta</th>
+                  <th className="py-2 pr-3 font-semibold">Entregados</th>
+                  <th className="py-2 font-semibold">Prom. min</th>
+                </tr>
+              </thead>
+              <tbody>
+                {driversMetrics.map((d) => (
+                  <tr
+                    key={d.driverId}
+                    className="border-b border-stone-100 last:border-0 dark:border-[#2a2623]"
+                  >
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#9a0002]/10 text-[11px] font-bold text-[#9a0002]">
+                          {d.initials}
+                        </div>
+                        <span className="font-semibold text-stone-800 dark:text-stone-100">
+                          {d.displayName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {d.enRuta > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#9a0002]/10 px-2 py-0.5 text-[11px] font-bold text-[#9a0002]">
+                          <MaterialSymbol icon="moped" size={13} /> {d.enRuta}
+                        </span>
+                      ) : (
+                        <span className="text-stone-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3 font-semibold text-stone-800 dark:text-stone-100">
+                      {d.entregados}
+                    </td>
+                    <td className="py-2.5 font-medium text-stone-600 dark:text-stone-300">
+                      {d.avgMinutes != null ? `${d.avgMinutes} min` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
         <section className={cn(CARD, "p-5 md:p-6 overflow-hidden min-w-0 xl:row-start-1")}>

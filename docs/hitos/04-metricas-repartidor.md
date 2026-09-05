@@ -49,10 +49,13 @@ Base: repartidores activos (`business_members role='driver' status='active'`).
 
 ## Tareas
 
-- [ ] Helpers puros `aggregateDrivers` / `avgMinutes` en `src/lib/business/dashboard.ts` + `dashboard.check.ts`.
-- [ ] `getBusinessDashboardData`: query de entregas por `delivery_driver_id` en el período.
-- [ ] `DashboardView.tsx`: `DriverMetricsCard` (tabla + empty state).
-- [ ] Verificación: `pnpm test` + `tsc --noEmit` + `lint` + QA visual.
+- [x] Helpers puros `aggregateDriverMetrics` / `avgDeliveryMinutes` en `src/lib/business/dashboard.ts`
+      + `dashboard.check.ts` (promedios, filtros por driver, ordenamiento).
+- [x] `getBusinessDashboardData`: query adicional de `delivery_driver_id/status/dispatched_at/delivered_at`
+      en el período + merge con `listActiveDrivers` (nombres/iniciales) → `driversMetrics`.
+- [x] `DashboardView.tsx`: sección "Reparto" (tabla compacta Repartidor · En ruta · Entregados ·
+      Prom. min + empty state con CTA a Reparto).
+- [x] Verificación: `pnpm test` (35/35) + `tsc --noEmit` (0) + `lint` (0 errores) + CI.
 
 ## Referencias
 
