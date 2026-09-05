@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { LogoutNavRail } from "@/components/shared/LogoutNavRail";
+import { FieldHint } from "@/components/ui/FieldHint";
 import { useCart } from "@/components/CartProvider";
 import { type FeaturedChain } from "@/lib/business/types";
 import { cartSubtotal, type CartLine } from "@/lib/cart";
@@ -47,6 +48,9 @@ type CheckoutOptions = {
   acceptsCash: boolean;
   offerQrPay: boolean;
   absorbFastPayFee: boolean;
+  canPayCash?: boolean;
+  cashDisabledReason?: string | null;
+  completedOrdersCount?: number;
 };
 
 export function CheckoutSheet({
@@ -71,7 +75,6 @@ export function CheckoutSheet({
   const [discountCents, setDiscountCents] = useState(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [method, setMethod] = useState<PayMethod>("fast_pay");
-  const [cashAck, setCashAck] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("pay");
@@ -173,42 +176,52 @@ export function CheckoutSheet({
     const out: {
       id: PayMethod;
       label: string;
+      subtitle?: string;
       icon: string;
       badge?: { text: string; tone: "free" | "extra" | "save" };
+      disabled?: boolean;
+      disabledReason?: string;
     }[] = [];
     if (options.mpReady) {
       out.push({
         id: "fast_pay",
-        label: "Pagar ahora",
+        label: "Pagar online / Transferencia",
+        subtitle: "Débito, crédito o dinero en cuenta con Mercado Pago",
         icon: "bolt",
-        badge: options.absorbFastPayFee
-          ? { text: "¡Gratis!", tone: "free" }
-          : { text: `+ ${money(fastSurcharge)}`, tone: "extra" },
       });
-      if (options.offerQrPay) {
-        out.push({
-          id: "qr",
-          label: "Pagar con QR",
-          icon: "qr_code_2",
-          badge: { text: `Ahorrá ${money(qrSaving)}`, tone: "save" },
-        });
-      }
+    }
+    if (options.offerQrPay) {
+      out.push({
+        id: "qr",
+        label: "Pagar con QR",
+        icon: "qr_code_2",
+        badge: { text: `Ahorrá ${money(qrSaving)}`, tone: "save" },
+      });
     }
     if (options.acceptsCash) {
-      out.push({ id: "cash", label: "Efectivo al recibir", icon: "payments" });
+      const isCashAllowed = options.canPayCash ?? false;
+      out.push({
+        id: "cash",
+        label: "Pago en efectivo",
+        subtitle: "Abonás contra entrega al recibir el pedido",
+        icon: "payments",
+        disabled: !isCashAllowed,
+        disabledReason: options.cashDisabledReason ?? "No disponible temporalmente",
+      });
     }
     return out;
-  }, [options, fastSurcharge, qrSaving]);
+  }, [options, qrSaving]);
 
   useEffect(() => {
     if (!payOptions.length) return;
-    if (!payOptions.some((o) => o.id === method)) {
-      queueMicrotask(() => setMethod(payOptions[0].id));
+    const available = payOptions.filter((o) => !o.disabled);
+    if (available.length > 0 && !available.some((o) => o.id === method)) {
+      queueMicrotask(() => setMethod(available[0].id));
     }
   }, [payOptions, method]);
 
   const canSubmit =
-    payOptions.length > 0 && !needsAddress && !(method === "cash" && !cashAck);
+    payOptions.length > 0 && !needsAddress && !(method === "cash" && !options?.canPayCash);
 
   const applyCoupon = async () => {
     setCouponError(null);
@@ -246,8 +259,8 @@ export function CheckoutSheet({
       window.location.assign(`/login?next=${encodeURIComponent(returnPath)}`);
       return;
     }
-    if (method === "cash" && !cashAck) {
-      setError("Marca la casilla para confirmar efectivo");
+    if (method === "cash" && !options?.canPayCash) {
+      setError(options?.cashDisabledReason ?? "El pago en efectivo no está disponible");
       return;
     }
     if (!pickupLocal && !selectedAddressId) {
@@ -373,19 +386,8 @@ export function CheckoutSheet({
           ? "Pedido listo"
           : "Ir a pagar";
 
-  const adjustmentLabel =
-    method === "fast_pay" && options && !options.absorbFastPayFee
-      ? "Recargo pago rápido"
-      : method === "qr"
-        ? "Descuento QR"
-        : null;
-
-  const adjustmentAmount =
-    method === "fast_pay" && options && !options.absorbFastPayFee
-      ? fastSurcharge
-      : method === "qr"
-        ? -qrSaving
-        : 0;
+  const adjustmentLabel = method === "qr" ? "Descuento QR" : null;
+  const adjustmentAmount = method === "qr" ? -qrSaving : 0;
 
   return (
     <>
@@ -475,38 +477,65 @@ export function CheckoutSheet({
               )}
               {couponError && <p className="text-xs text-red-600">{couponError}</p>}
 
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-stone-400">Pago</p>
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-stone-400">Método de pago</p>
                 {payOptions.map((opt) => {
-                  const active = method === opt.id;
+                  const active = method === opt.id && !opt.disabled;
                   return (
                     <label
                       key={opt.id}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors",
+                        "flex items-start gap-3 rounded-xl border p-3 transition-colors",
+                        opt.disabled
+                          ? "border-[#e8e0d6]/70 bg-stone-100/60 dark:border-[#3d3732]/70 dark:bg-[#201d1a]/50 opacity-75 cursor-not-allowed select-none"
+                          : "cursor-pointer",
                         active
                           ? "border-[#9a0002]/45 bg-[#9a0002]/5"
-                          : "border-[#e8e0d6] bg-white dark:border-[#3d3732] dark:bg-[#231f1c]",
+                          : !opt.disabled && "border-[#e8e0d6] bg-white dark:border-[#3d3732] dark:bg-[#231f1c]",
                       )}
                     >
                       <input
                         type="radio"
                         name="pay"
+                        disabled={opt.disabled}
                         checked={active}
                         onChange={() => {
-                          setMethod(opt.id);
-                          if (opt.id !== "cash") setCashAck(false);
+                          if (!opt.disabled) setMethod(opt.id);
                         }}
-                        className="shrink-0"
+                        className="mt-1 shrink-0"
                       />
                       <MaterialSymbol
                         icon={opt.icon}
-                        size={20}
-                        className={cn(active ? "text-[#9a0002]" : "text-stone-400")}
+                        size={22}
+                        className={cn(
+                          "mt-0.5 shrink-0",
+                          active
+                            ? "text-[#9a0002]"
+                            : opt.disabled
+                              ? "text-stone-300 dark:text-stone-600"
+                              : "text-stone-400",
+                        )}
                       />
-                      <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 flex-1">
-                        {opt.label}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={cn(
+                              "text-[13px] font-semibold",
+                              opt.disabled
+                                ? "text-stone-500 dark:text-stone-400"
+                                : "text-gray-900 dark:text-gray-100",
+                            )}
+                          >
+                            {opt.label}
+                          </span>
+                          {opt.disabled && opt.disabledReason && (
+                            <FieldHint text={opt.disabledReason} title="Seguridad" />
+                          )}
+                        </div>
+                        {opt.subtitle && (
+                          <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">{opt.subtitle}</p>
+                        )}
+                      </div>
                       {opt.badge && (
                         <span
                           className={cn(
@@ -522,20 +551,6 @@ export function CheckoutSheet({
                     </label>
                   );
                 })}
-                {method === "cash" && (
-                  <label className="flex items-start gap-2.5 rounded-xl border border-[#e8e0d6] bg-white px-3 py-2.5 cursor-pointer dark:border-[#3d3732] dark:bg-[#231f1c]">
-                    <input
-                      type="checkbox"
-                      checked={cashAck}
-                      onChange={(e) => setCashAck(e.target.checked)}
-                      className="mt-0.5 shrink-0"
-                    />
-                    <span className="text-[11px] leading-snug text-stone-600 dark:text-stone-400">
-                      Acepto que el comercio puede rechazar pedidos en efectivo por motivos de seguridad o
-                      disponibilidad.
-                    </span>
-                  </label>
-                )}
               </div>
 
               <div className="space-y-2 rounded-xl border border-[#e8e0d6] bg-[#faf8f5] px-3 py-2.5 dark:border-[#3d3732] dark:bg-[#231f1c]/60">
@@ -700,8 +715,8 @@ export function CheckoutSheet({
               {loading
                 ? "Procesando…"
                 : method === "cash"
-                  ? `Confirmar · ${money(payTotal)}`
-                  : `Continuar · ${money(payTotal)}`}
+                  ? `Confirmar en efectivo · ${money(payTotal)}`
+                  : `Pagar con Mercado Pago · ${money(payTotal)}`}
             </button>
           </div>
         )}

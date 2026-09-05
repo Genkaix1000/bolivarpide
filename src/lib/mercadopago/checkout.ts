@@ -334,6 +334,35 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
 
   if (input.paymentMethod === "cash") {
     if (!business.accepts_cash) throw new Error("Este comercio no acepta efectivo");
+
+    // BP-9: Escalera de confianza y anti-spam para efectivo
+    const { count: completedOrdersCount } = await svc
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_user_id", input.userId)
+      .eq("status", "delivered")
+      .eq("payment_status", "paid");
+
+    if ((completedOrdersCount ?? 0) === 0) {
+      throw new Error(
+        "El pago en efectivo se habilita a partir de tu segunda compra completada en la plataforma.",
+      );
+    }
+
+    const { data: activeCashOrder } = await svc
+      .from("orders")
+      .select("id")
+      .eq("customer_user_id", input.userId)
+      .eq("payment_method", "cash")
+      .in("status", ["pending", "accepted", "preparing", "ready_for_pickup", "delivering"])
+      .maybeSingle();
+
+    if (activeCashOrder) {
+      throw new Error(
+        "Ya tenés un pedido en efectivo en curso. Podrás realizar otro cuando se complete la entrega.",
+      );
+    }
+
     const { data: order, error } = await svc
       .from("orders")
       .insert({

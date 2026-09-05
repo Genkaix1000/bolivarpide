@@ -18,7 +18,7 @@ export type MpStatus = {
   pos: { externalPosId: string; operatingMode: string } | null;
   isOrphan: boolean;
   offerQrPay: boolean;
-  absorbFastPayFee: boolean;
+  absorbFastPayFee?: boolean;
   mpCostsHelpUrl: string;
 };
 
@@ -287,24 +287,6 @@ export function PagosSection({ businessId }: { businessId: string }) {
               checked={status.offerQrPay}
               disabled={savingSettings}
               onChange={(e) => void savePaySetting({ offerQrPay: e.target.checked })}
-              className="mt-1 shrink-0"
-            />
-          </label>
-
-          <label className="flex items-start justify-between gap-3 cursor-pointer">
-            <div>
-              <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
-                Absorber comisión del pago rápido
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">
-                Si está activo, el cliente ve &quot;Gratis&quot; en pago rápido. Si no, se le suma el recargo al total.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={status.absorbFastPayFee}
-              disabled={savingSettings}
-              onChange={(e) => void savePaySetting({ absorbFastPayFee: e.target.checked })}
               className="mt-1 shrink-0"
             />
           </label>

@@ -16,11 +16,9 @@ export function qrDiscountCents(baseCents: number): number {
 
 export function checkoutAmountCents(
   baseCents: number,
-  channel: PayChannel,
-  absorbFastPayFee: boolean,
+  channel?: PayChannel,
+  _absorbFastPayFee?: boolean,
 ): number {
-  if (channel === "cash") return baseCents;
   if (channel === "qr") return Math.max(0, baseCents - qrDiscountCents(baseCents));
-  if (absorbFastPayFee) return baseCents;
-  return baseCents + fastPaySurchargeCents(baseCents);
+  return baseCents;
 }
