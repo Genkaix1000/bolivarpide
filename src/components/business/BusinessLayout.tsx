@@ -38,6 +38,7 @@ export function BusinessLayout({
 
       <BusinessSidebar
         businessId={businessId}
+        role={shell.role}
         planLabel={shell.planLabel}
         planCommission={shell.planCommission}
         pendingCount={pendingCount}

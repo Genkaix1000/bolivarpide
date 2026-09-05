@@ -11,6 +11,7 @@ import { usePwaInstall } from "@/lib/pwa/usePwaInstall";
 
 interface BusinessSidebarProps {
   businessId: string;
+  role?: string;
   planLabel: string;
   planCommission: string;
   pendingCount: number;
@@ -22,6 +23,7 @@ interface BusinessSidebarProps {
 
 export function BusinessSidebar({
   businessId,
+  role,
   planLabel,
   planCommission,
   pendingCount,
@@ -32,6 +34,7 @@ export function BusinessSidebar({
 }: BusinessSidebarProps) {
   const pathname = usePathname();
   const base = `/negocio/${businessId}`;
+  const isDriver = role === "driver";
   const { isCapable, requestInstall } = usePwaInstall();
   const showInstallItem = isCapable;
 
@@ -48,18 +51,21 @@ export function BusinessSidebar({
     [onMobileClose, requestInstall],
   );
 
-  const GENERAL_NAV = [
-    { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
-    {
-      id: "pedidos",
-      label: "Pedidos",
-      icon: "receipt_long",
-      href: `${base}/pedidos`,
-      badge: pendingCount > 0 ? pendingCount : undefined,
-    },
-    { id: "whatsapp", label: "WhatsApp", icon: "chat", href: `${base}/whatsapp` },
-    { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
-  ];
+  const GENERAL_NAV = isDriver
+    ? [{ id: "reparto", label: "Reparto", icon: "moped", href: `${base}/reparto` }]
+    : [
+        { id: "dashboard", label: "Dashboard", icon: "dashboard", href: `${base}/dashboard` },
+        {
+          id: "pedidos",
+          label: "Pedidos",
+          icon: "receipt_long",
+          href: `${base}/pedidos`,
+          badge: pendingCount > 0 ? pendingCount : undefined,
+        },
+        { id: "whatsapp", label: "WhatsApp", icon: "chat", href: `${base}/whatsapp` },
+        { id: "carta", label: "Carta", icon: "menu_book", href: `${base}/carta` },
+        { id: "reparto", label: "Reparto", icon: "moped", href: `${base}/reparto` },
+      ];
 
   const renderNavItem = (
     item: {
@@ -223,19 +229,21 @@ export function BusinessSidebar({
         </nav>
 
         <div className={cn("pt-2 flex flex-col gap-0.5", isIconOnly ? "px-2" : "px-2.5")}>
-          {renderNavItem(
-            {
-              id: "configuracion",
-              label: "Configuración",
-              icon: "settings",
-              href: `${base}/configuracion/general`,
-            },
-            isMobile,
-          )}
+          {!isDriver &&
+            renderNavItem(
+              {
+                id: "configuracion",
+                label: "Configuración",
+                icon: "settings",
+                href: `${base}/configuracion/general`,
+              },
+              isMobile,
+            )}
           {renderNavItem({ id: "hub", label: "Mis locales", icon: "storefront", href: "/negocio" }, isMobile)}
           {renderNavItem({ id: "home", label: "Ir al inicio", icon: "home", href: "/" }, isMobile)}
 
           {/* Plan upgrade — próximamente */}
+          {!isDriver && (
           <div className={cn("mt-3 mb-1", isIconOnly ? "flex justify-center" : "")}>
             {isIconOnly ? (
               <button
@@ -272,6 +280,7 @@ export function BusinessSidebar({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     );

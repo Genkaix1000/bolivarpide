@@ -260,6 +260,7 @@ export type ShellNotification = { emoji: string; title: string; time: string };
 
 export type BusinessShellData = {
   business: BusinessRow;
+  role: "owner" | "staff" | "driver";
   displayName: string;
   email: string;
   initials: string;
@@ -286,8 +287,9 @@ function userDisplay(user: { email?: string }, profileName: string | null) {
 }
 
 export async function getBusinessShellData(businessId: string): Promise<BusinessShellData> {
-  const { supabase, user, business } = await requireBusinessAccess(businessId);
+  const { supabase, user, business, member, isAdmin } = await requireBusinessAccess(businessId);
   const { label: planLabel, commission: planCommission } = planMeta(business.plan);
+  const role: BusinessShellData["role"] = isAdmin ? "owner" : (member?.role as BusinessShellData["role"]) ?? "staff";
 
   const [profileRes, pendingAllRes] = await Promise.all([
     supabase
@@ -311,6 +313,7 @@ export async function getBusinessShellData(businessId: string): Promise<Business
 
   return {
     business,
+    role,
     displayName,
     email,
     initials,
