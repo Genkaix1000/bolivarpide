@@ -35,6 +35,16 @@ export function SettingsLayout({
 
   const currentTab = searchParams.get("tab") || "general";
 
+  const waInitial = searchParams.get("whatsapp")
+    ? {
+        ok: searchParams.get("whatsapp") === "connected",
+        text:
+          searchParams.get("whatsapp") === "connected"
+            ? "WhatsApp conectado. Ya recibís y respondés mensajes desde el panel."
+            : searchParams.get("why") || "No se pudo conectar WhatsApp.",
+      }
+    : null;
+
   const tabs = [
     {
       id: "general",
@@ -159,7 +169,11 @@ export function SettingsLayout({
           )}
           {currentTab === "pagos" && <TabPagos businessId={businessId} />}
           {currentTab === "canales" && (
-            <TabCanales businessId={businessId} connection={connection} />
+            <TabCanales
+              businessId={businessId}
+              connection={connection}
+              initial={waInitial}
+            />
           )}
           {currentTab === "equipo" && (
             <TabEquipo

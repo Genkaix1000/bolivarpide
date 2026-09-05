@@ -1,16 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { connectWhatsAppNumber } from "@/lib/business/whatsapp";
 import type { WhatsAppConnection } from "@/lib/business/whatsappQueries";
 
+type BannerResult = { ok: boolean; text: string };
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function WhatsAppConnectionCard({
   businessId,
   connection,
+  initial,
 }: {
   businessId: string;
   connection: WhatsAppConnection | null;
+  initial?: BannerResult | null;
 }) {
   const [open, setOpen] = useState(false);
   const [phoneNumberId, setPhoneNumberId] = useState(
@@ -32,8 +47,21 @@ export function WhatsAppConnectionCard({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [banner, setBanner] = useState<BannerResult | null>(initial ?? null);
 
   const active = connection?.is_active ?? false;
+  const oauthHref = `/api/meta/oauth/start?businessId=${encodeURIComponent(businessId)}`;
+  const expiresAt = connection?.token_expires_at ?? null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("whatsapp")) {
+      params.delete("whatsapp");
+      params.delete("why");
+      const qs = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +78,7 @@ export function WhatsAppConnectionCard({
     form.set("templateOrderStatusLanguage", templateOrderStatusLanguage);
     try {
       await connectWhatsAppNumber(form);
+      window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo conectar.");
     } finally {
@@ -59,6 +88,23 @@ export function WhatsAppConnectionCard({
 
   return (
     <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#231f1c] border border-gray-100 dark:border-[#3d3732]">
+      {banner && (
+        <div
+          className={`mb-3 px-3 py-2 rounded-lg text-[11px] font-semibold flex items-start gap-2 ${
+            banner.ok
+              ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+              : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+          }`}
+        >
+          <MaterialSymbol
+            icon={banner.ok ? "check_circle" : "error"}
+            size={15}
+            className="mt-0.5 flex-shrink-0"
+          />
+          <span>{banner.text}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
@@ -72,14 +118,14 @@ export function WhatsAppConnectionCard({
           </div>
           <div>
             <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">
-              WhatsApp Bot
+              WhatsApp Business
             </h4>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
               {active
                 ? `Conectado · ${connection?.display_phone_number ?? connection?.phone_number_id ?? ""}`
                 : connection
                   ? `${connection.display_phone_number ?? connection.phone_number_id} · pendiente de verificación`
-                  : "Sin vincular — recibí pedidos por WhatsApp"}
+                  : "Sin vincular — recibí y respondé mensajes por WhatsApp"}
             </p>
           </div>
         </div>
@@ -89,24 +135,57 @@ export function WhatsAppConnectionCard({
           className="text-[11px] font-bold text-[#9a0002] hover:bg-[#9a0002]/10 px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1"
         >
           <MaterialSymbol icon="tune" size={14} />
-          Configurar
+          Configuración avanzada
         </button>
       </div>
 
+      {!active ? (
+        <div className="mt-4 space-y-2">
+          <a
+            href={oauthHref}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#9a0002] hover:bg-[#850002] text-white text-xs font-bold rounded-full transition-all shadow-md cursor-pointer"
+          >
+            <MaterialSymbol icon="link" size={16} />
+            Conectar con Meta / WhatsApp
+          </a>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
+            Te redirige a Meta para autorizar con tu cuenta. No vas a necesitar
+            pegar tokens manualmente.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-2">
+          <div className="rounded-xl border border-gray-200 dark:border-[#3d3732] p-3 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <MaterialSymbol icon="verified" size={15} className="text-emerald-500" />
+              <span className="text-[11px] font-bold text-gray-700 dark:text-gray-200">
+                {connection?.verified_name ?? "Número verificado"} ·{" "}
+                {connection?.display_phone_number ?? connection?.phone_number_id}
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-500 flex items-center gap-1.5">
+              <MaterialSymbol icon="schedule" size={13} className="text-slate-400" />
+              {expiresAt
+                ? `Token vigente hasta el ${formatDate(expiresAt)}`
+                : "Token de Meta vinculado"}
+            </p>
+          </div>
+          <a
+            href={oauthHref}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#9a0002]/5 hover:bg-[#9a0002]/10 text-[#9a0002] text-xs font-bold rounded-full transition-colors cursor-pointer"
+          >
+            <MaterialSymbol icon="refresh" size={16} />
+            Reconectar con Meta
+          </a>
+        </div>
+      )}
+
       {open && (
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t border-gray-100 dark:border-[#3d3732] pt-4">
-          {connection && (
-            <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
-              <MaterialSymbol
-                icon={active ? "verified" : "pending"}
-                size={14}
-                className={active ? "text-emerald-500" : "text-amber-500"}
-              />
-              {active
-                ? "Número verificado y recibiendo pedidos."
-                : "Guardamos la conexión. El administrador la habilita tras verificar el número en Meta."}
-            </p>
-          )}
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Solo para casos técnicos: pegá los datos tal como aparecen en tu App
+            de Meta. El token se guarda cifrado en Supabase Vault.
+          </p>
 
           <div>
             <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
@@ -157,9 +236,6 @@ export function WhatsAppConnectionCard({
               placeholder={connection ? "Dejar vacío para no cambiar" : "Token de Meta"}
               className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
             />
-            <p className="text-[10px] text-gray-400 mt-1">
-              Se guarda cifrado en Supabase Vault. Nunca se muestra en el navegador.
-            </p>
           </div>
 
           <div className="rounded-xl border border-gray-200 dark:border-[#3d3732] p-3 space-y-2.5">

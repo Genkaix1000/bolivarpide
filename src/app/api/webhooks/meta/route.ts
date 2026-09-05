@@ -66,11 +66,16 @@ export async function POST(request: Request) {
 
     // Outbound delivery/read receipts: update existing rows.
     const statusUpdates = change.statuses.map(async (status) => {
-      if (status.status !== "sent") {
-        await service
-          .from("whatsapp_messages")
-          .update({ status: status.status, updated_at: new Date().toISOString() })
-          .eq("wa_message_id", status.waMessageId);
+      if (status.status === "sent") return;
+      const { error } = await service
+        .from("whatsapp_messages")
+        .update({ status: status.status, updated_at: new Date().toISOString() })
+        .eq("wa_message_id", status.waMessageId);
+      if (error) {
+        console.error(
+          `webhook/meta: no se pudo actualizar estado ${status.status}`,
+          error,
+        );
       }
     });
     await Promise.all(statusUpdates);

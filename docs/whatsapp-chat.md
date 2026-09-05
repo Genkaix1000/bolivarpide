@@ -24,8 +24,10 @@ Meta Cloud API  ──webhook──►  Next /api/webhooks/meta  (GET verify + P
 | Variable | Para qué |
 |---|---|
 | `META_WEBHOOK_VERIFY_TOKEN` | Token de verificación del webhook de Meta (GET `hub.challenge`). Lo definís vos y va también en Meta > Webhook config. |
-| `META_APP_SECRET` | App secret de tu app de Meta. Se usa para validar la firma `X-Hub-Signature-256` de cada POST del webhook. |
+| `META_APP_SECRET` | App secret de tu app de Meta. Se usa para validar la firma `X-Hub-Signature-256` de cada POST del webhook y como `client_secret` en el OAuth. |
+| `META_APP_ID` | ID de la app de Meta. Necesario para el enlace self-service (Business Login). |
 | `META_GRAPH_VERSION` | Opcional. Versión de Graph API, por defecto `v21.0` (p. ej. `v22.0`). |
+| `META_OAUTH_REDIRECT_URI` | Redir del OAuth. Debe ser EXACTO al "Valid OAuth redirect URIs" de la app. Default: `<site>/api/meta/oauth/callback`. |
 | `WHATSAPP_WEBHOOK_SECRET` | **Deprecated.** Era el secret compartido con n8n para `/api/webhooks/whatsapp`. Se mantiene solo por retro-compat con la rama `n8n`. |
 
 ## En Meta (Cloud API → Webhook configuration)
@@ -51,6 +53,38 @@ Aplicar en orden (SQL Editor o `psql -f`):
    - Bucket `whatsapp-media` (public read, write service-only) para guardar la media entrante.
 2. `supabase/migrations/20260904_whatsapp_status_templates.sql`
    - Columnas en `business_whatsapp`: `notify_status`, `template_order_status_name`, `template_order_status_language`.
+3. `supabase/migrations/20260905_whatsapp_oauth.sql`
+   - Tabla `meta_oauth_states` + RPC `consume_meta_oauth_state` (estado OAuth single-use).
+   - `whatsapp_messages.updated_at`, status `rejected`, y publicación Realtime del chat.
+   - `business_whatsapp`: `token_expires_at`, `connected_at`, `meta_user_id`, `verified_name`.
+
+## Enlazar WhatsApp con Meta (self-service, sin admin)
+
+Desde **Configuración → Canales**, el dueño toca **"Conectar con Meta / WhatsApp"**:
+
+```
+/negocio/[id]/configuracion/canales
+   → GET /api/meta/oauth/start?businessId=…   (auth + miembro; crea meta_oauth_states)
+   → facebook.com/v22.0/dialog/oauth          (scopes business_management,
+        whatsapp_business_management, whatsapp_business_messaging)
+   → GET /api/meta/oauth/callback          (consume state, code → short → long-lived 60d)
+        ├─ token → Supabase Vault (create_secret/update_secret)
+        ├─ GET /{appId}/whatsapp_business_accounts  → WABA
+        ├─ GET /{waba_id}/phone_numbers            → número conectado
+        ├─ GET /{phone_number_id}                  → verifica acceso
+        └─ upsert business_whatsapp: status='connected', is_active=true, token_expires_at
+   → redirect a canales?whatsapp=connected
+```
+
+Requisito en Meta: la **WABA del local debe estar vinculada a la app** de la
+plataforma (Business integration). El token queda en el Vault cifrado; nunca
+toca el navegador. La conexión queda activa al instante, sin que un admin la
+habilite. El form manual (token pegado) sigue disponible bajo
+"Configuración avanzada" para casos excepcionales y conserva el paso de admin.
+
+> Los tokens long-lived de system user vencen a los 60 días. El panel muestra
+> la fecha de vencimiento y `sendWhatsAppText` rechaza responder con un token
+> vencido; el dueño usa "Reconectar con Meta" para rotar.
 
 ## Mover el webhook desde n8n a Next
 

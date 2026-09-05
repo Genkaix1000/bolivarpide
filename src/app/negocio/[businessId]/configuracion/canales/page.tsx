@@ -4,12 +4,22 @@ import { WhatsAppConnectionCard } from "@/components/business/WhatsAppConnection
 
 export default async function ConfiguracionCanalesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ businessId: string }>;
+  searchParams: Promise<{ whatsapp?: string; why?: string }>;
 }) {
   const { businessId } = await params;
+  const sp = await searchParams;
   await requireBusinessAccess(businessId);
   const connection = await getWhatsAppConnection(businessId);
+
+  const initial =
+    sp.whatsapp === "connected"
+      ? { ok: true, text: "WhatsApp conectado. Ya recibís y respondés mensajes desde el panel." }
+      : sp.whatsapp === "error"
+        ? { ok: false, text: sp.why || "No se pudo conectar WhatsApp." }
+        : null;
 
   return (
     <div className="space-y-6">
@@ -22,7 +32,11 @@ export default async function ConfiguracionCanalesPage({
         </p>
       </div>
 
-      <WhatsAppConnectionCard businessId={businessId} connection={connection} />
+      <WhatsAppConnectionCard
+        businessId={businessId}
+        connection={connection}
+        initial={initial}
+      />
     </div>
   );
 }

@@ -6,9 +6,11 @@ import type { WhatsAppConnection } from "@/lib/business/whatsappQueries";
 export function TabCanales({
   businessId,
   connection,
+  initial,
 }: {
   businessId: string;
   connection: WhatsAppConnection | null;
+  initial?: { ok: boolean; text: string } | null;
 }) {
   return (
     <div className="space-y-6">
@@ -21,7 +23,11 @@ export function TabCanales({
         </p>
       </div>
 
-      <WhatsAppConnectionCard businessId={businessId} connection={connection} />
+      <WhatsAppConnectionCard
+        businessId={businessId}
+        connection={connection}
+        initial={initial}
+      />
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireBusinessAccess } from "@/lib/business/queries";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getActiveWhatsAppConnection, readWhatsAppToken } from "@/lib/whatsapp/connection";
+import { getActiveWhatsAppConnection } from "@/lib/whatsapp/connection";
+import { readConnectionToken } from "@/lib/whatsapp/oauth";
 import { isWithinReplayWindow } from "@/lib/whatsapp/window";
 import { storedPhoneFromWaId } from "@/lib/whatsapp/format";
 
@@ -23,8 +24,17 @@ export async function sendWhatsAppText(
   const conn = await getActiveWhatsAppConnection(businessId);
   if (!conn) return { ok: false, error: "WhatsApp Business no está conectado" };
 
-  const token = await readWhatsAppToken(conn.vault_token_ref);
-  if (!token) return { ok: false, error: "Token de WhatsApp no disponible" };
+  const token = await readConnectionToken({
+    vault_token_ref: conn.vault_token_ref,
+    token_expires_at: conn.token_expires_at,
+  });
+  if (!token) {
+    return {
+      ok: false,
+      error:
+        "Token de WhatsApp vencido o no disponible. Reconectá desde Configuración → Canales.",
+    };
+  }
 
   // 24h window: last inbound interaction for this chat.
   const svc = createServiceClient();
