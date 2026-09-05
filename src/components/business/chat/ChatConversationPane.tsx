@@ -14,6 +14,8 @@ interface ChatConversationPaneProps {
   onBackMobile?: () => void;
   onNewComanda: () => void;
   onLinkOrder: () => void;
+  onLoadOlder?: () => void;
+  loadingOlder?: boolean;
   showContextPane: boolean;
   onToggleContextPane: () => void;
   className?: string;
@@ -32,6 +34,8 @@ export function ChatConversationPane({
   onBackMobile,
   onNewComanda,
   onLinkOrder,
+  onLoadOlder,
+  loadingOlder,
   showContextPane,
   onToggleContextPane,
   className,
@@ -40,9 +44,13 @@ export function ChatConversationPane({
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Baja sólo cuando llega un mensaje nuevo al final. Si mirara el array
+  // entero, cargar mensajes anteriores (que los agrega arriba) tiraría la
+  // vista al fondo justo después de pedir historial.
+  const lastMessageId = conversation.messages[conversation.messages.length - 1]?.id;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation.messages]);
+  }, [lastMessageId, conversation.id]);
 
   const liveOrder = isLiveOrder(conversation.activeOrder) ? conversation.activeOrder : null;
 
@@ -162,6 +170,18 @@ export function ChatConversationPane({
       )}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {conversation.hasMoreMessages ? (
+          <div className="flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="rounded-full bg-[#f0ebe3] px-3 py-1 text-[11px] font-semibold text-gray-600 hover:bg-[#e4dcd1] disabled:opacity-60 dark:bg-[#231f1c] dark:text-gray-300"
+            >
+              {loadingOlder ? "Cargando…" : "Ver mensajes anteriores"}
+            </button>
+          </div>
+        ) : null}
         {conversation.messages.map((msg) => {
           const isMe = msg.sender === "business";
           return (

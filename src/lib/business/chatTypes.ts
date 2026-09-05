@@ -69,6 +69,35 @@ export type ChatMessage = {
   errorTitle?: string | null;
 };
 
+export type LastMessagePreview = {
+  text: string;
+  timestamp: string;
+  sender: "customer" | "business";
+};
+
+/** Badge de pedido en la lista: lo mínimo para el filtro y el subtítulo. */
+export type ChatOrderBadge = {
+  id: string;
+  orderNumber: number;
+  status: ChatOrderStatus;
+  statusLabel: string;
+};
+
+/**
+ * Fila de la lista de chats. Se arma con una agregación en la base
+ * (`whatsapp_chat_summaries`), sin traer un solo mensaje: el historial completo
+ * sólo se carga para el chat abierto.
+ */
+export type ChatSummary = {
+  id: string; // chat_id
+  customer: { id: string; name: string; phone: string; avatarUrl?: string | null };
+  activeOrder: ChatOrderBadge | null;
+  unreadCount: number;
+  lastMessage: LastMessagePreview;
+  /** Whether the free-form reply window (24h) is still open. */
+  canReply: boolean;
+};
+
 export type Conversation = {
   id: string; // chat_id
   customer: CustomerProfile;
@@ -76,12 +105,11 @@ export type Conversation = {
   pastOrders: PastOrder[];
   sharedMedia: { id: string; url: string; label: string; date: string }[];
   unreadCount: number;
-  lastMessage: {
-    text: string;
-    timestamp: string;
-    sender: "customer" | "business";
-  };
+  lastMessage: LastMessagePreview;
+  /** Página de mensajes, del más viejo al más nuevo. */
   messages: ChatMessage[];
+  /** Hay mensajes más viejos para traer hacia atrás. */
+  hasMoreMessages: boolean;
   /** Whether the free-form reply window (24h) is still open. */
   canReply: boolean;
 };
@@ -95,6 +123,20 @@ export const QUICK_RESPONSES = [
   { id: "qr-6", label: "📍 Confirmar dirección", text: "Por favor, ¿nos confirmás entre qué calles se encuentra el domicilio y si hay algún timbre o referencia?" },
 ];
 
-export function isLiveOrder(order: ChatActiveOrder | null | undefined): boolean {
-  return Boolean(order && order.status !== "delivered" && order.status !== "rejected");
+const TERMINAL_ORDER_STATUS: ChatOrderStatus[] = ["delivered", "rejected", "cancelled"];
+
+/** `cancelled` es terminal: antes faltaba y un pedido cancelado seguía "vivo". */
+export function isLiveOrder(
+  order: { status: ChatOrderStatus } | null | undefined,
+): boolean {
+  return Boolean(order && !TERMINAL_ORDER_STATUS.includes(order.status));
 }
+
+export const CHAT_ORDER_STATUS_LABEL: Record<ChatOrderStatus, string> = {
+  pending: "Nuevo",
+  preparing: "En Cocina",
+  delivering: "En Camino",
+  delivered: "Entregado",
+  rejected: "Rechazado",
+  cancelled: "Cancelado",
+};

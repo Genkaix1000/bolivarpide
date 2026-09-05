@@ -131,8 +131,19 @@ Este hito **saca a n8n del path** de recepción:
 
 ## Flujo del chat (panel)
 
-- **Lista**: las conversaciones se agrupan por `chat_id` desde `whatsapp_messages`, con último mensaje, no-leídos y pedido activo vinculado.
-- **Realtime**: cancelar suscripción a `whatsapp_messages` y `orders` del negocio — un mensaje nuevo refresca la lista al instante.
+- **Lista**: `listChatSummaries` agrupa por `chat_id` con la RPC
+  `whatsapp_chat_summaries` (último mensaje, no-leídos y último inbound
+  agregados en la base) y le cruza los pedidos vivos. No trae mensajes.
+- **Detalle**: `getChatDetail(businessId, chatId, before?)` trae una página de
+  50 mensajes del chat abierto, paginando hacia atrás por keyset sobre
+  `created_at`. `canReply` sale de una consulta propia del último inbound, no
+  de la página: si los últimos 50 mensajes son salientes, el inbound que abre
+  la ventana queda fuera de la página.
+- **Realtime**: suscripción a `whatsapp_messages` y `orders` del negocio,
+  con debounce de 250 ms. Un evento refresca la lista (una agregación) y sólo
+  recarga el chat abierto si le pertenece. Antes cualquier evento del negocio
+  —incluido un pedido sin chat— recargaba el historial completo de todas las
+  conversaciones.
 - **Responder**: `sendWhatsAppText` valida acceso, ventana de 24 h y token del Vault; persiste el outbound (status `sent` → `delivered`/`read` llegan por el webhook de Meta).
 - **Ventana vencida**: fuera de las 24 h el input se reemplaza por un aviso + link `wa.me` para contestar desde la app oficial (Meta exige templates fuera de la ventana).
 - **Nueva comanda**: modal con la carta del negocio (`products`); `createWhatsAppOrder` llama al RPC `create_order` con `source='whatsapp'` y `wa_chat_id`, así el pedido aparece en la comandera con sonido y queda ligado al chat.

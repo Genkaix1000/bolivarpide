@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { listChatConversations } from "@/lib/business/chatQueries";
+import { listChatSummaries } from "@/lib/business/chatQueries";
 
+/** Lista de chats (sin mensajes). El detalle va por /api/whatsapp/messages. */
 export async function GET(req: NextRequest) {
   const businessId = req.nextUrl.searchParams.get("businessId");
   if (!businessId) {
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   try {
-    const conversations = await listChatConversations(businessId);
+    const conversations = await listChatSummaries(businessId);
     return NextResponse.json({ conversations });
   } catch (e) {
     return NextResponse.json(
