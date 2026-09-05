@@ -20,11 +20,9 @@ import { NotificationPanel } from "@/components/notifications/NotificationPanel"
 import { BusinessSearchOverlay } from "@/components/business/BusinessSearchOverlay";
 import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
-import type { BusinessShellData } from "@/lib/business/queries";
 import type { NewOrderAlert } from "@/hooks/useOrderAlerts";
 
 interface BusinessTopbarProps {
-  shell: BusinessShellData;
   businessId: string;
   orderAlerts: NewOrderAlert[];
   onDismissOrderAlerts?: (orderId?: string) => void;
@@ -140,7 +138,6 @@ function BottomSheet({
 }
 
 export function BusinessTopbar({
-  shell,
   businessId,
   orderAlerts,
   onDismissOrderAlerts,
