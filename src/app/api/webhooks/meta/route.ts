@@ -121,13 +121,18 @@ export async function POST(request: Request) {
             const { error: uploadErr } = await service.storage
               .from("whatsapp-media")
               .upload(path, downloaded.bytes, { contentType: downloaded.mimeType });
-            const publicUrl = uploadErr
-              ? null
-              : service.storage.from("whatsapp-media").getPublicUrl(path).data.publicUrl;
+            if (uploadErr) {
+              console.error(
+                `webhook/meta: no se pudo subir la media de ${message.waMessageId}`,
+                uploadErr,
+              );
+            }
+            // Sólo el path: el bucket es privado y el panel firma una URL
+            // temporal al leer el chat. La URL pública que se guardaba acá
+            // dejaba los comprobantes del cliente accesibles a cualquiera.
             mediaJson = {
               mime_type: downloaded.mimeType,
               storage_path: uploadErr ? null : path,
-              storage_url: publicUrl,
               caption: message.media.caption ?? null,
               duration_ms: message.media.durationMs ?? null,
             };

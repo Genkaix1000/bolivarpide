@@ -152,9 +152,24 @@ Este hito **saca a n8n del path** de recepción:
 ## Media
 
 Cuando llega una imagen o audio, el webhook la descarga con el token del Vault
-(`fetchMetaMedia`) y la sube a `whatsapp-media` para que la URL no venza (la
-URL temporal de Meta expira). En el chat se previsualiza desde Storage; el
-audio se muestra como botón de play (compat de codec según browser).
+(`fetchMetaMedia`) y la sube a `whatsapp-media` (la URL temporal de Meta vence
+a los ~5 min).
+
+**El bucket es privado.** Ahí adentro va lo que el cliente manda por WhatsApp:
+comprobantes de transferencia, fotos de la fachada con la dirección, a veces
+documentos. Nació con `public = true` y una policy de SELECT sin condición de
+negocio, así que cualquiera con la URL los abría sin estar autenticado — y la
+URL pública además quedaba guardada en `media_json.storage_url`.
+
+Ahora sólo se persiste `media_json.storage_path`, y `getChatDetail` firma URLs
+temporales (1 h) en lote con `createSignedUrls` al leer el chat. La migración
+`20260906040000` cierra el bucket, borra la policy abierta y limpia las
+`storage_url` viejas.
+
+> **Pendiente de decisión: retención.** Hoy los mensajes y la media se guardan
+> para siempre. No se implementó borrado automático a propósito —elegir la
+> ventana es una decisión del negocio y el borrado no se deshace—, pero
+> conviene definirla: es data personal de clientes que se acumula sin techo.
 
 ## Cambios de estados en el chat
 

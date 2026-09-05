@@ -103,20 +103,64 @@ function statusLabel(raw: string): string {
   return status ? CHAT_ORDER_STATUS_LABEL[status] : "Nuevo";
 }
 
-function messageToChatMessage(row: MessageRow): ChatMessage {
+/** Cuánto vive una URL firmada de media. Alcanza para una sesión de panel. */
+const MEDIA_URL_TTL_S = 60 * 60;
+
+/**
+ * Firma en lote las URLs de la media de una página de mensajes.
+ *
+ * El bucket `whatsapp-media` es privado: lo que mandan los clientes
+ * (comprobantes, fotos con la dirección) no puede quedar accesible por URL.
+ * La firma va por `storage_path`; `storage_url` era la URL pública vieja.
+ */
+async function signMediaUrls(
+  svc: ReturnType<typeof createServiceClient>,
+  rows: MessageRow[],
+): Promise<Map<string, string>> {
+  const paths = [
+    ...new Set(
+      rows
+        .map((r) => r.media_json?.storage_path)
+        .filter((p): p is string => Boolean(p)),
+    ),
+  ];
+  if (paths.length === 0) return new Map();
+
+  const { data, error } = await svc.storage
+    .from("whatsapp-media")
+    .createSignedUrls(paths, MEDIA_URL_TTL_S);
+  if (error) {
+    console.error("chatQueries: no se pudieron firmar las URLs de media", error);
+    return new Map();
+  }
+
+  const signed = new Map<string, string>();
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) signed.set(entry.path, entry.signedUrl);
+  }
+  return signed;
+}
+
+function messageToChatMessage(
+  row: MessageRow,
+  signedUrls: Map<string, string>,
+): ChatMessage {
   const isInbound = row.direction === "inbound";
   const media = row.media_json;
+  const mediaUrl = media?.storage_path
+    ? (signedUrls.get(media.storage_path) ?? null)
+    : (media?.storage_url ?? null);
 
   let text = row.text_body;
   let imageUrl: string | null = null;
   let audioDuration: string | null = null;
   let type = mapMessageType(row.type);
 
-  if (media?.storage_url) {
-    if (media.mime_type?.startsWith("image/")) {
-      imageUrl = media.storage_url;
+  if (mediaUrl) {
+    if (media?.mime_type?.startsWith("image/")) {
+      imageUrl = mediaUrl;
       text = text ?? media.caption ?? "📷 Imagen";
-    } else if (media.mime_type?.startsWith("audio/")) {
+    } else if (media?.mime_type?.startsWith("audio/")) {
       type = "audio";
       audioDuration = null; // Meta no reporta duración en el webhook.
       text = text ?? "🎤 Audio";
@@ -133,7 +177,7 @@ function messageToChatMessage(row: MessageRow): ChatMessage {
     media: media
       ? {
           mimeType: media.mime_type ?? null,
-          storageUrl: media.storage_url ?? null,
+          storageUrl: mediaUrl,
           caption: media.caption ?? null,
         }
       : null,
@@ -320,7 +364,8 @@ export async function getChatDetail(
   const page = hasMoreMessages ? desc.slice(0, CHAT_PAGE_SIZE) : desc;
   // La UI los pinta del más viejo al más nuevo.
   const rows = [...page].reverse();
-  const messages = rows.map(messageToChatMessage);
+  const signedUrls = await signMediaUrls(svc, rows);
+  const messages = rows.map((row) => messageToChatMessage(row, signedUrls));
 
   const orders = (orderRows ?? []) as OrderRow[]; // ya vienen desc
   const activeRow = orders.find((o) => {
@@ -367,14 +412,20 @@ export async function getChatDetail(
       activeOrder: activeRow ? mapOrder(activeRow) : null,
       pastOrders,
       sharedMedia: rows
-        .filter((m) => m.media_json?.storage_url)
-        .slice(-20)
-        .map((m) => ({
-          id: m.id,
-          url: m.media_json!.storage_url!,
-          label: m.media_json!.caption ?? "Archivo",
-          date: fmtDate(m.created_at),
-        })),
+        .map((m) => {
+          const path = m.media_json?.storage_path;
+          const url = path ? signedUrls.get(path) : undefined;
+          return url
+            ? {
+                id: m.id,
+                url,
+                label: m.media_json?.caption ?? "Archivo",
+                date: fmtDate(m.created_at),
+              }
+            : null;
+        })
+        .filter((m): m is NonNullable<typeof m> => m !== null)
+        .slice(-20),
       unreadCount: rows.filter((m) => m.direction === "inbound" && !m.read_at).length,
       lastMessage: lastMessage
         ? {
