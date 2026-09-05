@@ -96,6 +96,12 @@ escrow).
   vía `tsx`. Sin tests de framework y sin CI (pendiente en `docs/debt.md`).
 - **Verificación local:** `pnpm exec tsc --noEmit` y `pnpm lint`.
 
+## Hitos / Roadmap
+
+El roadmap operativo acordado (2026-09) vive en [`docs/hitos/`](./docs/hitos/README.md):
+conectar repartidores aprobados a la operación, GPS real del repartidor → tracking del
+cliente, CI + tests, y métricas por repartidor.
+
 ## Referencias
 
 - Specs de producto: `docs/specs/` · `docs/features/`
