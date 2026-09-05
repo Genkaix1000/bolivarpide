@@ -142,15 +142,33 @@ export function exchangeForLongLived(shortToken: string): Promise<{
   return oauthExchange(`${cfg.graphBase}/oauth/access_token?${params.toString()}`);
 }
 
-async function graphGet<T>(path: string, token: string, fields: string): Promise<T> {
+async function graphGet<T>(path: string, token: string, fields?: string): Promise<T> {
   const cfg = getMetaOAuthConfig();
-  const params = new URLSearchParams({ fields, access_token: token });
+  const params = new URLSearchParams({ access_token: token });
+  if (fields) params.set("fields", fields);
   const res = await fetch(`${cfg.graphBase}/${path}?${params.toString()}`);
   const json = (await res.json()) as T & { error?: { message?: string } };
   if (!res.ok || "error" in json) {
     throw new Error(
       (json as { error?: { message?: string } }).error?.message ||
         "Error de la API de Meta",
+    );
+  }
+  return json;
+}
+
+async function graphPost<T>(path: string, token: string): Promise<T> {
+  const cfg = getMetaOAuthConfig();
+  const res = await fetch(`${cfg.graphBase}/${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = (await res.json().catch(() => null)) as
+    | (T & { error?: { message?: string } })
+    | null;
+  if (!res.ok || !json || "error" in json) {
+    throw new Error(
+      json?.error?.message || `Error de la API de Meta (HTTP ${res.status})`,
     );
   }
   return json;
@@ -224,6 +242,50 @@ export async function listPhoneNumbers(
   return json.data ?? [];
 }
 
+/**
+ * Suscribe la app a los webhooks de la WABA (`POST /{waba-id}/subscribed_apps`).
+ *
+ * Sin esta llamada Meta NO entrega NINGÚN evento de esa cuenta a la app: la
+ * conexión queda `connected` en el panel y no llega un solo mensaje. Es
+ * idempotente, así que reconectar o rotar el token no rompe nada.
+ */
+export async function subscribeAppToWaba(
+  wabaId: string,
+  token: string,
+): Promise<void> {
+  try {
+    await graphPost<{ success?: boolean }>(`${wabaId}/subscribed_apps`, token);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "";
+    throw new Error(
+      `No se pudo suscribir la app a los webhooks de tu cuenta de WhatsApp${
+        detail ? `: ${detail}` : ""
+      }. Verificá que la WABA esté vinculada a la app en Meta y reintentá.`,
+    );
+  }
+
+  // Verificación best-effort: si Graph contesta, la app tiene que figurar en
+  // la lista. Si el GET falla no bloqueamos (el POST ya devolvió success).
+  let subscribedAppIds: string[] | null = null;
+  try {
+    const res = await graphGet<{
+      data?: Array<{ whatsapp_business_api_data?: { id?: string } }>;
+    }>(`${wabaId}/subscribed_apps`, token);
+    subscribedAppIds = (res.data ?? [])
+      .map((row) => row.whatsapp_business_api_data?.id)
+      .filter((id): id is string => Boolean(id));
+  } catch {
+    subscribedAppIds = null;
+  }
+
+  const { appId } = getMetaOAuthConfig();
+  if (subscribedAppIds && subscribedAppIds.length > 0 && !subscribedAppIds.includes(appId)) {
+    throw new Error(
+      "La suscripción a los webhooks no quedó registrada en Meta. Reintentá la conexión o revisá los permisos de la app.",
+    );
+  }
+}
+
 /** Confirma que el token tiene acceso al número y trae sus datos. */
 export async function verifyPhoneAccess(
   phoneNumberId: string,
@@ -270,6 +332,11 @@ export async function linkWhatsAppViaOAuth(input: {
   const picked =
     phones.find((p) => p.code_verification_status === "verified") ?? phones[0];
   const verified = await verifyPhoneAccess(picked.id, input.token);
+
+  // Antes de persistir nada: sin esta suscripción la conexión quedaría
+  // "connected" sin recibir webhooks. Va primero para no dejar estado a
+  // medias (Vault + fila) si Meta la rechaza.
+  await subscribeAppToWaba(waba.id, input.token);
 
   const { data: existing } = await service
     .from("business_whatsapp")

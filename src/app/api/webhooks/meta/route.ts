@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         }
       }
 
-      await service.from("whatsapp_messages").insert({
+      const { error: insertErr } = await service.from("whatsapp_messages").insert({
         business_id: businessId,
         chat_id: message.from,
         direction: "inbound",
@@ -129,6 +129,14 @@ export async function POST(request: Request) {
         customer_name: customerName,
         created_at: new Date(message.timestamp * 1000).toISOString(),
       });
+      if (insertErr) {
+        // Sin esto un fallo de persistencia perdía el mensaje del cliente en
+        // silencio (incluida la colisión de wa_message_id en reintentos).
+        console.error(
+          `webhook/meta: no se pudo persistir el mensaje ${message.waMessageId}`,
+          insertErr,
+        );
+      }
     }
   }
 

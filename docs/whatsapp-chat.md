@@ -53,10 +53,12 @@ Aplicar en orden (SQL Editor o `psql -f`):
    - Bucket `whatsapp-media` (public read, write service-only) para guardar la media entrante.
 2. `supabase/migrations/20260904_whatsapp_status_templates.sql`
    - Columnas en `business_whatsapp`: `notify_status`, `template_order_status_name`, `template_order_status_language`.
-3. `supabase/migrations/20260905_whatsapp_oauth.sql`
+3. `supabase/migrations/20260905000000_whatsapp_oauth.sql`
    - Tabla `meta_oauth_states` + RPC `consume_meta_oauth_state` (estado OAuth single-use).
    - `whatsapp_messages.updated_at`, status `rejected`, y publicación Realtime del chat.
    - `business_whatsapp`: `token_expires_at`, `connected_at`, `meta_user_id`, `verified_name`.
+4. `supabase/migrations/20260906010000_whatsapp_webhook_timestamp_fix.sql`
+   - Repara los inbound guardados con `created_at` de 1970 (ver más abajo).
 
 ## Enlazar WhatsApp con Meta (self-service, sin admin)
 
@@ -68,13 +70,20 @@ Desde **Configuración → Canales**, el dueño toca **"Conectar con Meta / What
    → facebook.com/v22.0/dialog/oauth          (scopes business_management,
         whatsapp_business_management, whatsapp_business_messaging)
    → GET /api/meta/oauth/callback          (consume state, code → short → long-lived 60d)
+        ├─ GET /me                                  → dueño del token
+        ├─ GET /{ownerId}/whatsapp_business_accounts → WABA
+        ├─ GET /{waba_id}/phone_numbers             → número conectado
+        ├─ GET /{phone_number_id}                   → verifica acceso
+        ├─ POST /{waba_id}/subscribed_apps          → suscribe la app a los webhooks
         ├─ token → Supabase Vault (create_secret/update_secret)
-        ├─ GET /{appId}/whatsapp_business_accounts  → WABA
-        ├─ GET /{waba_id}/phone_numbers            → número conectado
-        ├─ GET /{phone_number_id}                  → verifica acceso
         └─ upsert business_whatsapp: status='connected', is_active=true, token_expires_at
    → redirect a canales?whatsapp=connected
 ```
+
+> El `POST /{waba_id}/subscribed_apps` no es opcional: sin él Meta no entrega
+> **ningún** evento de esa WABA a la app y la conexión queda `connected` sin
+> recibir un solo mensaje. Va antes de tocar el Vault para no dejar estado a
+> medias si Meta lo rechaza; es idempotente, así que reconectar no rompe nada.
 
 Requisito en Meta: la **WABA del local debe estar vinculada a la app** de la
 plataforma (Business integration). El token queda en el Vault cifrado; nunca
@@ -136,8 +145,30 @@ Implementación:
   y `sendOrderStatusTemplate(businessId, chatId, row)`.
 - Hook en `src/lib/orders/actions.ts` → `advanceOrderStatus` (ramas forward +
   rejected) en paralelo a la notificación in-app.
-- Config por negocio en `business_whatsapp` (Settings → Canales →
-  Application card): toggle `notify_status` + nombre/idioma de template.
+- Config por negocio en `business_whatsapp` (Settings → Canales, bloque
+  "Notificar estado del pedido" con su propio **Guardar avisos**): toggle
+  `notify_status` + nombre/idioma de template. Se guarda con
+  `updateWhatsAppNotifySettings`, **separado** del formulario de conexión: antes
+  compartían action, así que guardar los avisos exigía re-pegar el access token
+  y devolvía la conexión a `unverified`/`is_active=false`.
+
+> Ojo con la semántica del toggle: hoy `notify_status` sólo gatea el envío
+> **fuera** de la ventana (el de template). Dentro de las 24 h el texto libre
+> sale igual, aunque el toggle esté apagado. Está pendiente decidir si se
+> respeta el toggle en ambos caminos (y con qué default, hoy es `false`).
+
+## `created_at` de los mensajes entrantes
+
+Meta serializa `timestamp` como **string** (`"timestamp": "1757030400"`). El
+parser lo leía con un guard `typeof v === "number"`, así que caía a `0` y todo
+inbound se persistía con `created_at = 1970-01-01`. Como la ventana de 24 h se
+deriva del último inbound, quedaba vencida siempre: el negocio no podía
+responder desde el panel y las notificaciones nunca usaban texto libre.
+
+`src/lib/whatsapp/webhook.check.ts` cubre el caso (string, número, milisegundos,
+ausente y basura). La migración `20260906010000` repara las filas viejas usando
+`updated_at`, clampeado fuera de la ventana viva para no habilitar envíos de
+texto libre que Meta rechazaría (error 131047).
 
 > **Producción**: cada negocio tiene su WABA, así que la template debe estar
 > aprobada en SU WABA. En la app de prueba, `shipping_update` viene precargada.

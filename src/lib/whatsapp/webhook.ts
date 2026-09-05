@@ -23,11 +23,40 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined;
 }
 
+/**
+ * Meta serializa los numéricos del webhook como STRING (`"timestamp": "1757030400"`,
+ * `"code": "131047"`), así que acá se acepta string y number.
+ */
 function num(v: unknown): number | undefined {
-  return typeof v === "number" ? v : undefined;
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v === "string" && v.trim() !== "") {
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 }
 
-function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
+/** Epoch en segundos anterior a 2001-09-09: no puede venir de Meta. */
+const MIN_EPOCH_S = 1_000_000_000;
+/** Por encima de esto el valor está en milisegundos, no en segundos. */
+const MS_THRESHOLD = 100_000_000_000;
+
+/**
+ * Normaliza el `timestamp` de Meta (epoch en segundos, como string) a número.
+ *
+ * Un valor ausente o implausible cae en "ahora" y NO en 0: con epoch 0 el
+ * mensaje se persistía con `created_at` de 1970 y la ventana de 24 h quedaba
+ * vencida para siempre, lo que dejaba al negocio sin poder responder.
+ */
+function epochSeconds(v: unknown, nowMs: number): number {
+  const fallback = Math.floor(nowMs / 1000);
+  const raw = num(v);
+  if (raw === undefined) return fallback;
+  const seconds = Math.floor(raw >= MS_THRESHOLD ? raw / 1000 : raw);
+  return seconds >= MIN_EPOCH_S ? seconds : fallback;
+}
+
+function parseMessage(raw: RawItem, nowMs: number): ParsedWhatsAppMessage | null {
   const id = str(raw.id);
   const from = str(raw.from);
   if (!id || !from) return null;
@@ -39,7 +68,7 @@ function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
   const out: ParsedWhatsAppMessage = {
     waMessageId: id,
     from,
-    timestamp: num(raw.timestamp) ?? 0,
+    timestamp: epochSeconds(raw.timestamp, nowMs),
     type,
   };
 
@@ -75,7 +104,7 @@ function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
   return out;
 }
 
-function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
+function parseStatus(raw: RawItem, nowMs: number): ParsedWhatsAppStatus | null {
   const id = str(raw.id);
   const status = str(raw.status);
   if (!id || !status) return null;
@@ -83,7 +112,7 @@ function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
   return {
     waMessageId: id,
     status: status as ParsedWhatsAppStatus["status"],
-    timestamp: num(raw.timestamp) ?? 0,
+    timestamp: epochSeconds(raw.timestamp, nowMs),
     recipientId: str(raw.recipient_id),
     errors: errList
       ?.map((e) => ({
@@ -99,7 +128,10 @@ function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
   };
 }
 
-export function parseMetaWebhook(body: unknown): ParsedWhatsAppWebhook | null {
+export function parseMetaWebhook(
+  body: unknown,
+  nowMs: number = Date.now(),
+): ParsedWhatsAppWebhook | null {
   if (!body || typeof body !== "object") return null;
   const root = body as { object?: unknown; entry?: unknown };
 
@@ -130,14 +162,14 @@ export function parseMetaWebhook(body: unknown): ParsedWhatsAppWebhook | null {
           phoneNumberId,
           displayPhoneNumber: str(metadata.display_phone_number),
         },
-        messages: parseList(value.messages, parseMessage),
+        messages: parseList(value.messages, (m) => parseMessage(m, nowMs)),
         contacts: parseList(value.contacts, (c): ParsedWhatsAppChange["contacts"][number] | null => {
           const waId = str(c.wa_id);
           if (!waId) return null;
           const profileName = str((c.profile as RawItem | undefined)?.name);
           return { waId, profile: profileName ? { name: profileName } : undefined };
         }),
-        statuses: parseList(value.statuses, parseStatus),
+        statuses: parseList(value.statuses, (s) => parseStatus(s, nowMs)),
       });
     }
   }

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
-import { connectWhatsAppNumber } from "@/lib/business/whatsapp";
+import {
+  connectWhatsAppNumber,
+  updateWhatsAppNotifySettings,
+} from "@/lib/business/whatsapp";
 import type { WhatsAppConnection } from "@/lib/business/whatsappQueries";
 
 type BannerResult = { ok: boolean; text: string };
@@ -48,6 +51,9 @@ export function WhatsAppConnectionCard({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [banner, setBanner] = useState<BannerResult | null>(initial ?? null);
+  const [notifyPending, setNotifyPending] = useState(false);
+  const [notifyError, setNotifyError] = useState("");
+  const [notifySaved, setNotifySaved] = useState(false);
 
   const active = connection?.is_active ?? false;
   const oauthHref = `/api/meta/oauth/start?businessId=${encodeURIComponent(businessId)}`;
@@ -73,9 +79,6 @@ export function WhatsAppConnectionCard({
     form.set("displayPhoneNumber", displayPhoneNumber);
     form.set("wabaId", wabaId);
     form.set("accessToken", accessToken);
-    form.set("notifyStatus", String(notifyStatus));
-    form.set("templateOrderStatusName", templateOrderStatusName);
-    form.set("templateOrderStatusLanguage", templateOrderStatusLanguage);
     try {
       await connectWhatsAppNumber(form);
       window.location.reload();
@@ -83,6 +86,28 @@ export function WhatsAppConnectionCard({
       setError(err instanceof Error ? err.message : "No se pudo conectar.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function handleSaveNotify(e: React.FormEvent) {
+    e.preventDefault();
+    setNotifyPending(true);
+    setNotifyError("");
+    setNotifySaved(false);
+    const form = new FormData();
+    form.set("businessId", businessId);
+    form.set("notifyStatus", String(notifyStatus));
+    form.set("templateOrderStatusName", templateOrderStatusName);
+    form.set("templateOrderStatusLanguage", templateOrderStatusLanguage);
+    try {
+      await updateWhatsAppNotifySettings(form);
+      setNotifySaved(true);
+    } catch (err) {
+      setNotifyError(
+        err instanceof Error ? err.message : "No se pudieron guardar los avisos.",
+      );
+    } finally {
+      setNotifyPending(false);
     }
   }
 
@@ -180,6 +205,95 @@ export function WhatsAppConnectionCard({
         </div>
       )}
 
+      {connection && (
+        <form
+          onSubmit={handleSaveNotify}
+          className="mt-4 rounded-xl border border-gray-200 dark:border-[#3d3732] p-3 space-y-2.5"
+        >
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notifyStatus}
+              onChange={(e) => {
+                setNotifyStatus(e.target.checked);
+                setNotifySaved(false);
+              }}
+              className="mt-0.5"
+            />
+            <span className="block">
+              <span className="block text-[12px] font-bold text-gray-700 dark:text-gray-200">
+                Notificar estado del pedido por WhatsApp
+              </span>
+              <span className="block text-[10px] text-gray-400 mt-0.5">
+                El cliente recibe el avance (cocina, en camino, entregado, rechazado). Dentro
+                de las 24 h va texto libre; fuera de la ventana usa una template aprobada de
+                Meta.
+              </span>
+            </span>
+          </label>
+
+          {notifyStatus && (
+            <>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+                  Template de estado de pedido
+                </label>
+                <input
+                  value={templateOrderStatusName}
+                  onChange={(e) => {
+                    setTemplateOrderStatusName(e.target.value);
+                    setNotifySaved(false);
+                  }}
+                  placeholder="ej. shipping_update"
+                  className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Nombre de la template aprobada en tu WABA (los parámetros
+                  se envían como: pedido, título, subtítulo). Sin template, el
+                  aviso sale sólo dentro de las 24 h.
+                </p>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
+                  Idioma
+                </label>
+                <input
+                  value={templateOrderStatusLanguage}
+                  onChange={(e) => {
+                    setTemplateOrderStatusLanguage(e.target.value);
+                    setNotifySaved(false);
+                  }}
+                  placeholder="es_AR"
+                  className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
+                />
+              </div>
+            </>
+          )}
+
+          {notifyError && (
+            <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2">
+              {notifyError}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={notifyPending}
+              className="px-4 py-1.5 bg-[#9a0002]/10 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#9a0002]/15 text-[#9a0002] text-[11px] font-bold rounded-full transition-colors cursor-pointer"
+            >
+              {notifyPending ? "Guardando..." : "Guardar avisos"}
+            </button>
+            {notifySaved && (
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <MaterialSymbol icon="check_circle" size={13} />
+                Guardado
+              </span>
+            )}
+          </div>
+        </form>
+      )}
+
       {open && (
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t border-gray-100 dark:border-[#3d3732] pt-4">
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
@@ -232,62 +346,10 @@ export function WhatsAppConnectionCard({
               type="password"
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
-              required
+              required={!connection}
               placeholder={connection ? "Dejar vacío para no cambiar" : "Token de Meta"}
               className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
             />
-          </div>
-
-          <div className="rounded-xl border border-gray-200 dark:border-[#3d3732] p-3 space-y-2.5">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifyStatus}
-                onChange={(e) => setNotifyStatus(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="block">
-                <span className="block text-[12px] font-bold text-gray-700 dark:text-gray-200">
-                  Notificar estado del pedido por WhatsApp
-                </span>
-                <span className="block text-[10px] text-gray-400 mt-0.5">
-                  El cliente recibe el avance (cocina, en camino, entregado, rechazado). Dentro
-                  de las 24 h va texto libre; fuera de la ventana usa una template aprobada de
-                  Meta.
-                </span>
-              </span>
-            </label>
-
-            {notifyStatus && (
-              <>
-                <div>
-                  <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
-                    Template de estado de pedido
-                  </label>
-                  <input
-                    value={templateOrderStatusName}
-                    onChange={(e) => setTemplateOrderStatusName(e.target.value)}
-                    placeholder="ej. shipping_update"
-                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    Nombre de la template aprobada en tu WABA (los parámetros
-                    se envían como: pedido, título, subtítulo).
-                  </p>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1">
-                    Idioma
-                  </label>
-                  <input
-                    value={templateOrderStatusLanguage}
-                    onChange={(e) => setTemplateOrderStatusLanguage(e.target.value)}
-                    placeholder="es_AR"
-                    className="w-full bg-white dark:bg-[#1c1917] border border-gray-200 dark:border-[#3d3732] rounded-xl px-3 py-2 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-[#9a0002]/50"
-                  />
-                </div>
-              </>
-            )}
           </div>
 
           {error && (
