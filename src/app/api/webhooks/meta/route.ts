@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyAndParseMetaWebhook } from "@/lib/whatsapp/signature";
 import { parseMetaWebhook } from "@/lib/whatsapp/webhook";
+import { isOutboundStatus, statusesBelow } from "@/lib/whatsapp/status";
 import {
   readWhatsAppToken,
   fetchMetaMedia,
@@ -67,10 +68,27 @@ export async function POST(request: Request) {
     // Outbound delivery/read receipts: update existing rows.
     const statusUpdates = change.statuses.map(async (status) => {
       if (status.status === "sent") return;
+      if (!isOutboundStatus(status.status)) return;
+
+      const firstError = status.errors?.[0];
+      // El filtro por estados inferiores hace de guarda contra el retroceso:
+      // Meta no garantiza el orden, así que un `delivered` tardío llegaba
+      // después del `read` y le sacaba el doble tilde azul al mensaje.
       const { error } = await service
         .from("whatsapp_messages")
-        .update({ status: status.status, updated_at: new Date().toISOString() })
-        .eq("wa_message_id", status.waMessageId);
+        .update({
+          status: status.status,
+          updated_at: new Date().toISOString(),
+          ...(firstError
+            ? {
+                error_code: firstError.code || null,
+                error_title: firstError.title ?? null,
+                error_details: firstError.error_data?.details ?? firstError.message ?? null,
+              }
+            : {}),
+        })
+        .eq("wa_message_id", status.waMessageId)
+        .in("status", statusesBelow(status.status));
       if (error) {
         console.error(
           `webhook/meta: no se pudo actualizar estado ${status.status}`,
@@ -93,6 +111,16 @@ export async function POST(request: Request) {
       if (existing) continue; // idempotency (Meta retries)
 
       let mediaJson: Record<string, unknown> | null = null;
+
+      // Payloads estructurados: no se descargan de Meta, se guardan tal cual
+      // para renderizarlos en el chat (antes se perdían y quedaba una burbuja
+      // vacía).
+      if (message.location) {
+        mediaJson = { location: message.location };
+      } else if (message.contacts?.length) {
+        mediaJson = { contacts: message.contacts };
+      }
+
       if (message.media?.id) {
         const token = await readWhatsAppToken(conn.vault_token_ref as string | null);
         if (token) {
@@ -103,21 +131,26 @@ export async function POST(request: Request) {
             const { error: uploadErr } = await service.storage
               .from("whatsapp-media")
               .upload(path, downloaded.bytes, { contentType: downloaded.mimeType });
-            const publicUrl = uploadErr
-              ? null
-              : service.storage.from("whatsapp-media").getPublicUrl(path).data.publicUrl;
+            if (uploadErr) {
+              console.error(
+                `webhook/meta: no se pudo subir la media de ${message.waMessageId}`,
+                uploadErr,
+              );
+            }
+            // Sólo el path: el bucket es privado y el panel firma una URL
+            // temporal al leer el chat. La URL pública que se guardaba acá
+            // dejaba los comprobantes del cliente accesibles a cualquiera.
             mediaJson = {
               mime_type: downloaded.mimeType,
               storage_path: uploadErr ? null : path,
-              storage_url: publicUrl,
               caption: message.media.caption ?? null,
-              duration_ms: message.media.durationMs ?? null,
+              file_name: message.media.fileName ?? null,
             };
           }
         }
       }
 
-      await service.from("whatsapp_messages").insert({
+      const { error: insertErr } = await service.from("whatsapp_messages").insert({
         business_id: businessId,
         chat_id: message.from,
         direction: "inbound",
@@ -129,6 +162,14 @@ export async function POST(request: Request) {
         customer_name: customerName,
         created_at: new Date(message.timestamp * 1000).toISOString(),
       });
+      if (insertErr) {
+        // Sin esto un fallo de persistencia perdía el mensaje del cliente en
+        // silencio (incluida la colisión de wa_message_id en reintentos).
+        console.error(
+          `webhook/meta: no se pudo persistir el mensaje ${message.waMessageId}`,
+          insertErr,
+        );
+      }
     }
   }
 

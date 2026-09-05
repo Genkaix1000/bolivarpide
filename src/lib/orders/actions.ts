@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireBusinessAccess } from "@/lib/business/queries";
 import { refundMercadoPagoOrder } from "@/lib/mercadopago/refund";
 import {
@@ -62,11 +63,27 @@ export async function advanceOrderStatus(input: {
     await refundMercadoPagoOrder(input.orderId);
   }
 
-  const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
-  void emitCustomerStatusNotification(input.orderId, input.targetStatus);
+  // `after()` corre estos side effects tras responder, pero DENTRO del ciclo de
+  // vida del request: con `void` la promesa quedaba flotando y el runtime podía
+  // congelar la función antes de que el aviso saliera (y un throw se volvía un
+  // unhandled rejection).
+  after(async () => {
+    const { emitCustomerStatusNotification } = await import("@/lib/notifications/emit");
+    try {
+      await emitCustomerStatusNotification(input.orderId, input.targetStatus);
+    } catch (err) {
+      console.error("advanceOrderStatus: notificación in-app falló", err);
+    }
+  });
 
-  const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
-  void notifyOrderStatusByWhatsApp(input.orderId, input.targetStatus);
+  after(async () => {
+    const { notifyOrderStatusByWhatsApp } = await import("@/lib/whatsapp/templates");
+    try {
+      await notifyOrderStatusByWhatsApp(input.orderId, input.targetStatus);
+    } catch (err) {
+      console.error("advanceOrderStatus: aviso de WhatsApp falló", err);
+    }
+  });
 
   revalidatePath(`/negocio/${input.businessId}/pedidos`);
   return { ok: true };

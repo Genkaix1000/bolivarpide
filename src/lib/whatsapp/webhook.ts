@@ -7,15 +7,7 @@ import type {
   WhatsAppMessageType,
 } from "./types";
 
-const MEDIA_TYPES = new Set([
-  "image",
-  "audio",
-  "video",
-  "sticker",
-  "document",
-  "location",
-  "contacts",
-]);
+const MEDIA_TYPES = new Set(["image", "audio", "video", "sticker", "document"]);
 
 type RawItem = Record<string, unknown>;
 
@@ -23,23 +15,56 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined;
 }
 
+/**
+ * Meta serializa los numéricos del webhook como STRING (`"timestamp": "1757030400"`,
+ * `"code": "131047"`), así que acá se acepta string y number.
+ */
 function num(v: unknown): number | undefined {
-  return typeof v === "number" ? v : undefined;
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v === "string" && v.trim() !== "") {
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 }
 
-function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
+/** Epoch en segundos anterior a 2001-09-09: no puede venir de Meta. */
+const MIN_EPOCH_S = 1_000_000_000;
+/** Por encima de esto el valor está en milisegundos, no en segundos. */
+const MS_THRESHOLD = 100_000_000_000;
+
+/**
+ * Normaliza el `timestamp` de Meta (epoch en segundos, como string) a número.
+ *
+ * Un valor ausente o implausible cae en "ahora" y NO en 0: con epoch 0 el
+ * mensaje se persistía con `created_at` de 1970 y la ventana de 24 h quedaba
+ * vencida para siempre, lo que dejaba al negocio sin poder responder.
+ */
+function epochSeconds(v: unknown, nowMs: number): number {
+  const fallback = Math.floor(nowMs / 1000);
+  const raw = num(v);
+  if (raw === undefined) return fallback;
+  const seconds = Math.floor(raw >= MS_THRESHOLD ? raw / 1000 : raw);
+  return seconds >= MIN_EPOCH_S ? seconds : fallback;
+}
+
+function parseMessage(raw: RawItem, nowMs: number): ParsedWhatsAppMessage | null {
   const id = str(raw.id);
   const from = str(raw.from);
   if (!id || !from) return null;
 
   const rawType = str(raw.type) ?? "unknown";
   const type: WhatsAppMessageType =
-    rawType === "text" ? "text" : MEDIA_TYPES.has(rawType) ? (rawType as WhatsAppMediaKind) : "unsupported";
+    rawType === "text" || rawType === "location" || rawType === "contacts"
+      ? rawType
+      : MEDIA_TYPES.has(rawType)
+        ? (rawType as WhatsAppMediaKind)
+        : "unsupported";
 
   const out: ParsedWhatsAppMessage = {
     waMessageId: id,
     from,
-    timestamp: num(raw.timestamp) ?? 0,
+    timestamp: epochSeconds(raw.timestamp, nowMs),
     type,
   };
 
@@ -47,6 +72,37 @@ function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
     const textObj = raw.text as RawItem | undefined;
     const body = textObj && str(textObj.body);
     if (body) out.text = { body };
+  } else if (type === "location") {
+    const loc = raw.location as RawItem | undefined;
+    const latitude = num(loc?.latitude);
+    const longitude = num(loc?.longitude);
+    if (latitude !== undefined && longitude !== undefined) {
+      out.location = {
+        latitude,
+        longitude,
+        name: str(loc?.name),
+        address: str(loc?.address),
+      };
+    }
+  } else if (type === "contacts") {
+    // `contacts` viene como ARRAY de tarjetas, no como objeto.
+    const list = Array.isArray(raw.contacts) ? (raw.contacts as RawItem[]) : [];
+    const cards = list
+      .map((c) => {
+        const nameObj = c.name as RawItem | undefined;
+        const name =
+          str(nameObj?.formatted_name) ??
+          [str(nameObj?.first_name), str(nameObj?.last_name)]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+        const phones = (Array.isArray(c.phones) ? (c.phones as RawItem[]) : [])
+          .map((p) => str(p.phone) ?? str(p.wa_id))
+          .filter((p): p is string => Boolean(p));
+        return name || phones.length > 0 ? { name: name || "Contacto", phones } : null;
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    if (cards.length > 0) out.contacts = cards;
   } else if (type !== "unsupported") {
     const m = raw[rawType] as RawItem | undefined;
     if (m) {
@@ -75,7 +131,7 @@ function parseMessage(raw: RawItem): ParsedWhatsAppMessage | null {
   return out;
 }
 
-function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
+function parseStatus(raw: RawItem, nowMs: number): ParsedWhatsAppStatus | null {
   const id = str(raw.id);
   const status = str(raw.status);
   if (!id || !status) return null;
@@ -83,7 +139,7 @@ function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
   return {
     waMessageId: id,
     status: status as ParsedWhatsAppStatus["status"],
-    timestamp: num(raw.timestamp) ?? 0,
+    timestamp: epochSeconds(raw.timestamp, nowMs),
     recipientId: str(raw.recipient_id),
     errors: errList
       ?.map((e) => ({
@@ -99,7 +155,10 @@ function parseStatus(raw: RawItem): ParsedWhatsAppStatus | null {
   };
 }
 
-export function parseMetaWebhook(body: unknown): ParsedWhatsAppWebhook | null {
+export function parseMetaWebhook(
+  body: unknown,
+  nowMs: number = Date.now(),
+): ParsedWhatsAppWebhook | null {
   if (!body || typeof body !== "object") return null;
   const root = body as { object?: unknown; entry?: unknown };
 
@@ -130,14 +189,14 @@ export function parseMetaWebhook(body: unknown): ParsedWhatsAppWebhook | null {
           phoneNumberId,
           displayPhoneNumber: str(metadata.display_phone_number),
         },
-        messages: parseList(value.messages, parseMessage),
+        messages: parseList(value.messages, (m) => parseMessage(m, nowMs)),
         contacts: parseList(value.contacts, (c): ParsedWhatsAppChange["contacts"][number] | null => {
           const waId = str(c.wa_id);
           if (!waId) return null;
           const profileName = str((c.profile as RawItem | undefined)?.name);
           return { waId, profile: profileName ? { name: profileName } : undefined };
         }),
-        statuses: parseList(value.statuses, parseStatus),
+        statuses: parseList(value.statuses, (s) => parseStatus(s, nowMs)),
       });
     }
   }

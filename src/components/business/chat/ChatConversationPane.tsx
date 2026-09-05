@@ -14,6 +14,8 @@ interface ChatConversationPaneProps {
   onBackMobile?: () => void;
   onNewComanda: () => void;
   onLinkOrder: () => void;
+  onLoadOlder?: () => void;
+  loadingOlder?: boolean;
   showContextPane: boolean;
   onToggleContextPane: () => void;
   className?: string;
@@ -32,17 +34,22 @@ export function ChatConversationPane({
   onBackMobile,
   onNewComanda,
   onLinkOrder,
+  onLoadOlder,
+  loadingOlder,
   showContextPane,
   onToggleContextPane,
   className,
 }: ChatConversationPaneProps) {
   const [inputText, setInputText] = useState("");
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Baja sólo cuando llega un mensaje nuevo al final. Si mirara el array
+  // entero, cargar mensajes anteriores (que los agrega arriba) tiraría la
+  // vista al fondo justo después de pedir historial.
+  const lastMessageId = conversation.messages[conversation.messages.length - 1]?.id;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation.messages]);
+  }, [lastMessageId, conversation.id]);
 
   const liveOrder = isLiveOrder(conversation.activeOrder) ? conversation.activeOrder : null;
 
@@ -161,6 +168,18 @@ export function ChatConversationPane({
       )}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {conversation.hasMoreMessages ? (
+          <div className="flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="rounded-full bg-[#f0ebe3] px-3 py-1 text-[11px] font-semibold text-gray-600 hover:bg-[#e4dcd1] disabled:opacity-60 dark:bg-[#231f1c] dark:text-gray-300"
+            >
+              {loadingOlder ? "Cargando…" : "Ver mensajes anteriores"}
+            </button>
+          </div>
+        ) : null}
         {conversation.messages.map((msg) => {
           const isMe = msg.sender === "business";
           return (
@@ -173,24 +192,24 @@ export function ChatConversationPane({
                     : "rounded-bl-sm border border-black/5 bg-white text-gray-900 dark:border-white/5 dark:bg-[#1e1a17] dark:text-gray-100",
                 )}
               >
-                {msg.type === "audio" ? (
-                  <div className="flex items-center gap-2 py-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full",
-                        isMe ? "bg-white text-[#9a0002]" : "bg-[#9a0002] text-white",
-                      )}
-                    >
-                      <MaterialSymbol
-                        icon={playingAudioId === msg.id ? "pause" : "play_arrow"}
-                        size={18}
-                        fill
-                      />
-                    </button>
-                    <span className="text-[11px] opacity-80">{msg.audioDuration ?? "0:15"}</span>
-                  </div>
+                {msg.type === "audio" && msg.media?.storageUrl ? (
+                  // Reproductor real: antes el botón sólo cambiaba de ícono y
+                  // el audio no sonaba. Los controles nativos resuelven
+                  // play/pausa, seek y duración (que Meta no manda).
+                  <audio
+                    controls
+                    preload="metadata"
+                    src={msg.media.storageUrl}
+                    className="my-0.5 h-9 w-[220px] max-w-full"
+                  />
+                ) : null}
+                {msg.type === "video" && msg.media?.storageUrl ? (
+                  <video
+                    controls
+                    preload="metadata"
+                    src={msg.media.storageUrl}
+                    className="mb-1.5 max-h-56 w-full rounded-lg"
+                  />
                 ) : null}
                 {msg.imageUrl ? (
                   <img
@@ -198,6 +217,76 @@ export function ChatConversationPane({
                     alt={msg.text ?? "Imagen"}
                     className="mb-1.5 max-h-56 w-full rounded-lg object-cover"
                   />
+                ) : null}
+                {msg.location ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${msg.location.latitude},${msg.location.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "mb-1 flex items-start gap-2 rounded-lg px-2 py-1.5",
+                      isMe ? "bg-white/15" : "bg-black/5 dark:bg-white/5",
+                    )}
+                  >
+                    <MaterialSymbol icon="location_on" size={18} className="mt-0.5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-[12px] font-semibold">
+                        {msg.location.name || "Ubicación compartida"}
+                      </span>
+                      <span className="block text-[11px] opacity-80">
+                        {msg.location.address ||
+                          `${msg.location.latitude.toFixed(5)}, ${msg.location.longitude.toFixed(5)}`}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] font-semibold underline">
+                        Abrir en el mapa
+                      </span>
+                    </span>
+                  </a>
+                ) : null}
+                {msg.contacts?.length ? (
+                  <div className="mb-1 space-y-1">
+                    {msg.contacts.map((contact, idx) => (
+                      <div
+                        key={`${msg.id}-contact-${idx}`}
+                        className={cn(
+                          "flex items-start gap-2 rounded-lg px-2 py-1.5",
+                          isMe ? "bg-white/15" : "bg-black/5 dark:bg-white/5",
+                        )}
+                      >
+                        <MaterialSymbol icon="person" size={18} className="mt-0.5 shrink-0" />
+                        <span className="min-w-0">
+                          <span className="block text-[12px] font-semibold">{contact.name}</span>
+                          {contact.phones.map((phone) => (
+                            <a
+                              key={phone}
+                              href={`https://wa.me/${phone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-[11px] underline opacity-90"
+                            >
+                              {phone}
+                            </a>
+                          ))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {msg.type === "document" && msg.media?.storageUrl ? (
+                  <a
+                    href={msg.media.storageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5",
+                      isMe ? "bg-white/15" : "bg-black/5 dark:bg-white/5",
+                    )}
+                  >
+                    <MaterialSymbol icon="description" size={18} className="shrink-0" />
+                    <span className="min-w-0 truncate text-[12px] font-semibold underline">
+                      {msg.media.fileName || "Documento"}
+                    </span>
+                  </a>
                 ) : null}
                 {msg.text ? (
                   <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{msg.text}</p>
@@ -211,12 +300,26 @@ export function ChatConversationPane({
                   <span>{msg.timestamp}</span>
                   {isMe ? (
                     <MaterialSymbol
-                      icon={msg.status === "read" ? "done_all" : "done"}
+                      icon={
+                        msg.status === "failed"
+                          ? "error"
+                          : msg.status === "read"
+                            ? "done_all"
+                            : "done"
+                      }
                       size={13}
-                      className={msg.status === "read" ? "text-sky-300" : undefined}
+                      className={cn(
+                        msg.status === "read" && "text-sky-300",
+                        msg.status === "failed" && "text-amber-200",
+                      )}
                     />
                   ) : null}
                 </div>
+                {isMe && msg.status === "failed" ? (
+                  <p className="mt-1 border-t border-white/20 pt-1 text-[10px] font-semibold text-amber-200">
+                    No se entregó{msg.errorTitle ? `: ${msg.errorTitle}` : ""}
+                  </p>
+                ) : null}
               </div>
             </div>
           );

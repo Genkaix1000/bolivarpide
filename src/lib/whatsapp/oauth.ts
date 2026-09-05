@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { readWhatsAppToken } from "@/lib/whatsapp/connection";
+import { graphFetch, metaGraphBase, metaGraphVersion } from "@/lib/whatsapp/graph";
 
 /**
  * Meta Business Login (WhatsApp Business integration).
@@ -30,7 +31,6 @@ export function getMetaOAuthConfig(): MetaOAuthConfig {
   if (!appId || !appSecret) {
     throw new Error("Falta META_APP_ID o META_APP_SECRET");
   }
-  const version = process.env.META_GRAPH_VERSION?.trim() || "v22.0";
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000";
   const redirectUri =
     process.env.META_OAUTH_REDIRECT_URI?.trim() || `${base}/api/meta/oauth/callback`;
@@ -38,8 +38,8 @@ export function getMetaOAuthConfig(): MetaOAuthConfig {
     appId,
     appSecret,
     redirectUri,
-    graphBase: `https://graph.facebook.com/${version}`,
-    dialogBase: `https://www.facebook.com/${version}/dialog/oauth`,
+    graphBase: metaGraphBase(),
+    dialogBase: `https://www.facebook.com/${metaGraphVersion()}/dialog/oauth`,
   };
 }
 
@@ -142,18 +142,12 @@ export function exchangeForLongLived(shortToken: string): Promise<{
   return oauthExchange(`${cfg.graphBase}/oauth/access_token?${params.toString()}`);
 }
 
-async function graphGet<T>(path: string, token: string, fields: string): Promise<T> {
-  const cfg = getMetaOAuthConfig();
-  const params = new URLSearchParams({ fields, access_token: token });
-  const res = await fetch(`${cfg.graphBase}/${path}?${params.toString()}`);
-  const json = (await res.json()) as T & { error?: { message?: string } };
-  if (!res.ok || "error" in json) {
-    throw new Error(
-      (json as { error?: { message?: string } }).error?.message ||
-        "Error de la API de Meta",
-    );
-  }
-  return json;
+function graphGet<T>(path: string, token: string, fields?: string): Promise<T> {
+  return graphFetch<T>({ path, token, query: fields ? { fields } : undefined });
+}
+
+function graphPost<T>(path: string, token: string): Promise<T> {
+  return graphFetch<T>({ path, token, method: "POST" });
 }
 
 export type MetaWaba = { id: string; name?: string };
@@ -224,6 +218,92 @@ export async function listPhoneNumbers(
   return json.data ?? [];
 }
 
+/**
+ * Suscribe la app a los webhooks de la WABA (`POST /{waba-id}/subscribed_apps`).
+ *
+ * Sin esta llamada Meta NO entrega NINGÚN evento de esa cuenta a la app: la
+ * conexión queda `connected` en el panel y no llega un solo mensaje. Es
+ * idempotente, así que reconectar o rotar el token no rompe nada.
+ */
+export async function subscribeAppToWaba(
+  wabaId: string,
+  token: string,
+): Promise<void> {
+  try {
+    await graphPost<{ success?: boolean }>(`${wabaId}/subscribed_apps`, token);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "";
+    throw new Error(
+      `No se pudo suscribir la app a los webhooks de tu cuenta de WhatsApp${
+        detail ? `: ${detail}` : ""
+      }. Verificá que la WABA esté vinculada a la app en Meta y reintentá.`,
+    );
+  }
+
+  // Verificación best-effort: si Graph contesta, la app tiene que figurar en
+  // la lista. Si el GET falla no bloqueamos (el POST ya devolvió success).
+  let subscribedAppIds: string[] | null = null;
+  try {
+    const res = await graphGet<{
+      data?: Array<{ whatsapp_business_api_data?: { id?: string } }>;
+    }>(`${wabaId}/subscribed_apps`, token);
+    subscribedAppIds = (res.data ?? [])
+      .map((row) => row.whatsapp_business_api_data?.id)
+      .filter((id): id is string => Boolean(id));
+  } catch {
+    subscribedAppIds = null;
+  }
+
+  const { appId } = getMetaOAuthConfig();
+  if (subscribedAppIds && subscribedAppIds.length > 0 && !subscribedAppIds.includes(appId)) {
+    throw new Error(
+      "La suscripción a los webhooks no quedó registrada en Meta. Reintentá la conexión o revisá los permisos de la app.",
+    );
+  }
+}
+
+/** Corta la entrega de webhooks de esa WABA a la app (al desconectar). */
+export async function unsubscribeAppFromWaba(
+  wabaId: string,
+  token: string,
+): Promise<void> {
+  await graphFetch({ path: `${wabaId}/subscribed_apps`, token, method: "DELETE" });
+}
+
+export type MetaMessageTemplate = {
+  name: string;
+  language: string;
+  category: string | null;
+};
+
+/**
+ * Templates APROBADAS de la WABA.
+ *
+ * El dueño tipeaba el nombre a mano y sólo se enteraba del error cuando un
+ * pedido salía de la ventana de 24 h y el envío fallaba en silencio.
+ */
+export async function listApprovedTemplates(
+  wabaId: string,
+  token: string,
+): Promise<MetaMessageTemplate[]> {
+  const json = await graphGet<{
+    data?: Array<{
+      name?: string;
+      language?: string;
+      status?: string;
+      category?: string;
+    }>;
+  }>(`${wabaId}/message_templates`, token, "name,language,status,category");
+
+  return (json.data ?? [])
+    .filter((t) => t.name && t.status === "APPROVED")
+    .map((t) => ({
+      name: t.name as string,
+      language: t.language ?? "es_AR",
+      category: t.category ?? null,
+    }));
+}
+
 /** Confirma que el token tiene acceso al número y trae sus datos. */
 export async function verifyPhoneAccess(
   phoneNumberId: string,
@@ -270,6 +350,11 @@ export async function linkWhatsAppViaOAuth(input: {
   const picked =
     phones.find((p) => p.code_verification_status === "verified") ?? phones[0];
   const verified = await verifyPhoneAccess(picked.id, input.token);
+
+  // Antes de persistir nada: sin esta suscripción la conexión quedaría
+  // "connected" sin recibir webhooks. Va primero para no dejar estado a
+  // medias (Vault + fila) si Meta la rechaza.
+  await subscribeAppToWaba(waba.id, input.token);
 
   const { data: existing } = await service
     .from("business_whatsapp")

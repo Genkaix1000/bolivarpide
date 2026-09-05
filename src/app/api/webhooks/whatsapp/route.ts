@@ -1,6 +1,21 @@
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { storedPhoneFromWaId } from "@/lib/whatsapp/format";
+
+/**
+ * Comparación en tiempo constante del secreto compartido.
+ *
+ * `a !== b` corta en el primer byte distinto, así que el tiempo de respuesta
+ * filtra cuántos caracteres del secreto acertó quien prueba. El webhook de
+ * Meta ya usa `timingSafeEqual` para la firma; este endpoint legacy no.
+ */
+function safeEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 /**
  * POST /api/webhooks/whatsapp
@@ -38,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   const provided = request.headers.get("x-whatsapp-secret");
-  if (!provided || provided !== secret) {
+  if (!provided || !safeEqual(provided, secret)) {
     return Response.json({ success: false }, { status: 401 });
   }
 

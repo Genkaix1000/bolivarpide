@@ -2,12 +2,12 @@
 
 import { MagnifyingGlass, X } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { isLiveOrder, type Conversation } from "@/lib/business/chatTypes";
+import { isLiveOrder, type ChatSummary } from "@/lib/business/chatTypes";
 
 export type ListFilter = "all" | "orders" | "inquiry";
 
 interface ChatListPaneProps {
-  conversations: Conversation[];
+  summaries: ChatSummary[];
   selectedId: string;
   onSelect: (id: string) => void;
   searchQuery: string;
@@ -23,12 +23,12 @@ const FILTER_TABS: { id: ListFilter; label: string }[] = [
   { id: "inquiry", label: "Consultas" },
 ];
 
-function hasLiveOrder(c: Conversation) {
+function hasLiveOrder(c: ChatSummary) {
   return isLiveOrder(c.activeOrder);
 }
 
 export function ChatListPane({
-  conversations,
+  summaries,
   selectedId,
   onSelect,
   searchQuery,
@@ -37,7 +37,7 @@ export function ChatListPane({
   onFilterChange,
   className,
 }: ChatListPaneProps) {
-  const filtered = conversations.filter((c) => {
+  const filtered = summaries.filter((c) => {
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !q ||

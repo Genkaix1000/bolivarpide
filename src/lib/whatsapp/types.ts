@@ -2,16 +2,38 @@
  * WhatsApp (Meta Cloud API) webhook + chat types (pure, no I/O).
  */
 
+/** Tipos que se descargan del endpoint de media de Meta (tienen `id`). */
 export type WhatsAppMediaKind =
   | "image"
   | "audio"
   | "video"
   | "sticker"
-  | "document"
-  | "location"
-  | "contacts";
+  | "document";
 
-export type WhatsAppMessageType = "text" | "unsupported" | WhatsAppMediaKind;
+/**
+ * `location` y `contacts` NO son media: su payload es estructurado
+ * (lat/long, o un array de tarjetas de contacto). Estaban dentro de
+ * `WhatsAppMediaKind`, así que el parser les buscaba `id`/`mime_type`, no
+ * encontraba nada y el mensaje llegaba al chat como una burbuja vacía.
+ */
+export type WhatsAppMessageType =
+  | "text"
+  | "location"
+  | "contacts"
+  | "unsupported"
+  | WhatsAppMediaKind;
+
+export type ParsedWhatsAppLocation = {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+};
+
+export type ParsedWhatsAppContactCard = {
+  name: string;
+  phones: string[];
+};
 
 export type ParsedWhatsAppText = {
   body: string;
@@ -43,6 +65,8 @@ export type ParsedWhatsAppMessage = {
   type: WhatsAppMessageType;
   text?: ParsedWhatsAppText;
   media?: ParsedWhatsAppMedia;
+  location?: ParsedWhatsAppLocation;
+  contacts?: ParsedWhatsAppContactCard[];
   context?: { from?: string; id?: string };
 };
 

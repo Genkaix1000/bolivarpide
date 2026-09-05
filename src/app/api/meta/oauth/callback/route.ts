@@ -40,7 +40,16 @@ export async function GET(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user && user.id !== row.user_id) {
+    // Antes era `if (user && user.id !== row.user_id)`: sin sesión la condición
+    // era falsa y el chequeo de identidad se salteaba entero, justo en el caso
+    // en el que no hay nada que respalde quién está completando el vínculo.
+    if (!user) {
+      return backTo(
+        "error",
+        "Se cerró la sesión durante el vínculo con Meta. Iniciá sesión y reintentá desde Configuración → Canales.",
+      );
+    }
+    if (user.id !== row.user_id) {
       return backTo("error", "La sesión no coincide con la que inició el vínculo.");
     }
 

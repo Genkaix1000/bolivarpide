@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChatListPane, type ListFilter } from "./ChatListPane";
 import { ChatConversationPane } from "./ChatConversationPane";
 import { ChatContextPane } from "./ChatContextPane";
 import { ComandaBuilder } from "./ComandaBuilder";
 import { LinkOrderModal } from "./LinkOrderModal";
-import type { Conversation } from "@/lib/business/chatTypes";
+import {
+  CHAT_ORDER_STATUS_LABEL,
+  type ChatSummary,
+  type Conversation,
+} from "@/lib/business/chatTypes";
 import type { OrderLifecycleStatus } from "@/lib/orders/lifecycle";
 import {
   sendWhatsAppText,
@@ -31,39 +35,57 @@ type ChatProduct = {
 interface WhatsAppChatViewProps {
   businessId: string;
   businessName: string;
-  initialConversations: Conversation[];
+  initialSummaries: ChatSummary[];
+  initialConversation: Conversation | null;
+  initialCursor: string | null;
   products: ChatProduct[];
   whatsappConnected: boolean;
 }
 
-async function fetchConversations(businessId: string): Promise<Conversation[]> {
+async function fetchSummaries(businessId: string): Promise<ChatSummary[]> {
   const res = await fetch(
-  `/api/whatsapp/conversations?businessId=${encodeURIComponent(businessId)}`,
+    `/api/whatsapp/conversations?businessId=${encodeURIComponent(businessId)}`,
     { cache: "no-store" },
   );
   if (!res.ok) return [];
-  const j = (await res.json()) as { conversations?: Conversation[] };
+  const j = (await res.json()) as { conversations?: ChatSummary[] };
   return j.conversations ?? [];
 }
 
-const STATUS_LABEL: Record<OrderLifecycleStatus, string> = {
-  pending: "Nuevo",
-  preparing: "En Cocina",
-  delivering: "En Camino",
-  delivered: "Entregado",
-  rejected: "Rechazado",
-  cancelled: "Cancelado",
-};
+async function fetchChatDetail(
+  businessId: string,
+  chatId: string,
+  before?: string,
+): Promise<{ conversation: Conversation | null; nextCursor: string | null }> {
+  const params = new URLSearchParams({ businessId, chatId });
+  if (before) params.set("before", before);
+  const res = await fetch(`/api/whatsapp/messages?${params.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return { conversation: null, nextCursor: null };
+  return (await res.json()) as {
+    conversation: Conversation | null;
+    nextCursor: string | null;
+  };
+}
+
 
 export function WhatsAppChatView({
   businessId,
   businessName,
-  initialConversations,
+  initialSummaries,
+  initialConversation,
+  initialCursor,
   products,
   whatsappConnected,
 }: WhatsAppChatViewProps) {
-  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
-  const [selectedId, setSelectedId] = useState<string>(initialConversations[0]?.id ?? "");
+  const [summaries, setSummaries] = useState<ChatSummary[]>(initialSummaries);
+  const [selectedId, setSelectedId] = useState<string>(initialSummaries[0]?.id ?? "");
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(
+    initialConversation,
+  );
+  const [cursor, setCursor] = useState<string | null>(initialCursor);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ListFilter>("all");
   const [showContextPane, setShowContextPane] = useState(false);
@@ -74,15 +96,47 @@ export function WhatsAppChatView({
   const [sending, setSending] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
 
-  const refresh = useCallback(async () => {
-    const next = await fetchConversations(businessId);
-    setConversations(next);
-    setSelectedId((cur) => (cur && next.some((c) => c.id === cur) ? cur : next[0]?.id ?? ""));
+  // El realtime puede disparar en ráfaga (un lote de webhooks de Meta llega
+  // como varios eventos). `selectedIdRef` evita re-suscribir el canal en cada
+  // cambio de chat, que reabría la conexión cada vez.
+  const selectedIdRef = useRef(selectedId);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const refreshSummaries = useCallback(async () => {
+    const next = await fetchSummaries(businessId);
+    setSummaries(next);
   }, [businessId]);
 
-  // Realtime: new messages => refresh list; orders => refresh linked comandas.
+  /** Recarga la página más nueva del chat abierto (una consulta acotada). */
+  const reloadOpenChat = useCallback(async () => {
+    const chatId = selectedIdRef.current;
+    if (!chatId) return;
+    const { conversation, nextCursor } = await fetchChatDetail(businessId, chatId);
+    if (selectedIdRef.current !== chatId) return; // cambiaron de chat mientras tanto
+    setSelectedConversation(conversation);
+    setCursor(nextCursor);
+  }, [businessId]);
+
+  // Realtime acotado: antes CUALQUIER evento de `whatsapp_messages` u `orders`
+  // del negocio recargaba el historial completo de todos los chats. Ahora sólo
+  // se refresca la lista (una agregación) y, si el evento es del chat abierto,
+  // su última página.
   useEffect(() => {
     const supabase = createClient();
+
+    const onChange = (affectedChatId?: string | null) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        void refreshSummaries();
+        if (!affectedChatId || affectedChatId === selectedIdRef.current) {
+          void reloadOpenChat();
+        }
+      }, 250);
+    };
+
     const channel = supabase
       .channel(`whatsapp-chat-${businessId}`)
       .on(
@@ -93,7 +147,10 @@ export function WhatsAppChatView({
           table: "whatsapp_messages",
           filter: `business_id=eq.${businessId}`,
         },
-        () => void refresh(),
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { chat_id?: string } | null;
+          onChange(row?.chat_id ?? null);
+        },
       )
       .on(
         "postgres_changes",
@@ -103,25 +160,65 @@ export function WhatsAppChatView({
           table: "orders",
           filter: `business_id=eq.${businessId}`,
         },
-        () => void refresh(),
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { wa_chat_id?: string } | null;
+          // Un pedido sin chat no afecta a ninguna conversación abierta.
+          onChange(row?.wa_chat_id ?? null);
+        },
       )
       .subscribe();
+
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       void supabase.removeChannel(channel);
     };
-  }, [businessId, refresh]);
+  }, [businessId, refreshSummaries, reloadOpenChat]);
 
-  const selectedConversation = useMemo(
-    () => conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null,
-    [conversations, selectedId],
+  const openChat = useCallback(
+    async (id: string) => {
+      setSelectedId(id);
+      // Se escribe acá (event handler, no render) para que el guard de
+      // "cambiaron de chat mientras cargaba" valga ya en este mismo tick.
+      selectedIdRef.current = id;
+      setSelectedConversation(null);
+      setCursor(null);
+      const { conversation, nextCursor } = await fetchChatDetail(businessId, id);
+      if (selectedIdRef.current !== id) return;
+      setSelectedConversation(conversation);
+      setCursor(nextCursor);
+    },
+    [businessId],
   );
 
+  async function handleLoadOlder() {
+    if (!selectedConversation || !cursor || loadingOlder) return;
+    setLoadingOlder(true);
+    const { conversation, nextCursor } = await fetchChatDetail(
+      businessId,
+      selectedConversation.id,
+      cursor,
+    );
+    if (conversation) {
+      setSelectedConversation((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: [...conversation.messages, ...prev.messages],
+              hasMoreMessages: conversation.hasMoreMessages,
+            }
+          : prev,
+      );
+      setCursor(nextCursor);
+    }
+    setLoadingOlder(false);
+  }
+
   function handleSelectConversation(id: string) {
-    setSelectedId(id);
     setMobileScreen("chat");
+    void openChat(id);
     void markChatRead(businessId, id);
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0, messages: c.messages.map((m) => (m.sender === "customer" ? { ...m, status: "read" as const } : m)) } : c)),
+    setSummaries((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)),
     );
   }
 
@@ -133,7 +230,8 @@ export function WhatsAppChatView({
       flashToast(`No se pudo enviar: ${res.error}`);
     } else {
       flashToast("Mensaje enviado");
-      void refresh();
+      void refreshSummaries();
+      void reloadOpenChat();
     }
     setSending(false);
   }
@@ -148,8 +246,9 @@ export function WhatsAppChatView({
     });
     if (!res.ok) flashToast(res.error);
     else {
-      flashToast(`Comanda actualizada a "${STATUS_LABEL[newStatus]}"`);
-      void refresh();
+      flashToast(`Comanda actualizada a "${CHAT_ORDER_STATUS_LABEL[newStatus]}"`);
+      void refreshSummaries();
+      void reloadOpenChat();
     }
     setStatusBusy(false);
   }
@@ -163,7 +262,8 @@ export function WhatsAppChatView({
     }
     flashToast("Comanda creada — revisá la comandera");
     setComandaOpen(false);
-    void refresh();
+    void refreshSummaries();
+    void reloadOpenChat();
   }
 
   async function handleLinkOrder(orderId: string) {
@@ -175,7 +275,8 @@ export function WhatsAppChatView({
     }
     flashToast("Pedido vinculado a este chat");
     setLinkOpen(false);
-    void refresh();
+    void refreshSummaries();
+    void reloadOpenChat();
   }
 
   return (
@@ -183,7 +284,7 @@ export function WhatsAppChatView({
       <div className="hidden min-h-0 flex-1 lg:flex">
         <div className="flex h-full w-[300px] shrink-0 flex-col border-r border-[#e8e0d6] bg-[#fdfcfb] dark:border-[#2a2623] dark:bg-[#161413]">
           <ChatListPane
-            conversations={conversations}
+            summaries={summaries}
             selectedId={selectedId}
             onSelect={handleSelectConversation}
             searchQuery={searchQuery}
@@ -205,6 +306,8 @@ export function WhatsAppChatView({
               onToggleContextPane={() => setShowContextPane((s) => !s)}
               onNewComanda={() => setComandaOpen(true)}
               onLinkOrder={() => setLinkOpen(true)}
+              onLoadOlder={handleLoadOlder}
+              loadingOlder={loadingOlder}
             />
           ) : (
             <EmptyChat whatsappConnected={whatsappConnected} />
@@ -237,7 +340,7 @@ export function WhatsAppChatView({
         {mobileScreen === "list" ? (
           <div className="h-full w-full bg-[#fdfcfb] dark:bg-[#161413]">
             <ChatListPane
-              conversations={conversations}
+              summaries={summaries}
               selectedId={selectedId}
               onSelect={handleSelectConversation}
               searchQuery={searchQuery}
@@ -261,6 +364,8 @@ export function WhatsAppChatView({
                   onToggleContextPane={() => setMobileDrawerOpen((o) => !o)}
                   onNewComanda={() => setComandaOpen(true)}
                   onLinkOrder={() => setLinkOpen(true)}
+                  onLoadOlder={handleLoadOlder}
+                  loadingOlder={loadingOlder}
                 />
                 <AnimatePresence>
                   {mobileDrawerOpen ? (

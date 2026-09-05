@@ -150,3 +150,65 @@ export function computeSalesChart(
 
   return { labels, delivery, takeaway, orders: orderCounts, ticket };
 }
+
+// ---------------------------------------------------------------------------
+// Métricas por repartidor
+// ---------------------------------------------------------------------------
+
+/** Fila mínima de `orders` para agregar por repartidor (período ya filtrado). */
+export type DashboardDriverRow = {
+  delivery_driver_id: string | null;
+  status: string;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+};
+
+export type DriverMetricsRow = {
+  driverId: string;
+  enRuta: number; // status = delivering
+  entregados: number; // status = delivered en el período
+  avgMinutes: number | null; // promedio dispatch → delivered; null sin datos
+};
+
+/** Promedio en minutos dispatch → delivered de una lista (ignora sin timestamps). */
+export function avgDeliveryMinutes(rows: DashboardDriverRow[]): number | null {
+  const times: number[] = [];
+  for (const r of rows) {
+    if (!r.dispatched_at || !r.delivered_at) continue;
+    const diff =
+      (new Date(r.delivered_at).getTime() - new Date(r.dispatched_at).getTime()) / 60_000;
+    if (diff >= 0) times.push(diff);
+  }
+  if (times.length === 0) return null;
+  return Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+}
+
+export function aggregateDriverMetrics(rows: DashboardDriverRow[]): DriverMetricsRow[] {
+  const acc = new Map<string, { enRuta: number; entregados: number; times: number[] }>();
+  for (const r of rows) {
+    if (!r.delivery_driver_id) continue;
+    let a = acc.get(r.delivery_driver_id);
+    if (!a) {
+      a = { enRuta: 0, entregados: 0, times: [] };
+      acc.set(r.delivery_driver_id, a);
+    }
+    if (r.status === "delivering") a.enRuta += 1;
+    if (r.status === "delivered") a.entregados += 1;
+    if (r.dispatched_at && r.delivered_at) {
+      const diff =
+        (new Date(r.delivered_at).getTime() - new Date(r.dispatched_at).getTime()) / 60_000;
+      if (diff >= 0) a.times.push(diff);
+    }
+  }
+
+  return [...acc.entries()]
+    .map(([driverId, a]) => ({
+      driverId,
+      enRuta: a.enRuta,
+      entregados: a.entregados,
+      avgMinutes: a.times.length
+        ? Math.round(a.times.reduce((x, y) => x + y, 0) / a.times.length)
+        : null,
+    }))
+    .sort((a, b) => b.entregados - a.entregados || b.enRuta - a.enRuta);
+}
