@@ -52,6 +52,7 @@ const STATUS_LABEL: Record<OrderLifecycleStatus, string> = {
   delivering: "En Camino",
   delivered: "Entregado",
   rejected: "Rechazado",
+  cancelled: "Cancelado",
 };
 
 export function WhatsAppChatView({

@@ -36,6 +36,7 @@ const STATUS_LABEL: Record<ChatOrderStatus, string> = {
   delivering: "En Camino",
   delivered: "Entregado",
   rejected: "Rechazado",
+  cancelled: "Cancelado",
 };
 
 export function ChatContextPane({

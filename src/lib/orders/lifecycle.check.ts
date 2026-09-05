@@ -16,13 +16,19 @@ assert.equal(canForward("preparing", "delivering"), true);
 assert.equal(canForward("delivering", "delivered"), true);
 assert.equal(canForward("delivered", "rejected"), false);
 assert.equal(canForward("pending", "rejected"), true);
+assert.equal(canForward("pending", "cancelled"), true);
+assert.equal(canForward("preparing", "cancelled"), false);
+assert.equal(canForward("cancelled", "rejected"), false);
 
 assert.equal(canBackward("preparing"), "pending");
 assert.equal(canBackward("delivering"), "preparing");
 assert.equal(canBackward("delivered"), null);
 
-assert.equal(normalizeLifecycleStatus("accepted"), "preparing");
-assert.equal(normalizeLifecycleStatus("cancelled"), "rejected");
+// Legacy ya migrado: accepted/ready ya no se escriben; cancelled es estado real.
+assert.equal(normalizeLifecycleStatus("accepted"), null);
+assert.equal(normalizeLifecycleStatus("ready"), null);
+assert.equal(normalizeLifecycleStatus("cancelled"), "cancelled");
+assert.equal(normalizeLifecycleStatus("preparing"), "preparing");
 
 assert.equal(
   shouldAlertBusiness({ status: "pending", payment_status: "paid", payment_method: "mercadopago_qr" }),
@@ -48,6 +54,8 @@ assert.equal(
 
 assert.equal(stubLabel("pending"), "A cocina");
 assert.equal(stepperStep("delivering"), 2);
+assert.equal(stepperStep("cancelled"), 0);
 assert.equal(timestampPatch("delivering", "delivered", "2026-01-01T00:00:00Z").delivery_pin, null);
+assert.equal(timestampPatch("pending", "cancelled", "2026-01-01T00:00:00Z").cancelled_at, "2026-01-01T00:00:00Z");
 
 console.log("lifecycle.check.ts OK");

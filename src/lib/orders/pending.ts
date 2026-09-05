@@ -121,6 +121,7 @@ export async function cancelPendingCustomerOrder(orderId: string, userId: string
     .update({
       status: "cancelled",
       payment_status: "failed",
+      cancelled_at: new Date().toISOString(),
       active_payment_session_id: null,
       updated_at: new Date().toISOString(),
     })

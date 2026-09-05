@@ -6,6 +6,7 @@ export const STATUS_LABEL: Record<OrderLifecycleStatus, string> = {
   delivering: "En reparto",
   delivered: "Entregado",
   rejected: "Rechazado",
+  cancelled: "Cancelado",
 };
 
 export const STUB_ACCENT: Record<OrderLifecycleStatus, string> = {
@@ -14,6 +15,7 @@ export const STUB_ACCENT: Record<OrderLifecycleStatus, string> = {
   delivering: "bg-[#1a1210]",
   delivered: "bg-stone-400",
   rejected: "bg-stone-500",
+  cancelled: "bg-stone-500",
 };
 
 export const BADGE_ACCENT: Record<OrderLifecycleStatus, string> = {
@@ -22,6 +24,7 @@ export const BADGE_ACCENT: Record<OrderLifecycleStatus, string> = {
   delivering: "bg-stone-800/10 text-stone-800 dark:bg-stone-200/10 dark:text-stone-200",
   delivered: "bg-stone-100 text-stone-600",
   rejected: "bg-red-100 text-red-700",
+  cancelled: "bg-stone-100 text-stone-600",
 };
 
 export const SCALLOP =

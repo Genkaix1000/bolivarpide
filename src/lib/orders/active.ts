@@ -49,6 +49,10 @@ export function statusShortLabel(status: OrderLifecycleStatus): string {
       return "Entregado";
     case "rejected":
       return "Pedido cancelado";
+    case "cancelled":
+      return "Pedido cancelado";
+    default:
+      return "Pedido recibido";
   }
 }
 

@@ -3,200 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { mpEnv } from "@/lib/mercadopago/env";
 import { validateWebhookSignature } from "@/lib/mercadopago/webhook-signature";
-import { mpFetch } from "@/lib/mercadopago/mp-fetch";
-import { getAccessTokenForBusiness } from "@/lib/mercadopago/repository";
-
-type MpOrderResponse = {
-  id: string;
-  status?: string;
-  transactions?: { payments?: { id?: string; reference_id?: string | number; status?: string }[] };
-};
-
-type MpPaymentResponse = {
-  id: number | string;
-  status?: string;
-  external_reference?: string;
-  transaction_amount?: number;
-};
-
-function mapMpStatus(raw?: string): string {
-  if (!raw) return "created";
-  const s = raw.toLowerCase();
-  if (s === "processed" || s === "approved") return "processed";
-  if (s === "expired") return "expired";
-  if (s === "cancelled" || s === "canceled" || s === "rejected") return "canceled";
-  if (s === "failed") return "failed";
-  return "created";
-}
-
-function orderIdFromExternalRef(ref?: string | null): string | null {
-  if (!ref?.startsWith("BP-")) return null;
-  return ref.slice(3);
-}
-
-async function markOrderPaid(
-  orderId: string,
-  paymentId: string | number | null,
-  sessionId?: string,
-) {
-  const svc = createServiceClient();
-  const { data: order } = await svc
-    .from("orders")
-    .select("id, business_id, payment_status, total_cents, mp_payment_id")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order) return;
-  // Idempotencia por estado: un pedido ya pagado/refundado no se re-procesa.
-  if (order.payment_status === "paid" || order.payment_status === "refunded") return;
-
-  // Verificación de monto (defensa en profundidad): el pago MP debe coincidir con
-  // el total server-side de la orden. Sin payment id no se puede verificar → se
-  // preserva el flujo actual (el cierre de precio lo garantiza el checkout).
-  if (paymentId != null && order.total_cents != null && order.total_cents > 0) {
-    try {
-      const token = await getAccessTokenForBusiness(order.business_id);
-      const payment = await mpFetch<MpPaymentResponse>(
-        token,
-        `/v1/payments/${encodeURIComponent(String(paymentId))}`,
-        { method: "GET" },
-      );
-      const remoteCents = Math.round(Number(payment.transaction_amount ?? 0) * 100);
-      if (Math.abs(remoteCents - order.total_cents) > 1) return;
-    } catch {
-      return;
-    }
-  }
-
-  // Update condicional: solo gana si el pedido sigue sin pagar; si otro request
-  // concurrente ya lo marcó, `updated` es null → no re-notificamos.
-  const { data: updated } = await svc
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      mp_payment_id: paymentId != null ? String(paymentId) : order.mp_payment_id ?? null,
-      paid_at: new Date().toISOString(),
-    })
-    .eq("id", orderId)
-    .in("payment_status", ["unpaid", "awaiting_payment"])
-    .select("id")
-    .maybeSingle();
-  if (!updated) return;
-
-  if (sessionId) {
-    await svc
-      .from("payment_sessions")
-      .update({
-        status: "processed",
-        payment_id: paymentId != null ? String(paymentId) : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId);
-  }
-
-  const { emitOrderPaidNotifications } = await import("@/lib/notifications/emit");
-  void emitOrderPaidNotifications(orderId);
-}
-
-async function reconcileOrder(mpOrderId: string): Promise<string | null> {
-  const svc = createServiceClient();
-  const { data: session } = await svc
-    .from("payment_sessions")
-    .select("id, business_id, order_id, status")
-    .eq("mp_order_id", mpOrderId)
-    .maybeSingle();
-  if (!session) return null;
-
-  const token = await getAccessTokenForBusiness(session.business_id);
-  const remote = await mpFetch<MpOrderResponse>(token, `/v1/orders/${encodeURIComponent(mpOrderId)}`, {
-    method: "GET",
-  });
-  const mapped = mapMpStatus(remote.status);
-  const paymentId = remote.transactions?.payments?.[0]?.reference_id;
-
-  if (mapped === session.status) return session.business_id;
-
-  await svc
-    .from("payment_sessions")
-    .update({
-      status: mapped,
-      payment_id: paymentId != null ? String(paymentId) : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", session.id);
-
-  if (session.order_id && mapped === "processed") {
-    await markOrderPaid(session.order_id, paymentId ?? null, session.id);
-  } else if (session.order_id && (mapped === "expired" || mapped === "canceled")) {
-    await svc.from("orders").update({ payment_status: "expired" }).eq("id", session.order_id);
-  }
-  return session.business_id;
-}
-
-async function reconcilePayment(paymentId: string, mpUserId: string | null): Promise<string | null> {
-  const svc = createServiceClient();
-  let businessId: string | null = null;
-
-  if (mpUserId) {
-    const { data: conn } = await svc
-      .from("mp_merchant_connections")
-      .select("business_id")
-      .eq("mp_user_id", mpUserId)
-      .eq("status", "active")
-      .maybeSingle();
-    businessId = conn?.business_id ?? null;
-  }
-
-  if (!businessId) {
-    const { data: fallbackSession } = await svc
-      .from("payment_sessions")
-      .select("business_id")
-      .eq("channel", "checkout_pro")
-      .eq("status", "created")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    businessId = fallbackSession?.business_id ?? null;
-  }
-
-  if (!businessId) return null;
-
-  const token = await getAccessTokenForBusiness(businessId);
-  const payment = await mpFetch<MpPaymentResponse>(
-    token,
-    `/v1/payments/${encodeURIComponent(paymentId)}`,
-    { method: "GET" },
-  );
-
-  const orderId = orderIdFromExternalRef(payment.external_reference);
-  if (!orderId) return businessId;
-
-  const { data: session } = await svc
-    .from("payment_sessions")
-    .select("id, status, order_id")
-    .eq("order_id", orderId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const mapped = mapMpStatus(payment.status);
-  if (session && mapped !== session.status) {
-    await svc
-      .from("payment_sessions")
-      .update({
-        status: mapped,
-        payment_id: String(payment.id),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", session.id);
-  }
-
-  if (mapped === "processed") {
-    await markOrderPaid(orderId, payment.id, session?.id);
-  } else if (mapped === "expired" || mapped === "canceled") {
-    await svc.from("orders").update({ payment_status: "expired" }).eq("id", orderId);
-  }
-  return businessId;
-}
+import { reconcileOrder, reconcilePayment } from "@/lib/mercadopago/reconcile";
 
 export async function POST(req: NextRequest) {
   const { webhookSecret } = mpEnv();
@@ -223,9 +30,7 @@ export async function POST(req: NextRequest) {
   const resourceId = dataId ?? body.data?.id;
   const eventType = type ?? body.type;
 
-  if (
-    !validateWebhookSignature(xSignature, xRequestId, resourceId, webhookSecret)
-  ) {
+  if (!validateWebhookSignature(xSignature, xRequestId, resourceId, webhookSecret)) {
     return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
   }
 
@@ -238,7 +43,7 @@ export async function POST(req: NextRequest) {
   const { error: insErr } = await svc.from("mp_webhook_events").insert({
     x_request_id: reqId,
     data_id: resourceId,
-    event_type: eventType ?? "unknown",
+    event_type: eventType,
     payload: body,
   });
   if (insErr?.code === "23505") {
@@ -248,6 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No se pudo persistir evento" }, { status: 500 });
   }
 
+  // Reconcilia el evento contra el estado local (dominio en src/lib/mercadopago/reconcile).
   try {
     const businessId =
       eventType === "order"

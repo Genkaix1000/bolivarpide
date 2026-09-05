@@ -580,7 +580,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   } catch (err) {
     await svc
       .from("orders")
-      .update({ payment_status: "failed", status: "cancelled" })
+      .update({ payment_status: "failed", status: "cancelled", cancelled_at: new Date().toISOString() })
       .eq("id", order.id);
     throw err;
   }
@@ -589,7 +589,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   if (!qrData) {
     await svc
       .from("orders")
-      .update({ payment_status: "failed", status: "cancelled" })
+      .update({ payment_status: "failed", status: "cancelled", cancelled_at: new Date().toISOString() })
       .eq("id", order.id);
     throw new Error("Mercado Pago no devolvió qr_data");
   }
@@ -666,5 +666,23 @@ export async function getPaymentStatus(orderId: string, userId: string) {
     }
   }
 
-  return { order, session };
+  // Serialización acotada: no exponer filas crudas de la DB al cliente.
+  return {
+    order: {
+      id: order.id,
+      status: order.status,
+      payment_status: order.payment_status,
+      payment_method: order.payment_method,
+    },
+    session: session
+      ? {
+          id: session.id,
+          status: session.status,
+          channel: session.channel,
+          qr_data: session.qr_data,
+          expires_at: session.expires_at,
+          amount_cents: session.amount_cents,
+        }
+      : null,
+  };
 }

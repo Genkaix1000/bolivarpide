@@ -5,7 +5,8 @@ export type OrderLifecycleStatus =
   | "preparing"
   | "delivering"
   | "delivered"
-  | "rejected";
+  | "rejected"
+  | "cancelled";
 
 export const LIFECYCLE_STATUSES: OrderLifecycleStatus[] = [
   "pending",
@@ -13,6 +14,7 @@ export const LIFECYCLE_STATUSES: OrderLifecycleStatus[] = [
   "delivering",
   "delivered",
   "rejected",
+  "cancelled",
 ];
 
 export type OrderItemOptionDetail = {
@@ -92,6 +94,7 @@ export const FORWARD: Record<OrderLifecycleStatus, OrderLifecycleStatus | null> 
   delivering: "delivered",
   delivered: null,
   rejected: null,
+  cancelled: null,
 };
 
 export const BACKWARD: Record<OrderLifecycleStatus, OrderLifecycleStatus | null> = {
@@ -100,13 +103,12 @@ export const BACKWARD: Record<OrderLifecycleStatus, OrderLifecycleStatus | null>
   delivering: "preparing",
   delivered: null,
   rejected: null,
+  cancelled: null,
 };
 
-const TERMINAL = new Set<OrderLifecycleStatus>(["delivered", "rejected"]);
+const TERMINAL = new Set<OrderLifecycleStatus>(["delivered", "rejected", "cancelled"]);
 
 export function normalizeLifecycleStatus(raw: string): OrderLifecycleStatus | null {
-  if (raw === "accepted" || raw === "ready") return "preparing";
-  if (raw === "cancelled") return "rejected";
   if (LIFECYCLE_STATUSES.includes(raw as OrderLifecycleStatus)) {
     return raw as OrderLifecycleStatus;
   }
@@ -119,6 +121,7 @@ export function isTerminalStatus(status: OrderLifecycleStatus): boolean {
 
 export function canForward(from: OrderLifecycleStatus, to: OrderLifecycleStatus): boolean {
   if (to === "rejected") return !isTerminalStatus(from);
+  if (to === "cancelled") return from === "pending";
   return FORWARD[from] === to;
 }
 
@@ -153,6 +156,7 @@ export function stepperStep(
       case "delivered":
         return 2;
       case "rejected":
+      case "cancelled":
         return 0;
     }
   }
@@ -166,6 +170,7 @@ export function stepperStep(
     case "delivered":
       return 3;
     case "rejected":
+    case "cancelled":
       return 0;
   }
 }
@@ -202,6 +207,11 @@ export function trackingCopy(
           title: "Pedido cancelado",
           subtitle: "El local no pudo completar tu pedido.",
         };
+      case "cancelled":
+        return {
+          title: "Pedido cancelado",
+          subtitle: "Cancelaste el pedido.",
+        };
     }
   }
   switch (status) {
@@ -230,6 +240,11 @@ export function trackingCopy(
         title: "Pedido cancelado",
         subtitle: "El local no pudo completar tu pedido.",
       };
+    case "cancelled":
+      return {
+        title: "Pedido cancelado",
+        subtitle: "Cancelaste el pedido.",
+      };
   }
 }
 
@@ -252,7 +267,7 @@ export function isKitchenEligible(order: {
   payment_status: string;
   payment_method: string | null;
 }): boolean {
-  if (order.status === "cancelled") return false;
+  if (normalizeLifecycleStatus(order.status) === "cancelled") return false;
   if (order.payment_status === "paid") return true;
   if (order.payment_method === "cash" && order.payment_status !== "failed") return true;
   return false;
@@ -337,6 +352,7 @@ export function timestampPatch(
     patch.pin_locked_until = null;
   }
   if (to === "rejected") patch.rejected_at = now;
+  if (to === "cancelled") patch.cancelled_at = now;
   if (to === "pending" && from === "preparing") patch.accepted_at = null;
   if (to === "preparing" && from === "delivering") patch.dispatched_at = null;
   return patch;
