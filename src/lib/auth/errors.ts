@@ -19,6 +19,8 @@ const BY_CODE: Record<string, string> = {
   validation_failed: "Revisá los datos e intentá de nuevo.",
   same_password: "La nueva contraseña tiene que ser distinta a la actual.",
   reauthentication_needed: "Por seguridad, volvé a iniciar sesión.",
+  current_password_mismatch: "La contraseña actual no es correcta.",
+  insufficient_aal: "Por seguridad, completá la verificación de dos pasos.",
   unexpected_failure: "Algo salió mal. Intentá de nuevo.",
 };
 
@@ -35,6 +37,7 @@ const BY_MESSAGE: Array<[RegExp, string]> = [
   [/password is known to be weak/i, BY_CODE.weak_password],
   [/unable to validate email/i, BY_CODE.email_address_invalid],
   [/invalid email/i, BY_CODE.email_address_invalid],
+  [/current password/i, BY_CODE.current_password_mismatch],
   [/user not found/i, "No encontramos una cuenta con esos datos."],
   [/network/i, "Error de red. Revisá tu conexión."],
   [/for security purposes/i, "Por seguridad tenés que esperar un momento antes de reintentar."],

@@ -14,6 +14,7 @@ import { flashToast } from "@/components/FlashToast";
 import { DriverApplicationModal } from "./DriverApplicationModal";
 import { ProfileSection } from "./ProfileSection";
 import { IdentityVerificationPanel, profileInputClass } from "./IdentityVerificationPanel";
+import { ChangePasswordSection } from "./ChangePasswordSection";
 import { createClient } from "@/lib/supabase/client";
 import { usePwaPush } from "@/hooks/usePwaPush";
 
@@ -345,6 +346,18 @@ export function ProfileView({
             </button>
           </form>
         </ProfileSection>
+
+        {isAuthenticated && (
+          <ProfileSection
+            icon="lock"
+            title="Seguridad"
+            subtitle="Cambiá tu contraseña de acceso"
+            open={openSection === "security"}
+            onToggle={() => toggleSection("security")}
+          >
+            <ChangePasswordSection />
+          </ProfileSection>
+        )}
 
         <ProfileSection
           icon="location_on"

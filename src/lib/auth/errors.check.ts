@@ -16,5 +16,13 @@ assert.equal(
   authErrorEs({ message: "Email signups are disabled" }),
   "El registro por email está deshabilitado.",
 );
+assert.equal(
+  authErrorEs({ code: "current_password_mismatch" }),
+  "La contraseña actual no es correcta.",
+);
+assert.equal(
+  authErrorEs({ message: "Current password required when setting new password." }),
+  "La contraseña actual no es correcta.",
+);
 assert.equal(authErrorEs(null), "Error inesperado.");
 console.log("errors.check.ts: ok");
