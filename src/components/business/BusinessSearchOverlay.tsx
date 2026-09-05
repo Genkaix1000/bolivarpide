@@ -15,7 +15,6 @@ import {
   ArrowRight,
   type Icon,
 } from "@phosphor-icons/react";
-import { SmoothInput } from "@/components/SmoothInput";
 import { UserAvatarView } from "@/components/UserAvatarView";
 import { cn } from "@/lib/utils";
 import {
@@ -178,12 +177,13 @@ export function BusinessSearchOverlay({ open, onClose, businessId }: Props) {
               <MagnifyingGlass weight="bold" size={18} className="shrink-0 text-[#9a0002]" />
             )}
 
-            <SmoothInput
+            <input
               ref={inputRef}
+              type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar pedidos (#12, $17.500, cliente), carta, equipo..."
-              className="text-[14px] font-medium text-stone-800 placeholder:text-stone-400 dark:text-stone-200 dark:placeholder:text-stone-500"
+              className="w-full bg-transparent outline-none border-none p-0 focus:ring-0 caret-[#9a0002] text-[14px] font-medium text-stone-800 placeholder:text-stone-400 dark:text-stone-200 dark:placeholder:text-stone-500"
             />
 
             {hasQuery && (

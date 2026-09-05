@@ -23,10 +23,39 @@ incluye evidencia con `archivo:línea`. Severidades:
   `cancelled` real, RPC `transition_order_status` + `REVOKE UPDATE` en `orders`
   (enforcement en DB), dominio de pagos en `src/lib/mercadopago/reconcile.ts` con
   route delgado, home a RSC/ISR (`revalidate=60`) sin cache localStorage.
-- ✅ **Fase 3 (higiene) — en curso.** Tests copy-based → import-based, código
+- ✅ **Fase 3 (higiene) — cerrada.** Tests copy-based → import-based, código
   muerto eliminado, `mockData` split, package renombrado, `.env.example`
-  trackeado, docs regeneradas. Pendiente: reconciliación del historial de
-  migraciones con timestamps únicos (ver §26).
+  trackeado, docs regeneradas.
+
+### Verificación contra el código — 2026-09-05
+
+Auditoría completa del repo (ver [`estado-beta-publica.md`](./estado-beta-publica.md)). Buena
+parte de este documento describe deuda **que ya se pagó**. Lo verificado:
+
+| § | Hallazgo original | Estado real hoy |
+|---|---|---|
+| §16 | `mockData.ts` importado por 15 archivos | ✅ **El archivo no existe.** Cero importadores. `FEATURED_CHAINS` y `TRENDING_ITEMS` quedaron como arrays vacíos en `staticContent.ts:126-127`, así que los "mocks" de `search/actions.ts:134,160` son código muerto inofensivo. |
+| §17 | `SettingsLayout.tsx` + gemelos `TabGeneral/TabOperacion/TabPagos/TabCanales` muertos | ✅ **Eliminados.** Reemplazados por `SettingsSubnav.tsx` + rutas separadas en `configuracion/*`. |
+| §23-24 | 30 `*.check.ts` no ejecutables, sin script `test`, sin `tsx` | ✅ **42 checks corriendo, 42/42 en verde** vía `pnpm test` → `scripts/run-checks.mjs`. `tsx` está en devDependencies. |
+| §25 | Cero CI/CD | ✅ **`.github/workflows/ci.yml`** corre test + typecheck + lint en cada push y PR. ⚠️ Está **rojo** por 11 errores de lint de `react-hooks`. |
+| §26 | Sin `supabase/config.toml`, migraciones aplicadas a mano, timestamps colisionando | ✅ **`config.toml` existe** y hay 42 migraciones con timestamps únicos. Queda verificar que el historial de la DB viva coincida 1:1. |
+| §27 | `.env.example` no trackeado | ✅ Trackeado. ⚠️ Desincronizado: le faltan `NEXT_PUBLIC_SITE_URL`, `MP_APP_ID`, `MP_CLIENT_SECRET`, `MP_WEBHOOK_SECRET`, `MP_TOKEN_SECRET`, `IMPERSONATE_COOKIE_SECRET`. |
+| §30 | Package llamado `temp-next-app` | ✅ Renombrado a `bolivarpide`. |
+| §29 | `ARQUITECTURA.md` como cápsula del tiempo | ✅ Regenerado. `ARQUITECTURA.legacy.md` eliminado. |
+| §1-8 | P0 de seguridad y dinero | ✅ Cerrados (precios server-side, refund idempotente, dedupe de webhooks, RPC `transition_order_status` con `REVOKE UPDATE`). |
+
+**Deuda que sigue viva y confirmada:**
+
+- **§9 (parcial)** — el auto-rechazo a 3 min y la expiración de sesiones QR son *lazy*: corren
+  solo cuando alguien consulta el pedido. Un pedido que nadie mira queda colgado. Falta cron.
+- **§12** — `refund_pending` sigue sin job de retry ni reconciliación de arranque.
+- **§18** — la heurística de `reconcilePayment` puede mal-atribuir un pago entre comercios.
+- **§21** — el color `#9a0002` sigue hardcodeado en ~60 archivos.
+- **Nuevo** — `isOpenByHours` (`business/hours.ts:51`) **no tiene llamadores**: el
+  abierto/cerrado sale del flag manual `businesses.is_open`, así que los horarios que carga el
+  comercio se muestran pero nunca se aplican.
+- **Nuevo** — `IMPERSONATE_COOKIE_SECRET` cae a `"dev-insecure-impersonate"`
+  (`admin/impersonate.ts:15-18`). Hay que setearlo antes de producción.
 
 ### Deuda residual (post F1-F2)
 

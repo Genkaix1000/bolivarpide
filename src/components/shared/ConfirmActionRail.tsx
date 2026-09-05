@@ -1,34 +1,41 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { cn } from "@/lib/utils";
 
-type Props = {
+export type ConfirmActionRailProps = {
   confirm: boolean;
   onAsk: () => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onAccent?: boolean;
+  boundaryRef?: RefObject<HTMLElement | null>;
   askIcon?: string;
   askLabel?: string;
+  askTitle?: string;
   className?: string;
 };
 
 const slide =
   "absolute inset-0 flex items-center justify-end gap-1 transition-all duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 
-/** Confirmación inline (✕ / ✓) para acciones destructivas en cards. */
+/** Confirmación inline (✕ / ✓) para acciones destructivas o de cierre de sesión. */
 export function ConfirmActionRail({
   confirm,
   onAsk,
   onCancel,
   onConfirm,
+  onAccent = false,
+  boundaryRef,
   askIcon = "delete",
-  askLabel = "Eliminar",
+  askLabel,
+  askTitle = "Eliminar",
   className,
-}: Props) {
+}: ConfirmActionRailProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const focusRef = useRef<HTMLButtonElement>(null);
+  const label = askLabel ?? askTitle;
 
   useEffect(() => {
     if (!confirm) return;
@@ -36,9 +43,17 @@ export function ConfirmActionRail({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
     };
+    const onPointerDown = (e: PointerEvent) => {
+      const boundary = boundaryRef?.current ?? rootRef.current;
+      if (!boundary?.contains(e.target as Node)) onCancel();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [confirm, onCancel]);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [confirm, onCancel, boundaryRef]);
 
   return (
     <div
@@ -51,13 +66,16 @@ export function ConfirmActionRail({
     >
       <button
         type="button"
-        title={askLabel}
-        aria-label={askLabel}
+        title={label}
+        aria-label={label}
         aria-expanded={confirm}
         onClick={onAsk}
         className={cn(
           slide,
-          "cursor-pointer text-gray-400 hover:text-red-600 dark:hover:text-red-400",
+          "cursor-pointer bg-transparent",
+          onAccent
+            ? "text-white"
+            : "text-gray-400 hover:text-red-600 dark:hover:text-red-400",
           confirm ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-0 opacity-100",
         )}
       >
@@ -78,7 +96,12 @@ export function ConfirmActionRail({
             e.stopPropagation();
             onCancel();
           }}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-white/90 hover:bg-white/15"
+          className={cn(
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors",
+            onAccent
+              ? "text-white/90 hover:bg-white/15"
+              : "text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5",
+          )}
         >
           <MaterialSymbol icon="close" size={14} />
         </button>
@@ -89,7 +112,12 @@ export function ConfirmActionRail({
             e.stopPropagation();
             onConfirm();
           }}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-white text-red-700 hover:bg-white/90 active:scale-95 transition-all"
+          className={cn(
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-all active:scale-95",
+            onAccent
+              ? "bg-white text-[#9a0002] hover:bg-white/90"
+              : "bg-red-600 text-white hover:bg-red-700",
+          )}
         >
           <MaterialSymbol icon="check" size={14} />
         </button>

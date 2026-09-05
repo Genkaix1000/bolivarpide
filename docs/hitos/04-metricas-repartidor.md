@@ -47,15 +47,31 @@ Base: repartidores activos (`business_members role='driver' status='active'`).
 | Cómputo en panel vs SQL agregado | JS client + 2 selects vs SQL `count()/avg()` | SQL agregado con una query por driver (dataset chico) |
 | Incluir drivers que no tuvieron entregas | sí (entregas 0) vs solo con actividad | incluir los activos siempre (carga visible) |
 
+## Estado real (revisión 2026-09-05)
+
+> Este hito estaba marcado ✅ Hecho. **No lo está: la feature está desactivada.**
+>
+> Los helpers puros y la UI existen, pero **el data layer del medio nunca se escribió**.
+> `getBusinessDashboardData` (`src/lib/business/queries.ts:261-269`) no devuelve
+> `driversMetrics`. Eso produjo dos errores de typecheck que se resolvieron **silenciando el
+> síntoma**: se quitó la prop en `dashboard/page.tsx:33` y en `DashboardView.tsx` la prop pasó
+> a `driversMetrics?` con default `[]`. Resultado: compila, y la sección "Reparto" del
+> dashboard renderiza siempre el empty state.
+>
+> Falta (≈4h): la query de `orders` filtrando `delivery_driver_id/status/dispatched_at/delivered_at`
+> en el período, el merge con `listActiveDrivers` para nombres e iniciales, y volver a pasar la
+> prop desde la página. La lógica de agregación ya está probada, así que es cableado, no diseño.
+
 ## Tareas
 
 - [x] Helpers puros `aggregateDriverMetrics` / `avgDeliveryMinutes` en `src/lib/business/dashboard.ts`
       + `dashboard.check.ts` (promedios, filtros por driver, ordenamiento).
-- [x] `getBusinessDashboardData`: query adicional de `delivery_driver_id/status/dispatched_at/delivered_at`
+- [ ] `getBusinessDashboardData`: query adicional de `delivery_driver_id/status/dispatched_at/delivered_at`
       en el período + merge con `listActiveDrivers` (nombres/iniciales) → `driversMetrics`.
 - [x] `DashboardView.tsx`: sección "Reparto" (tabla compacta Repartidor · En ruta · Entregados ·
       Prom. min + empty state con CTA a Reparto).
-- [x] Verificación: `pnpm test` (35/35) + `tsc --noEmit` (0) + `lint` (0 errores) + CI.
+- [ ] Volver a pasar `driversMetrics` desde `dashboard/page.tsx` y sacarle el default `[]`.
+- [ ] Verificación: `pnpm test` (42/42) + `tsc --noEmit` + `lint` **sin errores** + CI en verde.
 
 ## Referencias
 

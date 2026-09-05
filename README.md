@@ -43,7 +43,7 @@ coincidir 1:1 con los archivos (reconciliação en `docs/debt.md`).
 ## Documentación
 
 - `ARQUITECTURA.md` — estado real de la arquitectura y el esquema
-- `ARQUITECTURA.legacy.md` — diseño original (caras usuario/negocio/delivery, roadmap; **no** refleja la implementación)
+- `docs/estado-beta-publica.md` — avance hacia la beta pública por cara, bloqueantes y backlog
 - `docs/specs/` — specs compartidas (pagos MP QR, config de locales)
 - `docs/features/` — TDD/SDD de features
 - `docs/debt.md` — auditoría de deuda técnica consolidada

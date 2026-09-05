@@ -2,6 +2,9 @@
 
 > Desbloqueo real de insignias por hitos (onboarding + pedidos), estilo PedidosYa/Rappi.
 
+> ⏸️ **Estado: diferida a post-beta** por decisión del 2026-09-05 (ver [`docs/estado-beta-publica.md`](../../estado-beta-publica.md), ficha `BP-48`).
+> El motor está mayormente shippeado (dominio, persistencia server-only, evaluador, hooks y UI); lo único abierto es el QA manual E2E. No se retoma antes del lanzamiento de la beta.
+
 ## Resumen
 
 Reemplaza el estado **cosmético** actual (unos badges seed fijos guardados como JSONB que
@@ -53,9 +56,9 @@ notificación in-app + modal celebratorio y exhibición en el perfil (ganadas y 
 ## Checklist de implementación
 
 ### Fase 1 — Dominio y reglas puras
-- [ ] `src/lib/badges/definitions.ts`: tipos (`BadgeMetric`, `BadgeDefinition`) + catálogo `BADGE_DEFINITIONS`
-- [ ] `src/lib/badges/engine.ts`: `metricValue`, `isBadgeEarned`, `computeBestStreak`, `unlockedBadges`
-- [ ] `engine.check.ts` (patrón ponytail) — `pnpm test` en verde
+- [x] `src/lib/badges/definitions.ts`: tipos (`BadgeMetric`, `BadgeDefinition`) + catálogo `BADGE_DEFINITIONS`
+- [x] `src/lib/badges/engine.ts`: `metricValue`, `isBadgeEarned`, `computeBestStreak`, `unlockedBadges`
+- [x] `engine.check.ts` (patrón ponytail) — `pnpm test` en verde
 
 ### Fase 2 — Persistencia server-only
 - [x] Migraciones aplicadas a la DB real (ver `tdd/02`): RPC `grant_customer_badges`, revoke de tabla + grants por columna sobre `user_profiles`, CHECK `notifications` con `badges`, + reparación heredada de tablas faltantes (`notifications`, `promo_banners`, `push_subscriptions`, `app_settings`)
@@ -63,8 +66,8 @@ notificación in-app + modal celebratorio y exhibición en el perfil (ganadas y 
 - [x] Verificado en DB real: `has_column_privilege` para `awarded_badges` = `false` (authenticated), RPC otorga + dedupe idempotente, índice presente
 
 ### Fase 3 — Evaluador y hooks
-- [ ] `src/lib/badges/queries.ts`: `loadCustomerStats(userId)` con service client (pedidos, gasto, racha, perfil, direcciones, favoritos)
-- [ ] `src/lib/badges/notify.ts`: `notifyBadgeUnlocked` (insertNotification, category `badges`, dedupeKey `badge:<uid>:<badgeId>`)
+- [x] `src/lib/badges/queries.ts`: `loadCustomerStats(userId)` con service client (pedidos, gasto, racha, perfil, direcciones, favoritos)
+- [x] `src/lib/badges/notify.ts`: `notifyBadgeUnlocked` (insertNotification, category `badges`, dedupeKey `badge:<uid>:<badgeId>`)
 - [x] `src/lib/badges/actions.ts`: `grantBadges` (service client → RPC) + `evaluateBadgesForUser` (+ `evaluateBadgesForOrder`)
 - [x] Hook en `advanceOrderStatus` (`after()`, `targetStatus === "delivered"` → `evaluateBadgesForOrder`)
 - [x] Hooks de onboarding: `saveUserProfileAction` (perfil completo), `verifyIdentityAction` (identidad), `saveUserAddressAction`/`restoreUserAddressAction` (primera dirección), `toggleProductLike` (primer favorito)

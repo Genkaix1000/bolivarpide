@@ -238,15 +238,15 @@ Admin ops   → Server Actions + service role + audit_log
 
 ## 9. Plan de implementación modular (TDD Specs)
 
-Las especificaciones técnicas y planes de test detallados por módulo se encuentran en [docs/features/](file:///home/cipher/Projects/delivery/docs/features/):
+Las especificaciones técnicas y planes de test detallados por módulo se encuentran en [docs/features/](./features/):
 
-- 🔐 **Fase 0 — [00-auth-e-identidad/TDD.md](file:///home/cipher/Projects/delivery/docs/features/00-auth-e-identidad/TDD.md)**: Cookies `@supabase/ssr`, middleware guards, PKCE OAuth y session parsing tests.
-- 🏪 **Fase 1 — [01-negocio-y-membresias/TDD.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/TDD.md)**: Schema `businesses` y `business_members`, RLS policies, helpers `is_business_owner`.
-- 🍕 **Fase 2 — [02-catalogo-y-carta/TDD.md](file:///home/cipher/Projects/delivery/docs/features/02-catalogo-y-carta/TDD.md)**: Schema `products`, bucket `product-images`, conversiones de centavos y tests de catálogo.
-- 👥 **Fase 3 — [03-equipo-e-invitaciones/TDD.md](file:///home/cipher/Projects/delivery/docs/features/03-equipo-e-invitaciones/TDD.md)**: Ciclo de vida de invitaciones, roles y permisos de staff.
-- 🛡️ **Fase 4 — [04-leads-admin-y-onboarding/TDD.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/TDD.md)**: Schema `leads`, `admin_audit_log`, generación/canje de claim tokens e impersonación.
-- 🔔 **Fase 5 — [05-pedidos-y-comandera/TDD.md](file:///home/cipher/Projects/delivery/docs/features/05-pedidos-y-comandera/TDD.md)**: Schema `orders`, Supabase Realtime y máquina de estados.
-- 🛍️ **Fase 6 — [06-marketplace-cliente/TDD.md](file:///home/cipher/Projects/delivery/docs/features/06-marketplace-cliente/TDD.md)**: Cache en Next.js, helpers de cálculo de horarios y feed público.
+- 🔐 **Fase 0 — [00-auth-e-identidad/tdd/](./features/00-auth-e-identidad/tdd/)**: Cookies `@supabase/ssr`, middleware guards, PKCE OAuth y session parsing tests.
+- 🏪 **Fase 1 — [01-negocio-y-membresias/tdd/](./features/01-negocio-y-membresias/tdd/)**: Schema `businesses` y `business_members`, RLS policies, helpers `is_business_owner`.
+- 🍕 **Fase 2 — [02-catalogo-y-carta/tdd/](./features/02-catalogo-y-carta/tdd/)**: Schema `products`, bucket de imágenes (`business-assets`), conversiones de centavos y tests de catálogo.
+- 👥 **Fase 3 — [03-equipo-e-invitaciones/tdd/](./features/03-equipo-e-invitaciones/tdd/)**: Ciclo de vida de invitaciones, roles y permisos de staff.
+- 🛡️ **Fase 4 — [04-leads-admin-y-onboarding/tdd/](./features/04-leads-admin-y-onboarding/tdd/)**: Schema `leads`, `admin_audit_log`, generación/canje de claim tokens e impersonación.
+- 🔔 **Fase 5 — [05-pedidos-y-comandera/tdd/](./features/05-pedidos-y-comandera/tdd/)**: Schema `orders`, Supabase Realtime y máquina de estados.
+- 🛍️ **Fase 6 — [06-marketplace-cliente/tdd/](./features/06-marketplace-cliente/tdd/)**: Cache en Next.js, helpers de cálculo de horarios y feed público.
 
 ---
 

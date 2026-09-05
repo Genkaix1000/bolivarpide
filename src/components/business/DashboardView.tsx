@@ -16,11 +16,20 @@ import type {
   BusinessRow,
   DashboardRecentOrder,
   DashboardStockProduct,
-  DriverMetricsView,
   TutorialTask,
 } from "@/lib/business/queries";
-import type { DashboardMetrics, DashboardPeriod, SalesChartData } from "@/lib/business/dashboard";
+import type {
+  DashboardMetrics,
+  DashboardPeriod,
+  DriverMetricsRow,
+  SalesChartData,
+} from "@/lib/business/dashboard";
 import { cn } from "@/lib/utils";
+
+export type DriverMetricsView = DriverMetricsRow & {
+  displayName: string;
+  initials: string;
+};
 
 const PERIODS: { id: DashboardPeriod; label: string }[] = [
   { id: "today", label: "Hoy" },
@@ -220,7 +229,7 @@ type Props = {
   recentOrders: DashboardRecentOrder[];
   productsCount: number;
   stockProducts: DashboardStockProduct[];
-  driversMetrics: DriverMetricsView[];
+  driversMetrics?: DriverMetricsView[];
   tasks: TutorialTask[];
 };
 
@@ -233,7 +242,7 @@ export function DashboardView({
   recentOrders,
   productsCount,
   stockProducts,
-  driversMetrics,
+  driversMetrics = [],
   tasks,
 }: Props) {
   const router = useRouter();

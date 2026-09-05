@@ -20,20 +20,23 @@ Implementa el **Wizard de Onboarding en 3 Pasos** (inspirado en la estética de 
 ## 📂 Documentos del Módulo
 
 ### 📋 Especificación Funcional (SDD)
-- [01-historias-de-usuario.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/sdd/01-historias-de-usuario.md) — Historias de usuario del Wizard (Paso 1, 2, 3), fallback de rubros y verificación Nivel 2.
-- [02-flujos-y-estados.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/sdd/02-flujos-y-estados.md) — Layout del Stepper (Desktop Sidebar vs Mobile Top Bar), taxonomía de categorías, integración Mercado Pago OAuth y marco legal.
+- [01-historias-de-usuario.md](./sdd/01-historias-de-usuario.md) — Historias de usuario del Wizard (Paso 1, 2, 3), fallback de rubros y verificación Nivel 2.
+- [02-flujos-y-estados.md](./sdd/02-flujos-y-estados.md) — Layout del Stepper (Desktop Sidebar vs Mobile Top Bar), taxonomía de categorías, integración Mercado Pago OAuth y marco legal.
 
 ### 🛠️ Especificación Técnica & Tests (TDD)
-- [01-arquitectura-y-contratos.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/tdd/01-arquitectura-y-contratos.md) — Esquemas Zod, resolución de categorías custom y Server Action `createBusinessOnboarding`.
-- [02-base-de-datos-y-auditoria.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/tdd/02-base-de-datos-y-auditoria.md) — Esquema SQL (`custom_category_input`, campos KYC y MP OAuth), Storage privado y `admin_audit_log`.
-- [03-plan-de-pruebas.md](file:///home/cipher/Projects/delivery/docs/features/04-leads-admin-y-onboarding/tdd/03-plan-de-pruebas.md) — Suites de test en Vitest para resolución de rubros, validaciones Zod y alta en base de datos.
+- [01-arquitectura-y-contratos.md](./tdd/01-arquitectura-y-contratos.md) — Esquemas Zod, resolución de categorías custom y Server Action `createBusinessOnboarding`.
+- [02-base-de-datos-y-auditoria.md](./tdd/02-base-de-datos-y-auditoria.md) — Esquema SQL (`custom_category_input`, campos KYC y MP OAuth), Storage privado y `admin_audit_log`.
+- [03-plan-de-pruebas.md](./tdd/03-plan-de-pruebas.md) — Suites de test en Vitest para resolución de rubros, validaciones Zod y alta en base de datos.
 
 ---
 
 ## ✅ Checklist de Cierre
 
-- [ ] Wizard responsive (`/negocio/nuevo` o `/negocio/alta`) con layout Stepper.
-- [ ] Pills de categorías principales + buscador predictivo con captura de `custom_category_input`.
-- [ ] Tarjetas interactivas de los 3 planes con preselección del Plan Inicial ($0/mes).
-- [ ] Creación inmediata del local en base de datos y redirección al panel de control.
-- [ ] Tests de resolución de taxonomía y contratos Zod pasando al 100%.
+> **Nota (2026-09) — rutas reales:** el wizard shippeó en **`/negocio/registro`** (`src/app/negocio/registro/page.tsx`), no en `/negocio/nuevo` ni `/negocio/alta`.
+> `/negocio/onboarding` es un flujo **distinto**: el canje de claim token para leads aprobados por admin (`src/app/negocio/onboarding/page.tsx` → `claimBusinessOwnership`).
+
+- [x] Wizard responsive (`/negocio/registro`) con layout Stepper (`src/components/business/BusinessOnboardingWizard.tsx:87-115`).
+- [x] Pills de categorías principales + buscador predictivo con captura de `custom_category_input` (mismo wizard).
+- [x] Tarjetas interactivas de los 3 planes con preselección del Plan Inicial ($0/mes) — **nota:** en `src/lib/business/plans.ts` solo `free` tiene `available: true`; Impulso y Líder quedan diferidos post-beta.
+- [x] Creación inmediata del local en base de datos y redirección al panel de control (`src/lib/business/onboardingActions.ts:35-115`, `createBusinessFromOnboarding`).
+- [x] Tests de resolución de taxonomía y contratos Zod pasando al 100% (`src/lib/business/categories.check.ts`).

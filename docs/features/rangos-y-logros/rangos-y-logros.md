@@ -1,5 +1,7 @@
 # Sistema de Rangos y Logros — SDD
 
+> **Nota:** Este sistema de rangos y logros está estrechamente ligado al motor de **insignias de cliente** (ver [10‑insignias‑cliente/README.md](../10-insignias-cliente/README.md)). Las insignias representan los logros obtenidos al completar misiones y subir de rango.
+
 > **Estado:** spec / por implementar (TDD + SDD — no tocar código hasta cerrar esta spec).
 > **Ubicación:** Panel de negocio → `/negocio/configuracion`.
 > **Inspiración:** League of Legends (rangos y divisiones) + Steam (niveles y logros/badges).

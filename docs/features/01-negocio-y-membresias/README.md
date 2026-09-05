@@ -15,19 +15,19 @@ Modela el sistema multi-tenant de BolivarPide. Permite que un usuario gestione u
 ## 📂 Documentos del Módulo
 
 ### 📋 Especificación Funcional (SDD)
-- [01-historias-de-usuario.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/sdd/01-historias-de-usuario.md) — Historias de usuario, selección de sucursal y gestión de horarios.
-- [02-flujos-y-estados.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/sdd/02-flujos-y-estados.md) — Roles (`owner`, `staff`, `driver`), routing scoped y reglas de negocio.
+- [01-historias-de-usuario.md](./sdd/01-historias-de-usuario.md) — Historias de usuario, selección de sucursal y gestión de horarios.
+- [02-flujos-y-estados.md](./sdd/02-flujos-y-estados.md) — Roles (`owner`, `staff`, `driver`), routing scoped y reglas de negocio.
 
 ### 🛠️ Especificación Técnica & Tests (TDD)
-- [01-arquitectura-y-contratos.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/tdd/01-arquitectura-y-contratos.md) — Esquemas Zod y Server Actions de actualización scoped.
-- [02-base-de-datos-y-rls.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/tdd/02-base-de-datos-y-rls.md) — Tablas `businesses`, `business_members`, `business_hours` y políticas RLS.
-- [03-plan-de-pruebas.md](file:///home/cipher/Projects/delivery/docs/features/01-negocio-y-membresias/tdd/03-plan-de-pruebas.md) — Tests de validación Zod y pruebas de aislamiento RLS multi-tenant.
+- [01-arquitectura-y-contratos.md](./tdd/01-arquitectura-y-contratos.md) — Esquemas Zod y Server Actions de actualización scoped.
+- [02-base-de-datos-y-rls.md](./tdd/02-base-de-datos-y-rls.md) — Tablas `businesses`, `business_members`, `business_hours` y políticas RLS.
+- [03-plan-de-pruebas.md](./tdd/03-plan-de-pruebas.md) — Tests de validación Zod y pruebas de aislamiento RLS multi-tenant.
 
 ---
 
 ## ✅ Checklist de Cierre
 
-- [ ] Tablas creadas con RLS activo en Supabase.
-- [ ] Layout `/negocio/[businessId]/layout.tsx` validando membresía activa.
-- [ ] Hub `/negocio/page.tsx` listando comercios asociados.
-- [ ] Tests de aislamiento multi-tenant aprobados.
+- [x] Tablas creadas con RLS activo en Supabase (`supabase/migrations/20260827100000_core_business_schema.sql` + `20260903000000_security_rls.sql`).
+- [x] Layout `/negocio/[businessId]/layout.tsx` validando membresía activa (`src/app/negocio/[businessId]/layout.tsx`).
+- [x] Hub `/negocio/page.tsx` listando comercios asociados (`src/app/negocio/page.tsx:7-67`, con `listMyMemberships` en `src/lib/business/queries.ts:456-467`).
+- [x] Tests de aislamiento multi-tenant aprobados (`src/lib/business/*.check.ts`).

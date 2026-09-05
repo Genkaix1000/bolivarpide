@@ -30,7 +30,6 @@ export default async function DashboardPage({
       recentOrders={data.recentOrders}
       productsCount={data.productsCount}
       stockProducts={data.stockProducts}
-      driversMetrics={data.driversMetrics}
       tasks={data.tasks}
     />
   );

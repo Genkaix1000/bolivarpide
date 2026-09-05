@@ -102,4 +102,4 @@ la experiencia.
 - `src/lib/orders/routeGeometry.ts` → `demoRouteProgress`, `pointOnPolyline`
 - `src/components/orders/OrderTrackingMap.tsx`, `src/lib/orders/trackingMap.ts`
 - `src/lib/delivery/` → consola del driver
-- Visión legacy: `ARQUITECTURA.legacy.md` (tabla `order_tracking`, canal `tracking-${orderId}`)
+- Visión legacy: `ARQUITECTURA.legacy.md`, eliminado del repo (tabla `order_tracking`, canal `tracking-${orderId}`); recuperable del historial de git

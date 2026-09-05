@@ -33,7 +33,9 @@ Fase 6  Home cliente lee DB (published)         → docs/features/06-marketplace
 Fase 7+ Carrito / checkout / pagos (después)
 ```
 
-> 📌 **Specs detalladas:** Cada fase cuenta con su propio par de documentos `SDD.md` (requisitos, historias Gherkin) y `TDD.md` (esquemas Zod, RLS, contratos y tests unitarios/integración) dentro de [docs/features/](file:///home/cipher/Projects/delivery/docs/features/).
+> ✅ **Actualización 2026-09:** "Fase 7+ Carrito / checkout / pagos" **ya está shippeado y en producción** con Mercado Pago homologado. Se conserva la línea de arriba como registro del orden original de expansión.
+
+> 📌 **Specs detalladas:** Cada fase cuenta con su propio par de documentos `SDD.md` (requisitos, historias Gherkin) y `TDD.md` (esquemas Zod, RLS, contratos y tests unitarios/integración) dentro de [docs/features/](./features/).
 
 ---
 
@@ -187,9 +189,11 @@ auth.users (solo OAuth)
 
 ## 9. Fuera de alcance (ahora)
 
-- Registro email/password o “cuenta solo plataforma”
+> ✅ **Actualización 2026-09:** dos ítems de esta lista **salieron del "fuera de alcance"** y hoy están shippeados. Se conservan tachados como registro de la decisión original.
+
+- ~~Registro email/password~~ → **shippeado**: email/password conviven con OAuth (`src/components/auth/AuthSplitLogin.tsx`, ver §3). Sigue fuera de alcance la “cuenta solo plataforma”.
 - Auto-aprobación de comercios sin validación de admin
-- Checkout / Mercado Pago (fase posterior)
+- ~~Checkout / Mercado Pago (fase posterior)~~ → **shippeado y en producción** con Mercado Pago homologado (`src/lib/mercadopago/`: `checkout.ts`, `webhook-signature.ts`, `reconcile.ts`, `refund.ts`).
 - App nativa de tiendas iOS/Android (PWAs sí)
 - Instagram Auth si no hay integración simple en Supabase
 
