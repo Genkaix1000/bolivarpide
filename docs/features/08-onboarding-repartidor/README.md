@@ -27,11 +27,12 @@ Reemplaza el `DriverApplicationModal` actual (que solo abría WhatsApp) por un o
 
 | Archivo | Contenido |
 |---------|-----------|
-| [README.md](./README.md) | Este documento (plan/checklist vivo) |
-| `sdd/` (pendiente) | HU y flujos al cierre |
-| `tdd/01` (pendiente) | Contratos TS/actions al cierre |
-| `tdd/02` (pendiente) | Migración, storage, RLS al cierre |
-| `tdd/03` (pendiente) | Matriz de pruebas al cierre |
+| [README.md](./README.md) | Resumen, decisiones de producto y checklist |
+| [sdd/01-historias-de-usuario.md](./sdd/01-historias-de-usuario.md) | HU postulante + admin con criterios de aceptación |
+| [sdd/02-flujos-y-estados.md](./sdd/02-flujos-y-estados.md) | Máquina de estados, permisos, flujos feliz/rechazo/reenvío |
+| [tdd/01-arquitectura-y-contratos.md](./tdd/01-arquitectura-y-contratos.md) | Reglas puras, server actions, componentes, archivos |
+| [tdd/02-base-de-datos-y-storage.md](./tdd/02-base-de-datos-y-storage.md) | Migración, bucket privado, RLS, acceso por signed URL |
+| [tdd/03-plan-de-pruebas.md](./tdd/03-plan-de-pruebas.md) | Matrices CUIL/docs/permisos/storage + E2E QA |
 
 ## Checklist de implementación
 
@@ -52,7 +53,9 @@ Reemplaza el `DriverApplicationModal` actual (que solo abría WhatsApp) por un o
 - [x] Sección "Repartidores" en `admin/page.tsx`: KPI, lista con estado, preview de docs (signed URLs), aprobar / rechazar con motivo
 
 ### Fase 5 — Verificación
-- [ ] `pnpm test` + `tsc --noEmit` + `lint` + QA manual E2E
+- [x] `pnpm test` (35/35) + `tsc --noEmit` + `lint` (0 errores)
+- [x] QA manual E2E aprobado por usuario
+- [x] Docs sdd/tdd completados
 
 ## Fuera de alcance (v2)
 
