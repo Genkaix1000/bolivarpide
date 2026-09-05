@@ -12,6 +12,8 @@ import { useUserProfile } from "@/components/UserProfileProvider";
 import { UserAwardBadge, getRarityColor } from "@/lib/userProfile";
 import { flashToast } from "@/components/FlashToast";
 import { DriverApplicationModal } from "./DriverApplicationModal";
+import { getMyDriverProfileAction } from "@/lib/delivery/profileActions";
+import type { MyDriverProfileView } from "@/lib/delivery/profileActions";
 import { ProfileSection } from "./ProfileSection";
 import { IdentityVerificationPanel, profileInputClass } from "./IdentityVerificationPanel";
 import { ChangePasswordSection } from "./ChangePasswordSection";
@@ -60,7 +62,10 @@ export function ProfileView({
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<UserAwardBadge | null>(null);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
+  const [driverProfile, setDriverProfile] = useState<MyDriverProfileView | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const driverStatus = driverProfile?.exists ? (driverProfile.status ?? null) : null;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -82,6 +87,20 @@ export function ProfileView({
     const section = searchParams.get("section");
     if (section) queueMicrotask(() => setOpenSection(section));
   }, [searchParams]);
+
+  useEffect(() => {
+    let alive = true;
+    getMyDriverProfileAction()
+      .then((p) => {
+        if (alive) setDriverProfile(p ?? { exists: false });
+      })
+      .catch(() => {
+        if (alive) setDriverProfile({ exists: false });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (verifyDniHandled.current) return;
@@ -516,23 +535,55 @@ export function ProfileView({
                 </div>
               </Link>
 
-              <button
-                type="button"
-                onClick={() => setIsDriverModalOpen(true)}
-                className="p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-2.5 transition-all cursor-pointer text-left"
-              >
-                <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
-                  <MaterialSymbol icon="sports_motorsports" size={18} fill />
-                </span>
-                <div className="min-w-0">
-                  <span className="text-[12px] font-bold text-gray-900 dark:text-gray-100 block truncate">
-                    Ser repartidor
+              {driverStatus === "approved" ? (
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <MaterialSymbol icon="verified" size={18} fill />
                   </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
-                    Horarios flexibles
-                  </span>
+                  <div className="min-w-0">
+                    <span className="text-[12px] font-bold text-gray-900 dark:text-gray-100 block truncate">
+                      Repartidor aprobado
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
+                      Ya sos parte del reparto de BolivarPide
+                    </span>
+                  </div>
                 </div>
-              </button>
+              ) : driverStatus === "pending_review" ? (
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <MaterialSymbol icon="hourglass_top" size={18} fill />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="text-[12px] font-bold text-gray-900 dark:text-gray-100 block truncate">
+                      Postulación en revisión
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
+                      Te avisamos cuando esté aprobada
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsDriverModalOpen(true)}
+                  className="p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-2.5 transition-all cursor-pointer text-left"
+                >
+                  <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <MaterialSymbol icon="sports_motorsports" size={18} fill />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="text-[12px] font-bold text-gray-900 dark:text-gray-100 block truncate">
+                      {driverStatus === "rejected" ? "Reintentar postulación" : "Ser repartidor"}
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
+                      {driverStatus === "rejected"
+                        ? driverProfile?.rejectionReason ?? "Tu postulación fue rechazada"
+                        : "Horarios flexibles"}
+                    </span>
+                  </div>
+                </button>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -633,7 +684,15 @@ export function ProfileView({
 
       <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
 
-      <DriverApplicationModal isOpen={isDriverModalOpen} onClose={() => setIsDriverModalOpen(false)} />
+      <DriverApplicationModal
+        isOpen={isDriverModalOpen}
+        onClose={() => setIsDriverModalOpen(false)}
+        initialStatus={driverStatus}
+        initialVehicle={driverProfile?.vehicleType ?? null}
+        onSubmitted={() => {
+          void getMyDriverProfileAction().then((p) => setDriverProfile(p ?? { exists: false }));
+        }}
+      />
     </div>
   );
 }
