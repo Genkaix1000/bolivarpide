@@ -1,16 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useState } from "react";
+import { useDispatchLive, useDispatchTicker } from "@/hooks/useDispatchLive";
 import type {
   ActiveDriver,
   DispatchOrderView,
   DispatchQueue,
 } from "@/lib/delivery/types";
 import { DispatchOrderCard } from "./DispatchOrderCard";
-
-const LIVE_POLL_MS = 8_000;
-const TICKER_MS = 30_000;
 
 function Section({
   title,
@@ -59,7 +56,6 @@ export function DispatchView({
   initial: DispatchQueue;
 }) {
   const [queue, setQueue] = useState(initial);
-  const [, setTick] = useState(0);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/orders/dispatch?businessId=${encodeURIComponent(businessId)}`, {
@@ -69,34 +65,8 @@ export function DispatchView({
     setQueue((await res.json()) as DispatchQueue);
   }, [businessId]);
 
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`reparto-${businessId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `business_id=eq.${businessId}`,
-        },
-        () => void refresh(),
-      )
-      .subscribe();
-
-    const poll = window.setInterval(() => void refresh(), LIVE_POLL_MS);
-    const ticker = window.setInterval(() => setTick((x) => x + 1), TICKER_MS);
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      void supabase.removeChannel(channel);
-      window.clearInterval(poll);
-      window.clearInterval(ticker);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [businessId, refresh]);
+  useDispatchLive(businessId, refresh);
+  useDispatchTicker();
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">

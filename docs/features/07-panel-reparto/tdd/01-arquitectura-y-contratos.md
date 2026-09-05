@@ -195,7 +195,8 @@ Preferir server actions para mutar; routes solo para refresco de lectura (patró
 |---------|--------|
 | `src/lib/delivery/{types,rules,queries,actions,display}.ts` | **Nuevos** |
 | `src/lib/delivery/{queries,rules}.check.ts` | **Nuevos** |
-| `src/components/delivery/{DispatchView,DriverBoard,DeliveryOrderCard,AssignDriverSelect}.tsx` | **Nuevos** |
+| `src/components/delivery/{DispatchView,DriverBoard,DeliveryOrderCard,AssignDriverSelect,DispatchOrderCard}.tsx` | **Nuevos** |
+| `src/hooks/useDispatchLive.ts` | **Nuevo** (realtime + polling + ticker compartidos) |
 | `src/app/negocio/[businessId]/reparto/page.tsx` | **Nuevo** (switch por rol) |
 | `src/app/api/orders/{delivery,dispatch}/route.ts` | **Nuevos** |
 | `src/lib/business/queries.ts` | Agregar `role` a `BusinessShellData` en `getBusinessShellData` |

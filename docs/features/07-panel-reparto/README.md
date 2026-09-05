@@ -114,9 +114,9 @@ La **asignación es ortogonal al estado**: se lee/escribe por server action con 
 - [x] Sidebar role-gated (item Reparto; driver ve solo lo suyo) + `role` en `BusinessShellData`
 
 ### Fase 4 — Consola del repartidor
-- [ ] `DriverBoard.tsx` (tabs + Realtime + polling)
-- [ ] `DeliveryOrderCard.tsx` (dirección, teléfono/WhatsApp, ítems, PIN, Google Maps)
-- [ ] Confirmación entregada con `advanceOrderStatus` + `PinConfirmInput`
+- [x] `DriverBoard.tsx` (tabs + Realtime + polling)
+- [x] `DeliveryOrderCard.tsx` (dirección, teléfono/WhatsApp, ítems, PIN, Google Maps)
+- [x] Confirmación entregada con `advanceOrderStatus` + `PinConfirmInput`
 
 ### Fase 5 — Verificación
 - [ ] `pnpm test` + `pnpm exec tsc --noEmit` + `pnpm lint`
