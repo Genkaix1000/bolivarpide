@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyAndParseMetaWebhook } from "@/lib/whatsapp/signature";
 import { parseMetaWebhook } from "@/lib/whatsapp/webhook";
+import { isOutboundStatus, statusesBelow } from "@/lib/whatsapp/status";
 import {
   readWhatsAppToken,
   fetchMetaMedia,
@@ -67,10 +68,27 @@ export async function POST(request: Request) {
     // Outbound delivery/read receipts: update existing rows.
     const statusUpdates = change.statuses.map(async (status) => {
       if (status.status === "sent") return;
+      if (!isOutboundStatus(status.status)) return;
+
+      const firstError = status.errors?.[0];
+      // El filtro por estados inferiores hace de guarda contra el retroceso:
+      // Meta no garantiza el orden, así que un `delivered` tardío llegaba
+      // después del `read` y le sacaba el doble tilde azul al mensaje.
       const { error } = await service
         .from("whatsapp_messages")
-        .update({ status: status.status, updated_at: new Date().toISOString() })
-        .eq("wa_message_id", status.waMessageId);
+        .update({
+          status: status.status,
+          updated_at: new Date().toISOString(),
+          ...(firstError
+            ? {
+                error_code: firstError.code || null,
+                error_title: firstError.title ?? null,
+                error_details: firstError.error_data?.details ?? firstError.message ?? null,
+              }
+            : {}),
+        })
+        .eq("wa_message_id", status.waMessageId)
+        .in("status", statusesBelow(status.status));
       if (error) {
         console.error(
           `webhook/meta: no se pudo actualizar estado ${status.status}`,

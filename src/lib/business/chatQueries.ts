@@ -12,7 +12,7 @@ import type {
 } from "@/lib/business/chatTypes";
 
 const MESSAGE_FIELDS =
-  "id, business_id, chat_id, direction, type, text_body, media_json, wa_message_id, status, customer_name, read_at, created_at";
+  "id, business_id, chat_id, direction, type, text_body, media_json, wa_message_id, status, customer_name, read_at, created_at, error_code, error_title";
 
 type MessageRow = {
   id: string;
@@ -33,6 +33,8 @@ type MessageRow = {
   customer_name: string | null;
   read_at: string | null;
   created_at: string;
+  error_code: number | null;
+  error_title: string | null;
 };
 
 const ORDER_FIELDS =
@@ -125,7 +127,11 @@ function messageToChatMessage(row: MessageRow): ChatMessage {
         }
       : null,
     timestamp: fmtTime(row.created_at),
-    status: row.status === "delivered" || row.status === "read" ? row.status : undefined,
+    status:
+      row.status === "delivered" || row.status === "read" || row.status === "failed"
+        ? row.status
+        : undefined,
+    errorTitle: row.status === "failed" ? row.error_title : null,
   };
 }
 

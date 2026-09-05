@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { readWhatsAppToken } from "@/lib/whatsapp/connection";
+import { graphFetch, metaGraphBase, metaGraphVersion } from "@/lib/whatsapp/graph";
 
 /**
  * Meta Business Login (WhatsApp Business integration).
@@ -30,7 +31,6 @@ export function getMetaOAuthConfig(): MetaOAuthConfig {
   if (!appId || !appSecret) {
     throw new Error("Falta META_APP_ID o META_APP_SECRET");
   }
-  const version = process.env.META_GRAPH_VERSION?.trim() || "v22.0";
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000";
   const redirectUri =
     process.env.META_OAUTH_REDIRECT_URI?.trim() || `${base}/api/meta/oauth/callback`;
@@ -38,8 +38,8 @@ export function getMetaOAuthConfig(): MetaOAuthConfig {
     appId,
     appSecret,
     redirectUri,
-    graphBase: `https://graph.facebook.com/${version}`,
-    dialogBase: `https://www.facebook.com/${version}/dialog/oauth`,
+    graphBase: metaGraphBase(),
+    dialogBase: `https://www.facebook.com/${metaGraphVersion()}/dialog/oauth`,
   };
 }
 
@@ -142,36 +142,12 @@ export function exchangeForLongLived(shortToken: string): Promise<{
   return oauthExchange(`${cfg.graphBase}/oauth/access_token?${params.toString()}`);
 }
 
-async function graphGet<T>(path: string, token: string, fields?: string): Promise<T> {
-  const cfg = getMetaOAuthConfig();
-  const params = new URLSearchParams({ access_token: token });
-  if (fields) params.set("fields", fields);
-  const res = await fetch(`${cfg.graphBase}/${path}?${params.toString()}`);
-  const json = (await res.json()) as T & { error?: { message?: string } };
-  if (!res.ok || "error" in json) {
-    throw new Error(
-      (json as { error?: { message?: string } }).error?.message ||
-        "Error de la API de Meta",
-    );
-  }
-  return json;
+function graphGet<T>(path: string, token: string, fields?: string): Promise<T> {
+  return graphFetch<T>({ path, token, query: fields ? { fields } : undefined });
 }
 
-async function graphPost<T>(path: string, token: string): Promise<T> {
-  const cfg = getMetaOAuthConfig();
-  const res = await fetch(`${cfg.graphBase}/${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const json = (await res.json().catch(() => null)) as
-    | (T & { error?: { message?: string } })
-    | null;
-  if (!res.ok || !json || "error" in json) {
-    throw new Error(
-      json?.error?.message || `Error de la API de Meta (HTTP ${res.status})`,
-    );
-  }
-  return json;
+function graphPost<T>(path: string, token: string): Promise<T> {
+  return graphFetch<T>({ path, token, method: "POST" });
 }
 
 export type MetaWaba = { id: string; name?: string };

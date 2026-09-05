@@ -212,12 +212,26 @@ export function ChatConversationPane({
                   <span>{msg.timestamp}</span>
                   {isMe ? (
                     <MaterialSymbol
-                      icon={msg.status === "read" ? "done_all" : "done"}
+                      icon={
+                        msg.status === "failed"
+                          ? "error"
+                          : msg.status === "read"
+                            ? "done_all"
+                            : "done"
+                      }
                       size={13}
-                      className={msg.status === "read" ? "text-sky-300" : undefined}
+                      className={cn(
+                        msg.status === "read" && "text-sky-300",
+                        msg.status === "failed" && "text-amber-200",
+                      )}
                     />
                   ) : null}
                 </div>
+                {isMe && msg.status === "failed" ? (
+                  <p className="mt-1 border-t border-white/20 pt-1 text-[10px] font-semibold text-amber-200">
+                    No se entregó{msg.errorTitle ? `: ${msg.errorTitle}` : ""}
+                  </p>
+                ) : null}
               </div>
             </div>
           );

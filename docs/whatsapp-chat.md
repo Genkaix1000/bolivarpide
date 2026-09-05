@@ -26,7 +26,7 @@ Meta Cloud API  ──webhook──►  Next /api/webhooks/meta  (GET verify + P
 | `META_WEBHOOK_VERIFY_TOKEN` | Token de verificación del webhook de Meta (GET `hub.challenge`). Lo definís vos y va también en Meta > Webhook config. |
 | `META_APP_SECRET` | App secret de tu app de Meta. Se usa para validar la firma `X-Hub-Signature-256` de cada POST del webhook y como `client_secret` en el OAuth. |
 | `META_APP_ID` | ID de la app de Meta. Necesario para el enlace self-service (Business Login). |
-| `META_GRAPH_VERSION` | Opcional. Versión de Graph API, por defecto `v21.0` (p. ej. `v22.0`). |
+| `META_GRAPH_VERSION` | Opcional. Versión de Graph API, por defecto `v22.0`. Acepta `v22.0` o `22.0`. Antes convivían dos defaults (`v21.0` en los envíos, `v22.0` en el OAuth); ahora sale de `src/lib/whatsapp/graph.ts` y es una sola. |
 | `META_OAUTH_REDIRECT_URI` | Redir del OAuth. Debe ser EXACTO al "Valid OAuth redirect URIs" de la app. Default: `<site>/api/meta/oauth/callback`. |
 | `WHATSAPP_WEBHOOK_SECRET` | **Deprecated.** Era el secret compartido con n8n para `/api/webhooks/whatsapp`. Se mantiene solo por retro-compat con la rama `n8n`. |
 
@@ -59,6 +59,32 @@ Aplicar en orden (SQL Editor o `psql -f`):
    - `business_whatsapp`: `token_expires_at`, `connected_at`, `meta_user_id`, `verified_name`.
 4. `supabase/migrations/20260906010000_whatsapp_webhook_timestamp_fix.sql`
    - Repara los inbound guardados con `created_at` de 1970 (ver más abajo).
+5. `supabase/migrations/20260906020000_whatsapp_message_errors.sql`
+   - `whatsapp_messages`: `error_code`, `error_title`, `error_details` para
+     mostrar los envíos fallidos en el chat.
+
+## Capas del envío
+
+```
+UI  →  actions.ts (server action)   authz + ventana 24 h + revalidatePath
+                    │
+sistema → templates.ts              elige texto libre vs template
+                    │
+                    ▼
+              send.ts               primitivos: arma el payload y persiste
+                    │               (incluida la fila `failed` con el código)
+                    ▼
+              graph.ts              versión, timeout, reintentos, MetaGraphError
+```
+
+`send.ts` no hace authz ni `revalidatePath` a propósito: la notificación de
+estado la dispara el sistema desde `after()`, fuera de la sesión del usuario.
+Cuando reusaba el server action arrastraba `requireBusinessAccess` —que hace
+`redirect()` y depende de las cookies— dentro de un contexto donde no aplica.
+
+Los envíos fallidos quedan en el chat con el motivo de Meta (`error_title`) en
+vez de desaparecer: antes el error moría en un toast y el mensaje no aparecía
+en ningún lado.
 
 ## Enlazar WhatsApp con Meta (self-service, sin admin)
 

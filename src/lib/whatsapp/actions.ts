@@ -6,6 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getActiveWhatsAppConnection } from "@/lib/whatsapp/connection";
 import { readConnectionToken } from "@/lib/whatsapp/oauth";
 import { isWithinReplayWindow } from "@/lib/whatsapp/window";
+import { sendWhatsAppTextMessage } from "@/lib/whatsapp/send";
 import { storedPhoneFromWaId } from "@/lib/whatsapp/format";
 
 type SendResult = { ok: true } | { ok: false; error: string };
@@ -52,50 +53,18 @@ export async function sendWhatsAppText(
     return { ok: false, error: "Ventana de 24 h vencida" };
   }
 
-  const graphBase = process.env.META_GRAPH_VERSION
-    ? `https://graph.facebook.com/${process.env.META_GRAPH_VERSION}`
-    : "https://graph.facebook.com/v21.0";
-
-  const res = await fetch(`${graphBase}/${conn.phone_number_id}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: chatId,
-      type: "text",
-      text: { preview_url: false, body },
-    }),
+  // El envío y la persistencia (incluida la fila `failed` con el código de
+  // Meta) viven en el primitivo; acá solo queda la autorización y la caché.
+  const res = await sendWhatsAppTextMessage({
+    businessId,
+    phoneNumberId: conn.phone_number_id,
+    token,
+    chatId,
+    body,
   });
-
-  const json = (await res.json().catch(() => null)) as {
-    messages?: Array<{ id: string }>;
-    error?: { message?: string } | null;
-  } | null;
-
-  if (!res.ok || !json?.messages?.[0]?.id) {
-    const detail = json?.error?.message ?? `HTTP ${res.status}`;
-    return { ok: false, error: detail };
-  }
-
-  // Persist outbound message; status flips via the Meta status webhook.
-  const { error: insertErr } = await svc.from("whatsapp_messages").insert({
-    business_id: businessId,
-    chat_id: chatId,
-    direction: "outbound",
-    type: "text",
-    text_body: body,
-    wa_message_id: json.messages[0].id,
-    status: "sent",
-    customer_name: null,
-  });
-  if (insertErr) console.error("sendWhatsAppText: insert outbound failed", insertErr);
 
   revalidatePath(`/negocio/${businessId}/whatsapp`);
-  return { ok: true };
+  return res.ok ? { ok: true } : { ok: false, error: res.error };
 }
 
 type ChatOrderItemInput = {

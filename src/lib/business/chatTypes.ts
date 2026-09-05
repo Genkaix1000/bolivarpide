@@ -64,7 +64,9 @@ export type ChatMessage = {
     caption: string | null;
   } | null;
   timestamp: string;
-  status?: "sent" | "delivered" | "read";
+  status?: "sent" | "delivered" | "read" | "failed";
+  /** Motivo del fallo reportado por Meta (solo cuando status === "failed"). */
+  errorTitle?: string | null;
 };
 
 export type Conversation = {
