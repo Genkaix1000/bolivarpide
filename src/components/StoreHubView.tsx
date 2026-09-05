@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { useCart } from "@/components/CartProvider";
@@ -9,6 +9,7 @@ import type { PublicMenuCategory } from "@/lib/business/publicStore";
 import { profileFromChain, StoreLocationBlock, StoreSidePanel } from "@/components/StoreShowcase";
 import { ProductImageToggle } from "@/components/menu/ProductImageToggle";
 import { ProductImagePlaceholder } from "@/components/menu/ProductImagePlaceholder";
+import { MenuReelsFeed } from "@/components/menu/MenuReelsFeed";
 import { MobileStoreCoverHeader } from "@/components/store/MobileStoreCoverHeader";
 import { MENU_IMAGE_FRAME_CLASS } from "@/lib/images/menuImageSpec";
 import { cn } from "@/lib/utils";
@@ -20,57 +21,76 @@ function money(n: number) {
 function ProductCard({
   item,
   onOpen,
+  onOpenReels,
   onQuickAdd,
 }: {
   item: TrendingItem;
   onOpen: () => void;
+  onOpenReels: () => void;
   onQuickAdd: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-black/[0.04] dark:border-[#3d3732]",
-        "bg-white dark:bg-[#1c1917] text-left cursor-pointer hover:border-[#9a0002]/25 transition-all duration-300",
+        "bg-white dark:bg-[#1c1917] text-left hover:border-[#9a0002]/25 transition-all duration-300",
         "shadow-[0_8px_24px_-16px_rgba(61,43,31,0.2)]",
       )}
     >
-      <div className={MENU_IMAGE_FRAME_CLASS}>
+      <button
+        type="button"
+        onClick={onOpenReels}
+        aria-label={`Ver ${item.name} en Reels`}
+        className={cn(MENU_IMAGE_FRAME_CLASS, "w-full cursor-pointer border-0 p-0")}
+      >
         {(item.iconImage || item.photoImage || item.image) ? (
           <ProductImageToggle
             iconUrl={item.iconImage ?? item.image}
-            photoUrl={item.photoImage ?? item.image}
+            photoUrl={item.photoImage}
             className="h-full w-full group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <ProductImagePlaceholder className="h-full w-full" />
         )}
-        <span
-          role="button"
-          tabIndex={0}
-          aria-label={`Agregar ${item.name}`}
-          onClick={(e) => {
+      </button>
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={`Agregar ${item.name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onQuickAdd();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
             e.stopPropagation();
             onQuickAdd();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.stopPropagation();
-              onQuickAdd();
-            }
-          }}
-          className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#9a0002] text-sm font-bold text-white shadow hover:bg-[#6b0001] active:scale-95 transition-all"
-        >
-          +
-        </span>
-      </div>
-      <div className="p-3">
+          }
+        }}
+        className="absolute right-2.5 top-2.5 z-[1] flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#9a0002] text-sm font-bold text-white shadow hover:bg-[#6b0001] active:scale-95 transition-all"
+      >
+        +
+      </span>
+      <button type="button" onClick={onOpen} className="w-full cursor-pointer p-3 text-left">
         <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[#9a0002] transition-colors">
           {item.name}
         </p>
         <p className="mt-1 text-[14px] font-bold text-[#9a0002]">{money(item.price)}</p>
-      </div>
+      </button>
+    </div>
+  );
+}
+
+function ReelsEntryButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#9a0002]/25 bg-[#9a0002]/8 px-3 py-1.5 text-[12px] font-bold text-[#9a0002] hover:bg-[#9a0002]/15 disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#9a0002]/40 dark:bg-[#9a0002]/15 dark:text-[#ff8a8c]"
+    >
+      <MaterialSymbol icon="slideshow" size={16} />
+      Ver en Reels
     </button>
   );
 }
@@ -137,11 +157,32 @@ type Props = {
   products: TrendingItem[];
   categories?: PublicMenuCategory[];
   backHref: string;
+  initialDishId?: string | null;
 };
 
-export function StoreHubView({ chain, products, categories = [], backHref }: Props) {
+export function StoreHubView({
+  chain,
+  products,
+  categories = [],
+  backHref,
+  initialDishId = null,
+}: Props) {
   const { openProduct, quickAdd } = useCart();
   const [following, setFollowing] = useState(false);
+  const [reelsOpen, setReelsOpen] = useState(false);
+  const [reelsDishId, setReelsDishId] = useState<string | null>(null);
+
+  const openReels = (productId?: string) => {
+    setReelsDishId(productId ?? null);
+    setReelsOpen(true);
+  };
+
+  useEffect(() => {
+    if (!initialDishId || products.length === 0) return;
+    if (!products.some((p) => p.id === initialDishId)) return;
+    setReelsDishId(initialDishId);
+    setReelsOpen(true);
+  }, [initialDishId, products]);
 
   const profile = profileFromChain(chain, products.length, "0");
 
@@ -171,6 +212,7 @@ export function StoreHubView({ chain, products, categories = [], backHref }: Pro
                   key={item.id}
                   item={item}
                   onOpen={() => openProduct(item)}
+                  onOpenReels={() => openReels(item.id)}
                   onQuickAdd={() => quickAdd(item)}
                 />
               ))}
@@ -185,6 +227,7 @@ export function StoreHubView({ chain, products, categories = [], backHref }: Pro
             key={item.id}
             item={item}
             onOpen={() => openProduct(item)}
+            onOpenReels={() => openReels(item.id)}
             onQuickAdd={() => quickAdd(item)}
           />
         ))}
@@ -207,7 +250,10 @@ export function StoreHubView({ chain, products, categories = [], backHref }: Pro
         />
         <MobileStoreInfo chain={chain} profile={profile} />
         <div className="flex-1 bg-[#f3efe8] px-5 pt-5 pb-28 dark:bg-[#141210]">
-          <h2 className="mb-1 text-[15px] font-bold text-gray-900 dark:text-gray-100">Menú</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Menú</h2>
+            <ReelsEntryButton onClick={() => openReels()} disabled={products.length === 0} />
+          </div>
           <CategoryStickyNav categories={categories} products={products} />
           {productGrid}
         </div>
@@ -223,10 +269,11 @@ export function StoreHubView({ chain, products, categories = [], backHref }: Pro
             >
               <MaterialSymbol icon="arrow_back" size={18} />
             </Link>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Menú</h2>
               <p className="text-[12px] text-gray-400">{chain.name}</p>
             </div>
+            <ReelsEntryButton onClick={() => openReels()} disabled={products.length === 0} />
           </header>
           <div className="flex-1 overflow-y-auto px-6 pb-28 lg:px-8">
             <CategoryStickyNav categories={categories} products={products} />
@@ -243,6 +290,14 @@ export function StoreHubView({ chain, products, categories = [], backHref }: Pro
           className="w-[360px] shrink-0 lg:w-[400px]"
         />
       </div>
+
+      <MenuReelsFeed
+        chain={chain}
+        products={products}
+        initialProductId={reelsDishId}
+        open={reelsOpen}
+        onClose={() => setReelsOpen(false)}
+      />
     </div>
   );
 }

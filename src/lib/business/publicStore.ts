@@ -60,10 +60,10 @@ export function productToTrendingItem(
     chainId: business.slug,
     price: product.price_cents / 100,
     emoji: product.name.slice(0, 1).toUpperCase(),
-    // Primary preview is the icon (el ícono es la vista previa principal)
+    // List preview prefers icon; photo stays distinct for reels / toggle
     image: icon ?? photo ?? undefined,
-    iconImage: icon ?? photo ?? undefined,
-    photoImage: photo ?? icon ?? undefined,
+    iconImage: icon ?? undefined,
+    photoImage: photo ?? undefined,
     description: product.description ?? undefined,
     categoryId: product.category_id ?? undefined,
     categoryName: categoryName ?? product.category ?? undefined,

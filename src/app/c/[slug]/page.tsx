@@ -9,10 +9,10 @@ export default async function StoreHubPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; dish?: string }>;
 }) {
   const { slug } = await params;
-  const { from } = await searchParams;
+  const { from, dish } = await searchParams;
   const store = await getPublicStoreBySlug(slug);
 
   if (!store) {
@@ -79,6 +79,7 @@ export default async function StoreHubPage({
       products={trending}
       categories={categories}
       backHref={backHref}
+      initialDishId={dish ?? null}
     />
   );
 }

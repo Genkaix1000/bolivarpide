@@ -283,6 +283,7 @@ export type ShellMemberPreview = {
 
 export type BusinessShellData = {
   business: BusinessRow;
+  role: "owner" | "staff" | "driver";
   displayName: string;
   email: string;
   initials: string;
@@ -313,9 +314,10 @@ function userDisplay(user: { email?: string }, profileName: string | null) {
 }
 
 export async function getBusinessShellData(businessId: string): Promise<BusinessShellData> {
-  const { supabase, user, business, platformRole, impersonating } =
-    await requireBusinessAccess(businessId);
+
+  const { supabase, user, business, member, isAdmin, platformRole, impersonating } = await requireBusinessAccess(businessId);
   const { label: planLabel, commission: planCommission } = planMeta(business.plan);
+  const role: BusinessShellData["role"] = isAdmin ? "owner" : (member?.role as BusinessShellData["role"]) ?? "staff";
 
   const [profileRes, pendingAllRes, membersRes] = await Promise.all([
     supabase
@@ -395,6 +397,7 @@ export async function getBusinessShellData(businessId: string): Promise<Business
 
   return {
     business,
+    role,
     displayName,
     email,
     initials,
